@@ -14,7 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          advance: number
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          site_name: string | null
+          status: Database["public"]["Enums"]["attendance_status"]
+          updated_at: string
+          user_id: string
+          worker_id: string
+        }
+        Insert: {
+          advance?: number
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          site_name?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+          updated_at?: string
+          user_id: string
+          worker_id: string
+        }
+        Update: {
+          advance?: number
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          site_name?: string | null
+          status?: Database["public"]["Enums"]["attendance_status"]
+          updated_at?: string
+          user_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workers: {
+        Row: {
+          created_at: string
+          daily_rate: number
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          role: Database["public"]["Enums"]["worker_role"]
+          site_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["worker_role"]
+          site_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["worker_role"]
+          site_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +108,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      attendance_status: "Present" | "Absent" | "Half-Day"
+      worker_role: "मिस्त्री" | "मजदूर" | "हेल्पर"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +236,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      attendance_status: ["Present", "Absent", "Half-Day"],
+      worker_role: ["मिस्त्री", "मजदूर", "हेल्पर"],
+    },
   },
 } as const
