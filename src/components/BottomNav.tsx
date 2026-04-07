@@ -1,14 +1,17 @@
-import { CalendarCheck, Users, BarChart3 } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings } from "lucide-react";
+
+export type TabId = "attendance" | "workers" | "report" | "settings";
 
 interface Props {
-  active: "attendance" | "workers" | "report";
-  onNavigate: (tab: "attendance" | "workers" | "report") => void;
+  active: TabId;
+  onNavigate: (tab: TabId) => void;
 }
 
 const tabs = [
   { id: "attendance" as const, label: "हाजिरी", icon: CalendarCheck },
   { id: "workers" as const, label: "मजदूर", icon: Users },
   { id: "report" as const, label: "रिपोर्ट", icon: BarChart3 },
+  { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
 ];
 
 export default function BottomNav({ active, onNavigate }: Props) {

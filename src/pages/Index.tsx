@@ -5,14 +5,14 @@ import Auth from "./Auth";
 import AttendancePage from "@/components/AttendancePage";
 import WorkersPage from "@/components/WorkersPage";
 import ReportPage from "@/components/ReportPage";
-import BottomNav from "@/components/BottomNav";
-import { Button } from "@/components/ui/button";
-import { HardHat, LogOut } from "lucide-react";
+import SettingsPage from "@/components/SettingsPage";
+import BottomNav, { type TabId } from "@/components/BottomNav";
+import { HardHat } from "lucide-react";
 
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"attendance" | "workers" | "report">("attendance");
+  const [tab, setTab] = useState<TabId>("attendance");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
