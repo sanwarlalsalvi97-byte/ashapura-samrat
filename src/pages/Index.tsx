@@ -5,14 +5,14 @@ import Auth from "./Auth";
 import AttendancePage from "@/components/AttendancePage";
 import WorkersPage from "@/components/WorkersPage";
 import ReportPage from "@/components/ReportPage";
-import BottomNav from "@/components/BottomNav";
-import { Button } from "@/components/ui/button";
-import { HardHat, LogOut } from "lucide-react";
+import SettingsPage from "@/components/SettingsPage";
+import BottomNav, { type TabId } from "@/components/BottomNav";
+import { HardHat } from "lucide-react";
 
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"attendance" | "workers" | "report">("attendance");
+  const [tab, setTab] = useState<TabId>("attendance");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -36,16 +36,13 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3">
+        <div className="max-w-lg mx-auto flex items-center px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <HardHat className="w-5 h-5 text-primary-foreground" />
             </div>
             <h1 className="text-lg font-bold">हाजिरी ऐप</h1>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => supabase.auth.signOut()}>
-            <LogOut className="w-4 h-4" />
-          </Button>
         </div>
       </header>
 
@@ -53,6 +50,7 @@ export default function Index() {
         {tab === "attendance" && <AttendancePage />}
         {tab === "workers" && <WorkersPage />}
         {tab === "report" && <ReportPage />}
+        {tab === "settings" && <SettingsPage />}
       </main>
 
       <BottomNav active={tab} onNavigate={setTab} />
