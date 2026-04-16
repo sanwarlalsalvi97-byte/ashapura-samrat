@@ -32,6 +32,14 @@ export async function addWorker(worker: Omit<WorkerInsert, "user_id">) {
   return data;
 }
 
+export async function deleteWorker(workerId: string) {
+  const { error } = await supabase
+    .from("workers")
+    .update({ is_active: false })
+    .eq("id", workerId);
+  if (error) throw error;
+}
+
 export async function getAttendanceByDate(date: string) {
   const { data, error } = await supabase
     .from("attendance")
