@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { getMonthlyReport } from "@/lib/supabase-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const monthNames = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -70,6 +71,30 @@ export default function ReportPage() {
 
   const grandTotal = summary.reduce((acc, s) => acc + s.netPayable, 0);
 
+  const shareOnWhatsApp = (worker?: WorkerSummary) => {
+    let text = "";
+    if (worker) {
+      text = `📋 *${worker.name}* — ${monthNames[month - 1]} ${year}\n` +
+        `👷 ${worker.role} | ₹${worker.dailyRate}/दिन\n\n` +
+        `✅ हाजिर: ${worker.presentDays} दिन\n` +
+        `⏰ आधा दिन: ${worker.halfDays}\n` +
+        `❌ गैरहाजिर: ${worker.absentDays}\n\n` +
+        `💰 कुल कमाई: ₹${worker.totalEarning.toLocaleString("hi-IN")}\n` +
+        `💸 एडवांस: ₹${worker.totalAdvance.toLocaleString("hi-IN")}\n` +
+        `✅ *बाकी राशि: ₹${worker.netPayable.toLocaleString("hi-IN")}*`;
+    } else {
+      text = `📋 *हाजिरी रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
+      summary.forEach((s) => {
+        text += `👷 *${s.name}* (${s.role})\n` +
+          `   हाजिर: ${s.presentDays} | आधा: ${s.halfDays} | गैरहाजिर: ${s.absentDays}\n` +
+          `   बाकी: ₹${s.netPayable.toLocaleString("hi-IN")}\n\n`;
+      });
+      text += `💰 *कुल देय: ₹${grandTotal.toLocaleString("hi-IN")}*`;
+    }
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between bg-card rounded-xl p-3">
@@ -93,6 +118,15 @@ export default function ReportPage() {
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">कुल देय राशि</p>
               <p className="text-3xl font-bold text-primary">₹{grandTotal.toLocaleString("hi-IN")}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 gap-2"
+                onClick={() => shareOnWhatsApp()}
+              >
+                <Share2 className="w-4 h-4" />
+                WhatsApp पर शेयर करें
+              </Button>
             </CardContent>
           </Card>
 
@@ -102,7 +136,17 @@ export default function ReportPage() {
                 <CardHeader className="pb-2 p-4">
                   <CardTitle className="text-base flex items-center justify-between">
                     <span>{s.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">{s.role}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-normal text-muted-foreground">{s.role}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => shareOnWhatsApp(s)}
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
