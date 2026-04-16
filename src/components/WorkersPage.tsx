@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
-import { getWorkers, type Worker } from "@/lib/supabase-helpers";
+import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import AddWorkerDialog from "./AddWorkerDialog";
-import { Phone } from "lucide-react";
+import { Phone, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const roleColors: Record<string, string> = {
   "मिस्त्री": "bg-primary/15 text-primary",
@@ -19,6 +31,16 @@ export default function WorkersPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDelete = async (worker: Worker) => {
+    try {
+      await deleteWorker(worker.id);
+      toast({ title: `✅ ${worker.name} को हटा दिया गया` });
+      load();
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -48,11 +70,34 @@ export default function WorkersPage() {
                       {w.site_name && <span className="text-xs text-muted-foreground">• {w.site_name}</span>}
                     </div>
                   </div>
-                  {w.phone && (
-                    <a href={`tel:${w.phone}`} className="p-2 rounded-full bg-accent/10 text-accent">
-                      <Phone className="w-4 h-4" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {w.phone && (
+                      <a href={`tel:${w.phone}`} className="p-2 rounded-full bg-accent/10 text-accent">
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button className="p-2 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="max-w-sm">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>क्या आप पक्के हैं?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {w.name} को सूची से हटा दिया जाएगा। उनकी पुरानी हाजिरी रिपोर्ट में दिखती रहेगी।
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>रहने दें</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(w)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            हटाएं
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
