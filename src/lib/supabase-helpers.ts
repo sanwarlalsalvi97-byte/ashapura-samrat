@@ -40,6 +40,14 @@ export async function deleteWorker(workerId: string) {
   if (error) throw error;
 }
 
+export async function updateWorker(workerId: string, updates: { name: string; role: WorkerRole; daily_rate: number; site_name: string | null; phone: string | null }) {
+  const { error } = await supabase
+    .from("workers")
+    .update(updates)
+    .eq("id", workerId);
+  if (error) throw error;
+}
+
 export async function getAttendanceByDate(date: string) {
   const { data, error } = await supabase
     .from("attendance")

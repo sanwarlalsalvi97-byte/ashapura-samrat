@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import AddWorkerDialog from "./AddWorkerDialog";
+import EditWorkerDialog from "./EditWorkerDialog";
 import { Phone, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
@@ -70,7 +71,8 @@ export default function WorkersPage() {
                       {w.site_name && <span className="text-xs text-muted-foreground">• {w.site_name}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                    <EditWorkerDialog worker={w} onUpdated={load} />
                     {w.phone && (
                       <a href={`tel:${w.phone}`} className="p-2 rounded-full bg-accent/10 text-accent">
                         <Phone className="w-4 h-4" />
