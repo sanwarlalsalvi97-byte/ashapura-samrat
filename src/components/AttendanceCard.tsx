@@ -29,9 +29,34 @@ const roleColors: Record<string, string> = {
 
 export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked }: Props) {
   const [advance, setAdvance] = useState(String(currentAdvance || 0));
+  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
   const [loading, setLoading] = useState(false);
 
-  const handleMark = async (status: AttendanceStatus) => {
+  const handleSaveAttendance = async () => {
+    if (!selectedStatus) {
+      toast({ title: "पहले हाजिरी चुनें", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      await markAttendance({
+        worker_id: worker.id,
+        date,
+        status: selectedStatus,
+        advance: parseInt(advance) || 0,
+        site_name: worker.site_name,
+      });
+      toast({ title: `${worker.name} — ${statusConfig[selectedStatus].label} सेव हो गया` });
+      onMarked();
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAdvance = async () => {
+    const status = selectedStatus || currentStatus || "Present";
     setLoading(true);
     try {
       await markAttendance({
@@ -41,7 +66,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
         advance: parseInt(advance) || 0,
         site_name: worker.site_name,
       });
-      toast({ title: `${worker.name} — ${statusConfig[status].label}` });
+      toast({ title: `${worker.name} — एडवांस ₹${advance} सेव हो गया` });
       onMarked();
     } catch (err: any) {
       toast({ title: "गलती", description: err.message, variant: "destructive" });
@@ -75,14 +100,14 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
             {(Object.keys(statusConfig) as AttendanceStatus[]).map((status) => {
               const config = statusConfig[status];
               const Icon = config.icon;
-              const isActive = currentStatus === status;
+              const isActive = selectedStatus === status;
               return (
                 <Button
                   key={status}
                   size="sm"
                   variant={isActive ? "default" : "outline"}
                   className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
-                  onClick={() => handleMark(status)}
+                  onClick={() => setSelectedStatus(status)}
                   disabled={loading}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -91,6 +116,16 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
               );
             })}
           </div>
+
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={handleSaveAttendance}
+            disabled={loading || !selectedStatus}
+          >
+            <Check className="w-4 h-4" />
+            हाजिरी सेव करें
+          </Button>
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground whitespace-nowrap">एडवांस ₹</span>
@@ -101,6 +136,15 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
               className="h-8 text-sm"
               min={0}
             />
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleSaveAdvance}
+              disabled={loading}
+              className="whitespace-nowrap"
+            >
+              सेव
+            </Button>
           </div>
         </CardContent>
       </Card>
