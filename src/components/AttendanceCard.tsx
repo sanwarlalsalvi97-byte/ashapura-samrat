@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { Check, X, Clock } from "lucide-react";
@@ -28,7 +27,6 @@ const roleColors: Record<string, string> = {
 };
 
 export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked }: Props) {
-  const [advance, setAdvance] = useState(String(currentAdvance || 0));
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
   const [loading, setLoading] = useState(false);
 
@@ -43,30 +41,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
         worker_id: worker.id,
         date,
         status: selectedStatus,
-        advance: parseInt(advance) || 0,
+        advance: currentAdvance || 0,
         site_name: worker.site_name,
       });
       toast({ title: `${worker.name} — ${statusConfig[selectedStatus].label} सेव हो गया` });
-      onMarked();
-    } catch (err: any) {
-      toast({ title: "गलती", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveAdvance = async () => {
-    const status = selectedStatus || currentStatus || "Present";
-    setLoading(true);
-    try {
-      await markAttendance({
-        worker_id: worker.id,
-        date,
-        status,
-        advance: parseInt(advance) || 0,
-        site_name: worker.site_name,
-      });
-      toast({ title: `${worker.name} — एडवांस ₹${advance} सेव हो गया` });
       onMarked();
     } catch (err: any) {
       toast({ title: "गलती", description: err.message, variant: "destructive" });
@@ -127,25 +105,11 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
             हाजिरी सेव करें
           </Button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">एडवांस ₹</span>
-            <Input
-              type="number"
-              value={advance}
-              onChange={(e) => setAdvance(e.target.value)}
-              className="h-8 text-sm"
-              min={0}
-            />
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleSaveAdvance}
-              disabled={loading}
-              className="whitespace-nowrap"
-            >
-              सेव
-            </Button>
-          </div>
+          {(currentAdvance || 0) > 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              एडवांस: ₹{currentAdvance}
+            </p>
+          )}
         </CardContent>
       </Card>
     </motion.div>

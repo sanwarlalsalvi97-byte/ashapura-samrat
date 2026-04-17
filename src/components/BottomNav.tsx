@@ -1,6 +1,6 @@
-import { CalendarCheck, Users, BarChart3, Settings } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet } from "lucide-react";
 
-export type TabId = "attendance" | "workers" | "report" | "settings";
+export type TabId = "attendance" | "advance" | "workers" | "report" | "settings";
 
 interface Props {
   active: TabId;
@@ -9,6 +9,7 @@ interface Props {
 
 const tabs = [
   { id: "attendance" as const, label: "हाजिरी", icon: CalendarCheck },
+  { id: "advance" as const, label: "एडवांस", icon: Wallet },
   { id: "workers" as const, label: "मजदूर", icon: Users },
   { id: "report" as const, label: "रिपोर्ट", icon: BarChart3 },
   { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
@@ -22,7 +23,7 @@ export default function BottomNav({ active, onNavigate }: Props) {
           <button
             key={id}
             onClick={() => onNavigate(id)}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors ${
               active === id
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
