@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import Auth from "./Auth";
 import AttendancePage from "@/components/AttendancePage";
+import AdvancePage from "@/components/AdvancePage";
 import WorkersPage from "@/components/WorkersPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
@@ -48,6 +49,7 @@ export default function Index() {
 
       <main className="max-w-lg mx-auto px-4 py-4">
         {tab === "attendance" && <AttendancePage />}
+        {tab === "advance" && <AdvancePage />}
         {tab === "workers" && <WorkersPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage />}
