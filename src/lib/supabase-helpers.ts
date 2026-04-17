@@ -82,3 +82,15 @@ export async function getMonthlyReport(year: number, month: number) {
   if (error) throw error;
   return data;
 }
+
+export async function deleteWorkerMonthAttendance(workerId: string, year: number, month: number) {
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+  const { error } = await supabase
+    .from("attendance")
+    .delete()
+    .eq("worker_id", workerId)
+    .gte("date", startDate)
+    .lte("date", endDate);
+  if (error) throw error;
+}
