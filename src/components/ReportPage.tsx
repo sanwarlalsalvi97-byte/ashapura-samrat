@@ -1,13 +1,25 @@
-import { useState, useEffect } from "react";
-import { getMonthlyReport } from "@/lib/supabase-helpers";
+import { useState, useEffect, useCallback } from "react";
+import { getMonthlyReport, deleteWorkerMonthAttendance } from "@/lib/supabase-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const monthNames = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
 interface WorkerSummary {
+  workerId: string;
   name: string;
   role: string;
   dailyRate: number;
@@ -25,40 +37,51 @@ export default function ReportPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [summary, setSummary] = useState<WorkerSummary[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getMonthlyReport(year, month);
-        const map: Record<string, WorkerSummary> = {};
-        data.forEach((r: any) => {
-          const wid = r.worker_id;
-          if (!map[wid]) {
-            map[wid] = {
-              name: r.workers?.name || "",
-              role: r.workers?.role || "",
-              dailyRate: r.workers?.daily_rate || 0,
-              presentDays: 0,
-              halfDays: 0,
-              absentDays: 0,
-              totalAdvance: 0,
-              totalEarning: 0,
-              netPayable: 0,
-            };
-          }
-          const s = map[wid];
-          if (r.status === "Present") s.presentDays++;
-          else if (r.status === "Half-Day") s.halfDays++;
-          else s.absentDays++;
-          s.totalAdvance += r.advance || 0;
-        });
-        Object.values(map).forEach((s) => {
-          s.totalEarning = (s.presentDays * s.dailyRate) + (s.halfDays * s.dailyRate * 0.5);
-          s.netPayable = s.totalEarning - s.totalAdvance;
-        });
-        setSummary(Object.values(map));
-      } catch {}
-    })();
+  const loadReport = useCallback(async () => {
+    try {
+      const data = await getMonthlyReport(year, month);
+      const map: Record<string, WorkerSummary> = {};
+      data.forEach((r: any) => {
+        const wid = r.worker_id;
+        if (!map[wid]) {
+          map[wid] = {
+            workerId: wid,
+            name: r.workers?.name || "",
+            role: r.workers?.role || "",
+            dailyRate: r.workers?.daily_rate || 0,
+            presentDays: 0,
+            halfDays: 0,
+            absentDays: 0,
+            totalAdvance: 0,
+            totalEarning: 0,
+            netPayable: 0,
+          };
+        }
+        const s = map[wid];
+        if (r.status === "Present") s.presentDays++;
+        else if (r.status === "Half-Day") s.halfDays++;
+        else s.absentDays++;
+        s.totalAdvance += r.advance || 0;
+      });
+      Object.values(map).forEach((s) => {
+        s.totalEarning = (s.presentDays * s.dailyRate) + (s.halfDays * s.dailyRate * 0.5);
+        s.netPayable = s.totalEarning - s.totalAdvance;
+      });
+      setSummary(Object.values(map));
+    } catch {}
   }, [year, month]);
+
+  useEffect(() => { loadReport(); }, [loadReport]);
+
+  const handleDelete = async (worker: WorkerSummary) => {
+    try {
+      await deleteWorkerMonthAttendance(worker.workerId, year, month);
+      toast({ title: `🗑️ ${worker.name} की ${monthNames[month - 1]} की रिपोर्ट हटा दी गई` });
+      loadReport();
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+    }
+  };
 
   const changeMonth = (dir: number) => {
     let m = month + dir;
@@ -132,12 +155,12 @@ export default function ReportPage() {
 
           <div className="space-y-3">
             {summary.map((s) => (
-              <Card key={s.name}>
+              <Card key={s.workerId}>
                 <CardHeader className="pb-2 p-4">
                   <CardTitle className="text-base flex items-center justify-between">
                     <span>{s.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-normal text-muted-foreground">{s.role}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-normal text-muted-foreground mr-1">{s.role}</span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -146,6 +169,30 @@ export default function ReportPage() {
                       >
                         <Share2 className="w-3.5 h-3.5" />
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>रिपोर्ट हटाएं?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {s.name} की {monthNames[month - 1]} {year} की पूरी हाजिरी और एडवांस records हट जाएंगी। यह वापस नहीं आएगा।
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>रद्द करें</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(s)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              हटाएं
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardTitle>
                 </CardHeader>
