@@ -253,6 +253,131 @@ export default function BricksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ईंट Calculator */}
+      <Dialog open={calcOpen} onOpenChange={setCalcOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-primary" /> ईंट calculator
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={calc.unit === "ft" ? "default" : "outline"}
+                onClick={() => setCalc({ ...calc, unit: "ft" })}
+              >
+                फिट (ft)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={calc.unit === "m" ? "default" : "outline"}
+                onClick={() => setCalc({ ...calc, unit: "m" })}
+              >
+                मीटर (m)
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>लम्बाई ({calc.unit})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.length}
+                  onChange={(e) => setCalc({ ...calc, length: e.target.value })}
+                  placeholder="50"
+                />
+              </div>
+              <div>
+                <Label>ऊंचाई ({calc.unit})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.height}
+                  onChange={(e) => setCalc({ ...calc, height: e.target.value })}
+                  placeholder="11"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>दीवार की मोटाई (इंच)</Label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {[
+                  { v: "4.5", l: '4.5"' },
+                  { v: "9", l: '9"' },
+                  { v: "13.5", l: '13.5"' },
+                ].map((t) => (
+                  <Button
+                    key={t.v}
+                    type="button"
+                    size="sm"
+                    variant={calc.thickness === t.v ? "default" : "outline"}
+                    onClick={() => setCalc({ ...calc, thickness: t.v })}
+                  >
+                    {t.l}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>wastage (%)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={calc.wastage}
+                onChange={(e) => setCalc({ ...calc, wastage: e.target.value })}
+                placeholder="5"
+              />
+            </div>
+
+            {calcResult ? (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">दीवार का आयतन</span>
+                    <span className="font-medium">{calcResult.wallVol} cu.ft</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">ईंट (बिना wastage)</span>
+                    <span className="font-medium">{calcResult.bricksRaw.toLocaleString()}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between items-baseline">
+                    <span className="text-sm font-semibold">कुल ईंट चाहिए</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {calcResult.bricks.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    * मानक ईंट 9"×4.5"×3" + mortar gap के हिसाब से
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="text-xs text-center text-muted-foreground py-2">
+                लम्बाई, ऊंचाई और मोटाई डालें
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCalcOpen(false)}>बंद</Button>
+            {calcResult && (
+              <Button
+                onClick={() => {
+                  setForm({ ...form, entry_type: "Out", quantity: String(calcResult.bricks), notes: `दीवार ${calc.length}×${calc.height} ${calc.unit}` });
+                  setCalcOpen(false);
+                  setOpen(true);
+                }}
+              >
+                entry में डालें
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
