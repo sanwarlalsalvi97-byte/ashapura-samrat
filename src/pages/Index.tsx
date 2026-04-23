@@ -53,6 +53,8 @@ export default function Index() {
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
         {tab === "workers" && <WorkersPage />}
+        {tab === "contractors" && <ContractorsPage />}
+        {tab === "bricks" && <BricksPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage />}
       </main>
