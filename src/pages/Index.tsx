@@ -5,6 +5,8 @@ import Auth from "./Auth";
 import AttendancePage from "@/components/AttendancePage";
 import AdvancePage from "@/components/AdvancePage";
 import WorkersPage from "@/components/WorkersPage";
+import ContractorsPage from "@/components/ContractorsPage";
+import BricksPage from "@/components/BricksPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import BottomNav, { type TabId } from "@/components/BottomNav";
