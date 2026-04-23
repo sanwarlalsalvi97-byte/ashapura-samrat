@@ -1,4 +1,4 @@
-import { CalendarCheck, Users, BarChart3, Settings, Wallet, HardHat, Brick } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet, HardHat, Layers } from "lucide-react";
 
 export type TabId = "attendance" | "advance" | "workers" | "contractors" | "bricks" | "report" | "settings";
 
