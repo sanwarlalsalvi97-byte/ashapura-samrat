@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, Layers } from "lucide-react";
+import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, Layers, Calculator } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 
@@ -21,7 +21,15 @@ const today = () => new Date().toISOString().split("T")[0];
 export default function BricksPage() {
   const [entries, setEntries] = useState<BrickStock[]>([]);
   const [open, setOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [calc, setCalc] = useState({
+    length: "",
+    height: "",
+    thickness: "9", // 9 inch (single brick wall) default
+    unit: "ft" as "ft" | "m",
+    wastage: "5",
+  });
   const [form, setForm] = useState({
     date: today(),
     site_name: "",
@@ -81,13 +89,40 @@ export default function BricksPage() {
     catch (e: any) { toast({ title: "गलती", description: e.message, variant: "destructive" }); }
   };
 
+  // ईंट calculator (standard ईंट: 9"×4.5"×3" = 0.75 ft × 0.375 ft × 0.25 ft)
+  // mortar सहित: ~ 9.5"×4.75"×3.25"
+  // सूत्र: bricks per cu.ft ≈ 13.5 (1/2 ईंट = 4.5" wall) से 50 (मानक 9" wall)
+  // सटीक गणना: wall volume / brick volume (mortar सहित)
+  const calcResult = useMemo(() => {
+    const L = parseFloat(calc.length);
+    const H = parseFloat(calc.height);
+    const Tin = parseFloat(calc.thickness); // inches
+    const W = parseFloat(calc.wastage) || 0;
+    if (!L || !H || !Tin) return null;
+    // convert L,H to feet
+    const Lft = calc.unit === "m" ? L * 3.28084 : L;
+    const Hft = calc.unit === "m" ? H * 3.28084 : H;
+    const Tft = Tin / 12;
+    const wallVol = Lft * Hft * Tft; // cubic feet
+    // ईंट + mortar size in feet: 9.5" × 4.75" × 3.25"
+    const brickVolWithMortar = (9.5 / 12) * (4.75 / 12) * (3.25 / 12);
+    const bricksRaw = wallVol / brickVolWithMortar;
+    const bricks = Math.ceil(bricksRaw * (1 + W / 100));
+    return { wallVol: wallVol.toFixed(2), bricks, bricksRaw: Math.ceil(bricksRaw) };
+  }, [calc]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">ईंट का स्टॉक</h2>
-        <Button size="sm" onClick={() => { reset(); setOpen(true); }} className="gap-1">
-          <Plus className="w-4 h-4" /> entry
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCalcOpen(true)} className="gap-1">
+            <Calculator className="w-4 h-4" /> calc
+          </Button>
+          <Button size="sm" onClick={() => { reset(); setOpen(true); }} className="gap-1">
+            <Plus className="w-4 h-4" /> entry
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -215,6 +250,131 @@ export default function BricksPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>रद्द</Button>
             <Button onClick={save} disabled={saving}>{saving ? "रुकें..." : "सेव"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ईंट Calculator */}
+      <Dialog open={calcOpen} onOpenChange={setCalcOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-primary" /> ईंट calculator
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={calc.unit === "ft" ? "default" : "outline"}
+                onClick={() => setCalc({ ...calc, unit: "ft" })}
+              >
+                फिट (ft)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={calc.unit === "m" ? "default" : "outline"}
+                onClick={() => setCalc({ ...calc, unit: "m" })}
+              >
+                मीटर (m)
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>लम्बाई ({calc.unit})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.length}
+                  onChange={(e) => setCalc({ ...calc, length: e.target.value })}
+                  placeholder="50"
+                />
+              </div>
+              <div>
+                <Label>ऊंचाई ({calc.unit})</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.height}
+                  onChange={(e) => setCalc({ ...calc, height: e.target.value })}
+                  placeholder="11"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>दीवार की मोटाई (इंच)</Label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {[
+                  { v: "4.5", l: '4.5"' },
+                  { v: "9", l: '9"' },
+                  { v: "13.5", l: '13.5"' },
+                ].map((t) => (
+                  <Button
+                    key={t.v}
+                    type="button"
+                    size="sm"
+                    variant={calc.thickness === t.v ? "default" : "outline"}
+                    onClick={() => setCalc({ ...calc, thickness: t.v })}
+                  >
+                    {t.l}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>wastage (%)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={calc.wastage}
+                onChange={(e) => setCalc({ ...calc, wastage: e.target.value })}
+                placeholder="5"
+              />
+            </div>
+
+            {calcResult ? (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">दीवार का आयतन</span>
+                    <span className="font-medium">{calcResult.wallVol} cu.ft</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">ईंट (बिना wastage)</span>
+                    <span className="font-medium">{calcResult.bricksRaw.toLocaleString()}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between items-baseline">
+                    <span className="text-sm font-semibold">कुल ईंट चाहिए</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {calcResult.bricks.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    * मानक ईंट 9"×4.5"×3" + mortar gap के हिसाब से
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="text-xs text-center text-muted-foreground py-2">
+                लम्बाई, ऊंचाई और मोटाई डालें
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCalcOpen(false)}>बंद</Button>
+            {calcResult && (
+              <Button
+                onClick={() => {
+                  setForm({ ...form, entry_type: "Out", quantity: String(calcResult.bricks), notes: `दीवार ${calc.length}×${calc.height} ${calc.unit}` });
+                  setCalcOpen(false);
+                  setOpen(true);
+                }}
+              >
+                entry में डालें
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
