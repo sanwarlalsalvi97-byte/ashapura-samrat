@@ -1,0 +1,223 @@
+import { useState, useEffect, useMemo } from "react";
+import { getBrickEntries, addBrickEntry, deleteBrickEntry, type BrickStock, type BrickEntryType } from "@/lib/supabase-helpers";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, Layers } from "lucide-react";
+import { motion } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
+
+const today = () => new Date().toISOString().split("T")[0];
+
+export default function BricksPage() {
+  const [entries, setEntries] = useState<BrickStock[]>([]);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    date: today(),
+    site_name: "",
+    entry_type: "In" as BrickEntryType,
+    quantity: "",
+    rate: "",
+    notes: "",
+  });
+
+  const load = async () => {
+    try { setEntries(await getBrickEntries()); }
+    catch (e: any) { toast({ title: "गलती", description: e.message, variant: "destructive" }); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const totals = useMemo(() => {
+    let inQty = 0, outQty = 0, inCost = 0;
+    entries.forEach((e) => {
+      if (e.entry_type === "In") { inQty += e.quantity; inCost += e.quantity * Number(e.rate); }
+      else outQty += e.quantity;
+    });
+    return { stock: inQty - outQty, inQty, outQty, inCost };
+  }, [entries]);
+
+  const reset = () => setForm({ date: today(), site_name: "", entry_type: "In", quantity: "", rate: "", notes: "" });
+
+  const save = async () => {
+    const qty = parseInt(form.quantity);
+    if (!qty || qty <= 0) {
+      toast({ title: "मात्रा डालें", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await addBrickEntry({
+        date: form.date,
+        site_name: form.site_name.trim() || null,
+        entry_type: form.entry_type,
+        quantity: qty,
+        rate: parseFloat(form.rate) || 0,
+        notes: form.notes.trim() || null,
+      });
+      toast({ title: "✅ entry जुड़ गई" });
+      setOpen(false);
+      reset();
+      load();
+    } catch (e: any) {
+      toast({ title: "गलती", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    try { await deleteBrickEntry(id); toast({ title: "✅ हटा दिया" }); load(); }
+    catch (e: any) { toast({ title: "गलती", description: e.message, variant: "destructive" }); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">ईंट का स्टॉक</h2>
+        <Button size="sm" onClick={() => { reset(); setOpen(true); }} className="gap-1">
+          <Plus className="w-4 h-4" /> entry
+        </Button>
+      </div>
+
+      {/* Summary */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-[10px] text-muted-foreground">मौजूदा स्टॉक</p>
+            <p className="text-lg font-bold text-primary">{totals.stock.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">कुल आई</p>
+            <p className="text-lg font-bold text-accent">{totals.inQty.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">इस्तेमाल</p>
+            <p className="text-lg font-bold text-destructive">{totals.outQty.toLocaleString()}</p>
+          </div>
+          <div className="col-span-3 pt-2 border-t border-border">
+            <p className="text-[10px] text-muted-foreground">कुल खर्च (खरीद)</p>
+            <p className="text-base font-semibold">₹{totals.inCost.toLocaleString()}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {entries.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Layers className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">अभी कोई entry नहीं</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((e, i) => (
+            <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+              <Card>
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <div className={`p-2 rounded-full shrink-0 ${e.entry_type === "In" ? "bg-accent/15 text-accent" : "bg-destructive/15 text-destructive"}`}>
+                    {e.entry_type === "In" ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold">{e.quantity.toLocaleString()} ईंट</span>
+                      {e.entry_type === "In" && Number(e.rate) > 0 && (
+                        <span className="text-xs text-muted-foreground">@ ₹{e.rate}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(e.date).toLocaleDateString("hi-IN", { day: "numeric", month: "short" })}
+                      {e.site_name && ` • ${e.site_name}`}
+                    </p>
+                    {e.notes && <p className="text-xs italic text-muted-foreground mt-0.5">{e.notes}</p>}
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="p-2 rounded-full bg-destructive/10 text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-sm">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>entry हटाएं?</AlertDialogTitle>
+                        <AlertDialogDescription>यह entry स्थायी रूप से हट जाएगी।</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>रहने दें</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => remove(e.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">हटाएं</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>नई ईंट entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={form.entry_type === "In" ? "default" : "outline"}
+                onClick={() => setForm({ ...form, entry_type: "In" })}
+                className="gap-1"
+              >
+                <ArrowDownToLine className="w-4 h-4" /> आई
+              </Button>
+              <Button
+                type="button"
+                variant={form.entry_type === "Out" ? "default" : "outline"}
+                onClick={() => setForm({ ...form, entry_type: "Out" })}
+                className="gap-1"
+              >
+                <ArrowUpFromLine className="w-4 h-4" /> इस्तेमाल
+              </Button>
+            </div>
+            <div>
+              <Label>तारीख</Label>
+              <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            </div>
+            <div>
+              <Label>साइट</Label>
+              <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="साइट का नाम" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>मात्रा *</Label>
+                <Input type="number" inputMode="numeric" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="1000" />
+              </div>
+              {form.entry_type === "In" && (
+                <div>
+                  <Label>rate (₹/ईंट)</Label>
+                  <Input type="number" inputMode="decimal" step="0.01" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} placeholder="8" />
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>नोट्स</Label>
+              <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="optional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>रद्द</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "रुकें..." : "सेव"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
