@@ -61,6 +61,87 @@ export type Database = {
           },
         ]
       }
+      brick_stock: {
+        Row: {
+          created_at: string
+          date: string
+          entry_type: Database["public"]["Enums"]["brick_entry_type"]
+          id: string
+          notes: string | null
+          quantity: number
+          rate: number
+          site_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          entry_type?: Database["public"]["Enums"]["brick_entry_type"]
+          id?: string
+          notes?: string | null
+          quantity?: number
+          rate?: number
+          site_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          entry_type?: Database["public"]["Enums"]["brick_entry_type"]
+          id?: string
+          notes?: string | null
+          quantity?: number
+          rate?: number
+          site_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contractors: {
+        Row: {
+          advance_paid: number
+          contract_amount: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          site_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advance_paid?: number
+          contract_amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          site_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advance_paid?: number
+          contract_amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          site_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workers: {
         Row: {
           created_at: string
@@ -109,6 +190,7 @@ export type Database = {
     }
     Enums: {
       attendance_status: "Present" | "Absent" | "Half-Day"
+      brick_entry_type: "In" | "Out"
       worker_role: "मिस्त्री" | "मजदूर" | "हेल्पर"
     }
     CompositeTypes: {
@@ -238,6 +320,7 @@ export const Constants = {
   public: {
     Enums: {
       attendance_status: ["Present", "Absent", "Half-Day"],
+      brick_entry_type: ["In", "Out"],
       worker_role: ["मिस्त्री", "मजदूर", "हेल्पर"],
     },
   },
