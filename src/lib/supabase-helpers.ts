@@ -94,3 +94,71 @@ export async function deleteWorkerMonthAttendance(workerId: string, year: number
     .lte("date", endDate);
   if (error) throw error;
 }
+
+// ============ Contractors ============
+export type Contractor = Database["public"]["Tables"]["contractors"]["Row"];
+export type ContractorInsert = Database["public"]["Tables"]["contractors"]["Insert"];
+
+export async function getContractors() {
+  const { data, error } = await supabase
+    .from("contractors")
+    .select("*")
+    .eq("is_active", true)
+    .order("name");
+  if (error) throw error;
+  return data;
+}
+
+export async function addContractor(c: Omit<ContractorInsert, "user_id">) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("contractors")
+    .insert({ ...c, user_id: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateContractor(id: string, updates: Partial<Omit<ContractorInsert, "user_id">>) {
+  const { error } = await supabase.from("contractors").update(updates).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteContractor(id: string) {
+  const { error } = await supabase.from("contractors").update({ is_active: false }).eq("id", id);
+  if (error) throw error;
+}
+
+// ============ Brick stock ============
+export type BrickStock = Database["public"]["Tables"]["brick_stock"]["Row"];
+export type BrickStockInsert = Database["public"]["Tables"]["brick_stock"]["Insert"];
+export type BrickEntryType = Database["public"]["Enums"]["brick_entry_type"];
+
+export async function getBrickEntries() {
+  const { data, error } = await supabase
+    .from("brick_stock")
+    .select("*")
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function addBrickEntry(entry: Omit<BrickStockInsert, "user_id">) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { data, error } = await supabase
+    .from("brick_stock")
+    .insert({ ...entry, user_id: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBrickEntry(id: string) {
+  const { error } = await supabase.from("brick_stock").delete().eq("id", id);
+  if (error) throw error;
+}
