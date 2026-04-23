@@ -89,13 +89,40 @@ export default function BricksPage() {
     catch (e: any) { toast({ title: "गलती", description: e.message, variant: "destructive" }); }
   };
 
+  // ईंट calculator (standard ईंट: 9"×4.5"×3" = 0.75 ft × 0.375 ft × 0.25 ft)
+  // mortar सहित: ~ 9.5"×4.75"×3.25"
+  // सूत्र: bricks per cu.ft ≈ 13.5 (1/2 ईंट = 4.5" wall) से 50 (मानक 9" wall)
+  // सटीक गणना: wall volume / brick volume (mortar सहित)
+  const calcResult = useMemo(() => {
+    const L = parseFloat(calc.length);
+    const H = parseFloat(calc.height);
+    const Tin = parseFloat(calc.thickness); // inches
+    const W = parseFloat(calc.wastage) || 0;
+    if (!L || !H || !Tin) return null;
+    // convert L,H to feet
+    const Lft = calc.unit === "m" ? L * 3.28084 : L;
+    const Hft = calc.unit === "m" ? H * 3.28084 : H;
+    const Tft = Tin / 12;
+    const wallVol = Lft * Hft * Tft; // cubic feet
+    // ईंट + mortar size in feet: 9.5" × 4.75" × 3.25"
+    const brickVolWithMortar = (9.5 / 12) * (4.75 / 12) * (3.25 / 12);
+    const bricksRaw = wallVol / brickVolWithMortar;
+    const bricks = Math.ceil(bricksRaw * (1 + W / 100));
+    return { wallVol: wallVol.toFixed(2), bricks, bricksRaw: Math.ceil(bricksRaw) };
+  }, [calc]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">ईंट का स्टॉक</h2>
-        <Button size="sm" onClick={() => { reset(); setOpen(true); }} className="gap-1">
-          <Plus className="w-4 h-4" /> entry
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCalcOpen(true)} className="gap-1">
+            <Calculator className="w-4 h-4" /> calc
+          </Button>
+          <Button size="sm" onClick={() => { reset(); setOpen(true); }} className="gap-1">
+            <Plus className="w-4 h-4" /> entry
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
