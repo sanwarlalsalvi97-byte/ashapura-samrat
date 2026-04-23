@@ -21,7 +21,15 @@ const today = () => new Date().toISOString().split("T")[0];
 export default function BricksPage() {
   const [entries, setEntries] = useState<BrickStock[]>([]);
   const [open, setOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [calc, setCalc] = useState({
+    length: "",
+    height: "",
+    thickness: "9", // 9 inch (single brick wall) default
+    unit: "ft" as "ft" | "m",
+    wastage: "5",
+  });
   const [form, setForm] = useState({
     date: today(),
     site_name: "",
