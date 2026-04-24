@@ -1,0 +1,1 @@
+ALTER TYPE public.worker_role ADD VALUE IF NOT EXISTS 'ठेकेदार';

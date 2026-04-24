@@ -191,7 +191,7 @@ export type Database = {
     Enums: {
       attendance_status: "Present" | "Absent" | "Half-Day"
       brick_entry_type: "In" | "Out"
-      worker_role: "मिस्त्री" | "मजदूर" | "हेल्पर"
+      worker_role: "मिस्त्री" | "मजदूर" | "हेल्पर" | "ठेकेदार"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -321,7 +321,7 @@ export const Constants = {
     Enums: {
       attendance_status: ["Present", "Absent", "Half-Day"],
       brick_entry_type: ["In", "Out"],
-      worker_role: ["मिस्त्री", "मजदूर", "हेल्पर"],
+      worker_role: ["मिस्त्री", "मजदूर", "हेल्पर", "ठेकेदार"],
     },
   },
 } as const

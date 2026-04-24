@@ -22,6 +22,7 @@ const roleColors: Record<string, string> = {
   "मिस्त्री": "bg-primary/15 text-primary",
   "मजदूर": "bg-accent/15 text-accent",
   "हेल्पर": "bg-muted text-muted-foreground",
+  "ठेकेदार": "bg-destructive/15 text-destructive",
 };
 
 export default function WorkersPage() {
