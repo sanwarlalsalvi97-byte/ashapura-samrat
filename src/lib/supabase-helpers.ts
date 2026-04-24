@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { enqueueAttendance, getQueue, isOnline } from "@/lib/offline-queue";
 
 type Worker = Database["public"]["Tables"]["workers"]["Row"];
 type WorkerInsert = Database["public"]["Tables"]["workers"]["Insert"];
@@ -49,24 +50,61 @@ export async function updateWorker(workerId: string, updates: { name: string; ro
 }
 
 export async function getAttendanceByDate(date: string) {
-  const { data, error } = await supabase
-    .from("attendance")
-    .select("*, workers(name, role, daily_rate)")
-    .eq("date", date);
-  if (error) throw error;
-  return data;
+  let serverData: any[] = [];
+  try {
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("*, workers(name, role, daily_rate)")
+      .eq("date", date);
+    if (error) throw error;
+    serverData = data || [];
+  } catch (err) {
+    if (isOnline()) throw err;
+    // offline: fall through to local-only
+  }
+
+  // Overlay any queued (unsynced) entries for this date so the UI reflects
+  // the user's offline changes immediately.
+  const queued = getQueue().filter((q) => q.payload.date === date);
+  if (queued.length === 0) return serverData;
+
+  const byWorker = new Map<string, any>();
+  serverData.forEach((row) => byWorker.set(row.worker_id, row));
+  queued.forEach((q) => {
+    const existing = byWorker.get(q.payload.worker_id) || {};
+    byWorker.set(q.payload.worker_id, {
+      ...existing,
+      ...q.payload,
+      _pending: true,
+    });
+  });
+  return Array.from(byWorker.values());
 }
 
 export async function markAttendance(record: Omit<AttendanceInsert, "user_id">) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
-  const { data, error } = await supabase
-    .from("attendance")
-    .upsert({ ...record, user_id: user.id }, { onConflict: "worker_id,date" })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  const payload: AttendanceInsert = { ...record, user_id: user.id };
+
+  // If offline, queue and return optimistically.
+  if (!isOnline()) {
+    enqueueAttendance(payload);
+    return { ...payload, _pending: true } as any;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("attendance")
+      .upsert(payload, { onConflict: "worker_id,date" })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    // Network/transient failure — queue for later.
+    enqueueAttendance(payload);
+    return { ...payload, _pending: true } as any;
+  }
 }
 
 export async function getMonthlyReport(year: number, month: number) {

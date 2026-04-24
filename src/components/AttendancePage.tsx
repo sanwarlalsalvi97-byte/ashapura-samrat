@@ -4,9 +4,10 @@ import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
+import { useOfflineSync } from "@/hooks/use-offline-sync";
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
@@ -55,9 +56,35 @@ export default function AttendancePage() {
     [workers, attendance]
   );
   const workTime = useMemo(() => getWorkTime(), []);
+  const { online, pending } = useOfflineSync();
 
   return (
     <div className="space-y-4">
+      {(!online || pending > 0) && (
+        <div className={cn(
+          "flex items-start gap-3 rounded-xl p-3 border",
+          !online
+            ? "bg-destructive/10 border-destructive/30"
+            : "bg-primary/10 border-primary/30"
+        )}>
+          {!online ? (
+            <WifiOff className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+          ) : (
+            <CloudUpload className="w-5 h-5 text-primary shrink-0 mt-0.5 animate-pulse" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">
+              {!online ? "ऑफलाइन मोड" : "सिंक हो रहा है…"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {!online
+                ? `हाजिरी फोन में सेव होगी${pending > 0 ? ` (${pending} एंट्री बाकी)` : ""}, इंटरनेट आते ही अपने आप सर्वर पर भेज दी जाएगी।`
+                : `${pending} एंट्री सर्वर पर भेजी जा रही है।`}
+            </p>
+          </div>
+        </div>
+      )}
+
       {isToday && workers.length > 0 && pendingCount > 0 && (
         <div className="flex items-start gap-3 bg-warning/10 border border-warning/30 rounded-xl p-3">
           <Bell className="w-5 h-5 text-warning shrink-0 mt-0.5" />
