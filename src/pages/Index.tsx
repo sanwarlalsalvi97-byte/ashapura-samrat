@@ -11,12 +11,14 @@ import SettingsPage from "@/components/SettingsPage";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
+import { useOfflineSync } from "@/hooks/use-offline-sync";
 
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("attendance");
   useAttendanceAlarm();
+  useOfflineSync();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
