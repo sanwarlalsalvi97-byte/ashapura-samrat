@@ -66,6 +66,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
               <SelectItem value="मिस्त्री">मिस्त्री</SelectItem>
               <SelectItem value="मजदूर">मजदूर</SelectItem>
               <SelectItem value="हेल्पर">हेल्पर</SelectItem>
+              <SelectItem value="ठेकेदार">ठेकेदार</SelectItem>
             </SelectContent>
           </Select>
           <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
