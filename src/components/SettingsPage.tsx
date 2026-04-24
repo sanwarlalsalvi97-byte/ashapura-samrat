@@ -21,12 +21,26 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Work time + alarm
+  const [checkIn, setCheckIn] = useState("08:00");
+  const [checkOut, setCheckOut] = useState("18:00");
+  const [alarmTime, setAlarmTime] = useState("09:00");
+  const [alarmEnabled, setAlarmEnabled] = useState(true);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
+    typeof Notification === "undefined" ? "unsupported" : Notification.permission
+  );
+
   useEffect(() => {
     loadProfile();
     const savedLang = localStorage.getItem("hajiri-lang");
     if (savedLang === "en") setIsHindi(false);
     const savedRate = localStorage.getItem("hajiri-default-rate");
     if (savedRate) setDefaultRate(savedRate);
+    const wt = getWorkTime();
+    setCheckIn(wt.checkIn);
+    setCheckOut(wt.checkOut);
+    setAlarmTime(wt.alarmTime);
+    setAlarmEnabled(wt.alarmEnabled);
   }, []);
 
   const loadProfile = async () => {
