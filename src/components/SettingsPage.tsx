@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff } from "lucide-react";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
+import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
+import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -19,12 +21,26 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // Work time + alarm
+  const [checkIn, setCheckIn] = useState("08:00");
+  const [checkOut, setCheckOut] = useState("18:00");
+  const [alarmTime, setAlarmTime] = useState("09:00");
+  const [alarmEnabled, setAlarmEnabled] = useState(true);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
+    typeof Notification === "undefined" ? "unsupported" : Notification.permission
+  );
+
   useEffect(() => {
     loadProfile();
     const savedLang = localStorage.getItem("hajiri-lang");
     if (savedLang === "en") setIsHindi(false);
     const savedRate = localStorage.getItem("hajiri-default-rate");
     if (savedRate) setDefaultRate(savedRate);
+    const wt = getWorkTime();
+    setCheckIn(wt.checkIn);
+    setCheckOut(wt.checkOut);
+    setAlarmTime(wt.alarmTime);
+    setAlarmEnabled(wt.alarmEnabled);
   }, []);
 
   const loadProfile = async () => {
@@ -54,6 +70,30 @@ export default function SettingsPage() {
   const saveDefaultRate = () => {
     localStorage.setItem("hajiri-default-rate", defaultRate);
     toast({ title: isHindi ? `✅ डिफ़ॉल्ट दिहाड़ी ₹${defaultRate} सेट हो गई` : `✅ Default rate set to ₹${defaultRate}` });
+  };
+
+  const saveWorkTimeHandler = async () => {
+    setWorkTime({ checkIn, checkOut, alarmTime, alarmEnabled });
+    if (alarmEnabled && notifPerm !== "granted" && notifPerm !== "unsupported") {
+      const ok = await requestNotificationPermission();
+      setNotifPerm(ok ? "granted" : "denied");
+    }
+    toast({ title: isHindi ? "✅ समय और अलार्म सेव हो गया" : "✅ Time & alarm saved" });
+  };
+
+  const enableAlarm = async (checked: boolean) => {
+    setAlarmEnabled(checked);
+    if (checked && notifPerm !== "granted" && notifPerm !== "unsupported") {
+      const ok = await requestNotificationPermission();
+      setNotifPerm(ok ? "granted" : "denied");
+      if (!ok) {
+        toast({
+          title: isHindi ? "नोटिफिकेशन की अनुमति नहीं मिली" : "Notification permission denied",
+          description: isHindi ? "Browser settings में जाकर अनुमति दें" : "Please allow in browser settings",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const toggleLanguage = (checked: boolean) => {
@@ -142,7 +182,60 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Language */}
+      {/* Work Time + Alarm */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {t("समय और अलार्म", "Work Time & Alarm")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("आने का समय", "Check-in")}</Label>
+              <Input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("जाने का समय", "Check-out")}</Label>
+              <Input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              {alarmEnabled ? <Bell className="w-4 h-4 text-primary" /> : <BellOff className="w-4 h-4 text-muted-foreground" />}
+              <span className="text-sm">{t("हाजिरी अलार्म", "Attendance Alarm")}</span>
+            </div>
+            <Switch checked={alarmEnabled} onCheckedChange={enableAlarm} />
+          </div>
+
+          {alarmEnabled && (
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("अलार्म का समय", "Alarm time")}</Label>
+              <Input type="time" value={alarmTime} onChange={(e) => setAlarmTime(e.target.value)} className="mt-1" />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t(`रोज़ ${formatTime12h(alarmTime)} पर याद दिलाएगा`, `Daily reminder at ${formatTime12h(alarmTime)}`)}
+              </p>
+              {notifPerm === "denied" && (
+                <p className="text-xs text-destructive mt-1">
+                  {t("⚠ Browser में नोटिफिकेशन की अनुमति दें", "⚠ Allow notifications in browser")}
+                </p>
+              )}
+              {notifPerm === "unsupported" && (
+                <p className="text-xs text-warning mt-1">
+                  {t("इस ब्राउज़र में नोटिफिकेशन नहीं चलते", "Notifications not supported in this browser")}
+                </p>
+              )}
+            </div>
+          )}
+
+          <Button onClick={saveWorkTimeHandler} variant="secondary" className="w-full" size="sm">
+            {t("समय सेव करें", "Save Time")}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
