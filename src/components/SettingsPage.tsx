@@ -72,6 +72,30 @@ export default function SettingsPage() {
     toast({ title: isHindi ? `✅ डिफ़ॉल्ट दिहाड़ी ₹${defaultRate} सेट हो गई` : `✅ Default rate set to ₹${defaultRate}` });
   };
 
+  const saveWorkTimeHandler = async () => {
+    setWorkTime({ checkIn, checkOut, alarmTime, alarmEnabled });
+    if (alarmEnabled && notifPerm !== "granted" && notifPerm !== "unsupported") {
+      const ok = await requestNotificationPermission();
+      setNotifPerm(ok ? "granted" : "denied");
+    }
+    toast({ title: isHindi ? "✅ समय और अलार्म सेव हो गया" : "✅ Time & alarm saved" });
+  };
+
+  const enableAlarm = async (checked: boolean) => {
+    setAlarmEnabled(checked);
+    if (checked && notifPerm !== "granted" && notifPerm !== "unsupported") {
+      const ok = await requestNotificationPermission();
+      setNotifPerm(ok ? "granted" : "denied");
+      if (!ok) {
+        toast({
+          title: isHindi ? "नोटिफिकेशन की अनुमति नहीं मिली" : "Notification permission denied",
+          description: isHindi ? "Browser settings में जाकर अनुमति दें" : "Please allow in browser settings",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const toggleLanguage = (checked: boolean) => {
     setIsHindi(checked);
     localStorage.setItem("hajiri-lang", checked ? "hi" : "en");
