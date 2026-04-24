@@ -49,8 +49,30 @@ export default function AttendancePage() {
     }
   };
 
+  const isToday = useMemo(() => formatDate(date) === formatDate(new Date()), [date]);
+  const pendingCount = useMemo(
+    () => workers.filter((w) => !attendance[w.id]).length,
+    [workers, attendance]
+  );
+  const workTime = useMemo(() => getWorkTime(), []);
+
   return (
     <div className="space-y-4">
+      {isToday && workers.length > 0 && pendingCount > 0 && (
+        <div className="flex items-start gap-3 bg-warning/10 border border-warning/30 rounded-xl p-3">
+          <Bell className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">
+              आज {pendingCount} मजदूर की हाजिरी बाकी है
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatTime12h(workTime.checkIn)} – {formatTime12h(workTime.checkOut)}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between bg-card rounded-xl p-3">
         <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
           <ChevronLeft className="w-5 h-5" />
