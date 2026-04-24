@@ -182,7 +182,60 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Language */}
+      {/* Work Time + Alarm */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {t("समय और अलार्म", "Work Time & Alarm")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("आने का समय", "Check-in")}</Label>
+              <Input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("जाने का समय", "Check-out")}</Label>
+              <Input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              {alarmEnabled ? <Bell className="w-4 h-4 text-primary" /> : <BellOff className="w-4 h-4 text-muted-foreground" />}
+              <span className="text-sm">{t("हाजिरी अलार्म", "Attendance Alarm")}</span>
+            </div>
+            <Switch checked={alarmEnabled} onCheckedChange={enableAlarm} />
+          </div>
+
+          {alarmEnabled && (
+            <div>
+              <Label className="text-xs text-muted-foreground">{t("अलार्म का समय", "Alarm time")}</Label>
+              <Input type="time" value={alarmTime} onChange={(e) => setAlarmTime(e.target.value)} className="mt-1" />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t(`रोज़ ${formatTime12h(alarmTime)} पर याद दिलाएगा`, `Daily reminder at ${formatTime12h(alarmTime)}`)}
+              </p>
+              {notifPerm === "denied" && (
+                <p className="text-xs text-destructive mt-1">
+                  {t("⚠ Browser में नोटिफिकेशन की अनुमति दें", "⚠ Allow notifications in browser")}
+                </p>
+              )}
+              {notifPerm === "unsupported" && (
+                <p className="text-xs text-warning mt-1">
+                  {t("इस ब्राउज़र में नोटिफिकेशन नहीं चलते", "Notifications not supported in this browser")}
+                </p>
+              )}
+            </div>
+          )}
+
+          <Button onClick={saveWorkTimeHandler} variant="secondary" className="w-full" size="sm">
+            {t("समय सेव करें", "Save Time")}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
