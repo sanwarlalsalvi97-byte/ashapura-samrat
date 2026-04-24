@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { getWorkers, getAttendanceByDate, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getWorkTime, formatTime12h } from "@/lib/work-time";
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
