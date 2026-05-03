@@ -27,9 +27,14 @@ const roleColors: Record<string, string> = {
   "हेल्पर": "bg-muted text-muted-foreground",
 };
 
-export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked, onSelectionChange }: Props) {
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
   const [loading, setLoading] = useState(false);
+
+  const pickStatus = (s: AttendanceStatus) => {
+    setSelectedStatus(s);
+    onSelectionChange?.(worker.id, s);
+  };
 
   const handleSaveAttendance = async () => {
     if (!selectedStatus) {
