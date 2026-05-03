@@ -148,15 +148,33 @@ export default function ReportPage() {
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">कुल देय राशि</p>
               <p className="text-3xl font-bold text-primary">₹{grandTotal.toLocaleString("hi-IN")}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 gap-2"
-                onClick={() => shareOnWhatsApp()}
-              >
-                <Share2 className="w-4 h-4" />
-                WhatsApp पर शेयर करें
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => shareOnWhatsApp()}
+                >
+                  <Share2 className="w-4 h-4" />
+                  WhatsApp शेयर
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <FileDown className="w-4 h-4" />
+                      एक्सपोर्ट
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportMonthly("csv")}>
+                      <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportMonthly("pdf")}>
+                      <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardContent>
           </Card>
 
