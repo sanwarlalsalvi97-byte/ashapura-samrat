@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
-import { toast } from "@/hooks/use-toast";
+import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { Check, X, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -27,36 +26,12 @@ const roleColors: Record<string, string> = {
   "हेल्पर": "bg-muted text-muted-foreground",
 };
 
-export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked, onSelectionChange }: Props) {
+export default function AttendanceCard({ worker, currentStatus, currentAdvance, onSelectionChange }: Props) {
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
-  const [loading, setLoading] = useState(false);
 
   const pickStatus = (s: AttendanceStatus) => {
     setSelectedStatus(s);
     onSelectionChange?.(worker.id, s);
-  };
-
-  const handleSaveAttendance = async () => {
-    if (!selectedStatus) {
-      toast({ title: "पहले हाजिरी चुनें", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    try {
-      await markAttendance({
-        worker_id: worker.id,
-        date,
-        status: selectedStatus,
-        advance: currentAdvance || 0,
-        site_name: worker.site_name,
-      });
-      toast({ title: `${worker.name} — ${statusConfig[selectedStatus].label} सेव हो गया` });
-      onMarked();
-    } catch (err: any) {
-      toast({ title: "गलती", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -92,7 +67,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
                   variant={isActive ? "default" : "outline"}
                   className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
                   onClick={() => pickStatus(status)}
-                  disabled={loading}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {config.label}
@@ -100,16 +74,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
               );
             })}
           </div>
-
-          <Button
-            size="sm"
-            className="w-full"
-            onClick={handleSaveAttendance}
-            disabled={loading || !selectedStatus}
-          >
-            <Check className="w-4 h-4" />
-            हाजिरी सेव करें
-          </Button>
 
           {(currentAdvance || 0) > 0 && (
             <p className="text-xs text-muted-foreground text-center">
