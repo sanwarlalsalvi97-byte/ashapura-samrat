@@ -106,6 +106,59 @@ export default function AttendancePage() {
     loadData();
   };
 
+  const exportToday = (format: "csv" | "pdf") => {
+    const dateStr = formatDate(date);
+    const displayDate = `${formatDisplayDate(date)} (${dateStr})`;
+
+    // Group by contractor (using site_name as contractor grouping)
+    const groups = new Map<string, Worker[]>();
+    workers.forEach((w) => {
+      const key = w.site_name?.trim() || "—";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(w);
+    });
+
+    const rows: (string | number)[][] = [];
+    let totalEarning = 0, totalAdvance = 0, totalNet = 0;
+
+    Array.from(groups.entries()).forEach(([contractor, ws]) => {
+      ws.forEach((w) => {
+        const a = attendance[w.id];
+        const status = a?.status || "—";
+        const statusLabel = STATUS_LABEL[status] || status;
+        const advance = a?.advance || 0;
+        let earning = 0;
+        if (status === "Present") earning = w.daily_rate;
+        else if (status === "Half-Day") earning = w.daily_rate * 0.5;
+        const net = earning - advance;
+        totalEarning += earning;
+        totalAdvance += advance;
+        totalNet += net;
+        rows.push([
+          contractor,
+          w.name,
+          w.role,
+          w.daily_rate,
+          statusLabel,
+          earning,
+          advance,
+          net,
+        ]);
+      });
+    });
+
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिरी", "कमाई", "एडवांस", "बाकी"];
+
+    if (format === "csv") {
+      rows.push(["", "", "", "", "कुल", totalEarning, totalAdvance, totalNet]);
+      exportCSV(`हाजिरी-${dateStr}.csv`, headers, rows);
+      toast({ title: "CSV डाउनलोड हो गई" });
+    } else {
+      rows.push(["", "", "", "", "कुल", totalEarning, totalAdvance, totalNet]);
+      exportPDF(`हाजिरी रिपोर्ट`, headers, rows, displayDate);
+    }
+  };
+
   useEffect(() => { loadData(); }, [loadData]);
 
   const changeDate = (dir: number) => {
