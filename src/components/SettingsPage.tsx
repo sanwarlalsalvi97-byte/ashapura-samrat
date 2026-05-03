@@ -31,6 +31,8 @@ export default function SettingsPage() {
     typeof Notification === "undefined" ? "unsupported" : Notification.permission
   );
 
+  const [simOffline, setSimOffline] = useState(isSimulatedOffline());
+
   useEffect(() => {
     loadProfile();
     const savedLang = localStorage.getItem("hajiri-lang");
