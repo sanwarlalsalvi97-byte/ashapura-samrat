@@ -191,18 +191,36 @@ export default function AttendancePage() {
           <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {workers.map((w) => (
-            <AttendanceCard
-              key={w.id}
-              worker={w}
-              date={formatDate(date)}
-              currentStatus={attendance[w.id]?.status}
-              currentAdvance={attendance[w.id]?.advance}
-              onMarked={loadData}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3 pb-20">
+            {workers.map((w) => (
+              <AttendanceCard
+                key={w.id}
+                worker={w}
+                date={formatDate(date)}
+                currentStatus={attendance[w.id]?.status}
+                currentAdvance={attendance[w.id]?.advance}
+                onMarked={loadData}
+                onSelectionChange={handleSelectionChange}
+              />
+            ))}
+          </div>
+          {Object.keys(selections).length > 0 && (
+            <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
+              <Button
+                className="w-full shadow-lg"
+                size="lg"
+                onClick={saveAll}
+                disabled={savingAll}
+              >
+                <Check className="w-5 h-5" />
+                {savingAll
+                  ? "सेव हो रहा है..."
+                  : `सब की हाजिरी सेव करें (${Object.keys(selections).length})`}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
