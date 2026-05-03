@@ -4,11 +4,24 @@ import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { toast } from "@/hooks/use-toast";
+import { exportCSV, exportPDF } from "@/lib/export-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const STATUS_LABEL: Record<string, string> = {
+  Present: "हाजिर",
+  "Half-Day": "आधा दिन",
+  Absent: "गैरहाजिर",
+};
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
