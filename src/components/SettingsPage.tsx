@@ -257,6 +257,39 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Developer / Test: simulate offline */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            {t("ऑफलाइन टेस्ट मोड", "Offline Test Mode")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{t("ऑफलाइन सिम्युलेट करें", "Simulate offline")}</span>
+            <Switch
+              checked={simOffline}
+              onCheckedChange={(c) => {
+                setSimOffline(c);
+                setSimulatedOffline(c);
+                toast({
+                  title: c
+                    ? t("ऑफलाइन मोड चालू (टेस्ट)", "Offline mode ON (test)")
+                    : t("ऑनलाइन — सिंक हो रहा है", "Online — syncing"),
+                });
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t(
+              "इंटरनेट बंद किए बिना ऑफलाइन क्यूइंग और ऑटो-सिंक टेस्ट करें। बंद करते ही पुरानी एंट्री सर्वर पर भेज दी जाएंगी।",
+              "Test queuing & auto-sync without turning off Wi-Fi. Disabling will flush queued entries to the server."
+            )}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Export */}
       <Card>
         <CardHeader className="pb-3">
