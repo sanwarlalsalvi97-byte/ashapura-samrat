@@ -32,10 +32,10 @@ export function useOfflineSync() {
     };
 
     const handleOnline = () => {
-      setOnline(true);
+      setOnline(isOnline());
       tryFlush();
     };
-    const handleOffline = () => setOnline(false);
+    const handleOffline = () => setOnline(isOnline());
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
