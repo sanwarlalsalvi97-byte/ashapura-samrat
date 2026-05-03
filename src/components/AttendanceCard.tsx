@@ -67,7 +67,6 @@ export default function AttendanceCard({ worker, currentStatus, currentAdvance, 
                   variant={isActive ? "default" : "outline"}
                   className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
                   onClick={() => pickStatus(status)}
-                  disabled={loading}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {config.label}
@@ -75,16 +74,6 @@ export default function AttendanceCard({ worker, currentStatus, currentAdvance, 
               );
             })}
           </div>
-
-          <Button
-            size="sm"
-            className="w-full"
-            onClick={handleSaveAttendance}
-            disabled={loading || !selectedStatus}
-          >
-            <Check className="w-4 h-4" />
-            हाजिरी सेव करें
-          </Button>
 
           {(currentAdvance || 0) > 0 && (
             <p className="text-xs text-muted-foreground text-center">
