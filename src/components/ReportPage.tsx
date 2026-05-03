@@ -2,8 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { getMonthlyReport, deleteWorkerMonthAttendance } from "@/lib/supabase-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Share2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { exportCSV, exportPDF } from "@/lib/export-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
