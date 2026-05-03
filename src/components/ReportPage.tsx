@@ -99,6 +99,23 @@ export default function ReportPage() {
     setYear(y);
   };
 
+  const exportMonthly = (format: "csv" | "pdf") => {
+    if (summary.length === 0) return;
+    const headers = ["नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
+    const rows: (string | number)[][] = summary.map((s) => [
+      s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
+      s.totalEarning, s.totalAdvance, s.netPayable,
+    ]);
+    rows.push(["कुल", "", "", "", "", "", "", "", grandTotal]);
+    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
+    if (format === "csv") {
+      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
+      toast({ title: "CSV डाउनलोड हो गई" });
+    } else {
+      exportPDF(title, headers, rows);
+    }
+  };
+
   const grandTotal = summary.reduce((acc, s) => acc + s.netPayable, 0);
 
   const shareOnWhatsApp = (worker?: WorkerSummary) => {
