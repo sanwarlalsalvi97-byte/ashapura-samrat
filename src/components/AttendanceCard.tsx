@@ -91,7 +91,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
                   size="sm"
                   variant={isActive ? "default" : "outline"}
                   className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
-                  onClick={() => setSelectedStatus(status)}
+                  onClick={() => pickStatus(status)}
                   disabled={loading}
                 >
                   <Icon className="w-3.5 h-3.5" />
