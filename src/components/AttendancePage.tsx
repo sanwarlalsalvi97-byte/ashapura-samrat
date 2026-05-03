@@ -24,7 +24,9 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number }>>({});
+  const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
