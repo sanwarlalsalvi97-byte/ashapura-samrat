@@ -37,8 +37,61 @@ export default function AttendancePage() {
         map[r.worker_id] = { status: r.status, advance: r.advance };
       });
       setAttendance(map);
+      setSelections({});
     } catch {}
   }, [date]);
+
+  const handleSelectionChange = useCallback((workerId: string, status: AttendanceStatus | undefined) => {
+    setSelections((prev) => {
+      const next = { ...prev };
+      if (status) next[workerId] = status;
+      else delete next[workerId];
+      return next;
+    });
+  }, []);
+
+  const saveAll = async () => {
+    const entries = workers
+      .map((w) => {
+        const sel = selections[w.id];
+        const existing = attendance[w.id];
+        // Skip if no new selection AND already saved
+        if (!sel && existing) return null;
+        const status = sel || existing?.status;
+        if (!status) return null;
+        // Skip if selection equals existing status (no change)
+        if (!sel && existing) return null;
+        return { worker: w, status, advance: existing?.advance || 0 };
+      })
+      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number }[];
+
+    if (entries.length === 0) {
+      toast({ title: "कोई नई हाजिरी नहीं चुनी", variant: "destructive" });
+      return;
+    }
+
+    setSavingAll(true);
+    let ok = 0, fail = 0;
+    for (const e of entries) {
+      try {
+        await markAttendance({
+          worker_id: e.worker.id,
+          date: formatDate(date),
+          status: e.status,
+          advance: e.advance,
+          site_name: e.worker.site_name,
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSavingAll(false);
+    toast({
+      title: `${ok} मजदूर की हाजिरी सेव हो गई${fail > 0 ? ` (${fail} में गलती)` : ""}`,
+    });
+    loadData();
+  };
 
   useEffect(() => { loadData(); }, [loadData]);
 
