@@ -4,11 +4,24 @@ import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { toast } from "@/hooks/use-toast";
+import { exportCSV, exportPDF } from "@/lib/export-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const STATUS_LABEL: Record<string, string> = {
+  Present: "हाजिर",
+  "Half-Day": "आधा दिन",
+  Absent: "गैरहाजिर",
+};
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
@@ -91,6 +104,59 @@ export default function AttendancePage() {
       title: `${ok} मजदूर की हाजिरी सेव हो गई${fail > 0 ? ` (${fail} में गलती)` : ""}`,
     });
     loadData();
+  };
+
+  const exportToday = (format: "csv" | "pdf") => {
+    const dateStr = formatDate(date);
+    const displayDate = `${formatDisplayDate(date)} (${dateStr})`;
+
+    // Group by contractor (using site_name as contractor grouping)
+    const groups = new Map<string, Worker[]>();
+    workers.forEach((w) => {
+      const key = w.site_name?.trim() || "—";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(w);
+    });
+
+    const rows: (string | number)[][] = [];
+    let totalEarning = 0, totalAdvance = 0, totalNet = 0;
+
+    Array.from(groups.entries()).forEach(([contractor, ws]) => {
+      ws.forEach((w) => {
+        const a = attendance[w.id];
+        const status = a?.status || "—";
+        const statusLabel = STATUS_LABEL[status] || status;
+        const advance = a?.advance || 0;
+        let earning = 0;
+        if (status === "Present") earning = w.daily_rate;
+        else if (status === "Half-Day") earning = w.daily_rate * 0.5;
+        const net = earning - advance;
+        totalEarning += earning;
+        totalAdvance += advance;
+        totalNet += net;
+        rows.push([
+          contractor,
+          w.name,
+          w.role,
+          w.daily_rate,
+          statusLabel,
+          earning,
+          advance,
+          net,
+        ]);
+      });
+    });
+
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिरी", "कमाई", "एडवांस", "बाकी"];
+
+    if (format === "csv") {
+      rows.push(["", "", "", "", "कुल", totalEarning, totalAdvance, totalNet]);
+      exportCSV(`हाजिरी-${dateStr}.csv`, headers, rows);
+      toast({ title: "CSV डाउनलोड हो गई" });
+    } else {
+      rows.push(["", "", "", "", "कुल", totalEarning, totalAdvance, totalNet]);
+      exportPDF(`हाजिरी रिपोर्ट`, headers, rows, displayDate);
+    }
   };
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -184,6 +250,25 @@ export default function AttendancePage() {
           <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
+
+      {workers.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              <FileDown className="w-4 h-4" />
+              आज की हाजिरी एक्सपोर्ट करें
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={() => exportToday("csv")}>
+              <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToday("pdf")}>
+              <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {workers.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">

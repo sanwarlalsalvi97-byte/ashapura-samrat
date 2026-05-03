@@ -2,8 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { getMonthlyReport, deleteWorkerMonthAttendance } from "@/lib/supabase-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Share2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { exportCSV, exportPDF } from "@/lib/export-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +99,23 @@ export default function ReportPage() {
     setYear(y);
   };
 
+  const exportMonthly = (format: "csv" | "pdf") => {
+    if (summary.length === 0) return;
+    const headers = ["नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
+    const rows: (string | number)[][] = summary.map((s) => [
+      s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
+      s.totalEarning, s.totalAdvance, s.netPayable,
+    ]);
+    rows.push(["कुल", "", "", "", "", "", "", "", grandTotal]);
+    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
+    if (format === "csv") {
+      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
+      toast({ title: "CSV डाउनलोड हो गई" });
+    } else {
+      exportPDF(title, headers, rows);
+    }
+  };
+
   const grandTotal = summary.reduce((acc, s) => acc + s.netPayable, 0);
 
   const shareOnWhatsApp = (worker?: WorkerSummary) => {
@@ -141,15 +165,33 @@ export default function ReportPage() {
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">कुल देय राशि</p>
               <p className="text-3xl font-bold text-primary">₹{grandTotal.toLocaleString("hi-IN")}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 gap-2"
-                onClick={() => shareOnWhatsApp()}
-              >
-                <Share2 className="w-4 h-4" />
-                WhatsApp पर शेयर करें
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => shareOnWhatsApp()}
+                >
+                  <Share2 className="w-4 h-4" />
+                  WhatsApp शेयर
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <FileDown className="w-4 h-4" />
+                      एक्सपोर्ट
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportMonthly("csv")}>
+                      <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportMonthly("pdf")}>
+                      <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardContent>
           </Card>
 
