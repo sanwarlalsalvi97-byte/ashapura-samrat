@@ -198,6 +198,25 @@ export default function AttendancePage() {
         </Button>
       </div>
 
+      {workers.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              <FileDown className="w-4 h-4" />
+              आज की हाजिरी एक्सपोर्ट करें
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={() => exportToday("csv")}>
+              <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToday("pdf")}>
+              <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       {workers.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">कोई मजदूर नहीं</p>
