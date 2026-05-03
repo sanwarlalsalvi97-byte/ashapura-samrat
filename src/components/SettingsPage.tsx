@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff } from "lucide-react";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
+import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -29,6 +30,8 @@ export default function SettingsPage() {
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
     typeof Notification === "undefined" ? "unsupported" : Notification.permission
   );
+
+  const [simOffline, setSimOffline] = useState(isSimulatedOffline());
 
   useEffect(() => {
     loadProfile();
@@ -250,6 +253,39 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t("बंद करें = English", "Turn on = हिंदी")}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Developer / Test: simulate offline */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <WifiOff className="w-4 h-4" />
+            {t("ऑफलाइन टेस्ट मोड", "Offline Test Mode")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{t("ऑफलाइन सिम्युलेट करें", "Simulate offline")}</span>
+            <Switch
+              checked={simOffline}
+              onCheckedChange={(c) => {
+                setSimOffline(c);
+                setSimulatedOffline(c);
+                toast({
+                  title: c
+                    ? t("ऑफलाइन मोड चालू (टेस्ट)", "Offline mode ON (test)")
+                    : t("ऑनलाइन — सिंक हो रहा है", "Online — syncing"),
+                });
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t(
+              "इंटरनेट बंद किए बिना ऑफलाइन क्यूइंग और ऑटो-सिंक टेस्ट करें। बंद करते ही पुरानी एंट्री सर्वर पर भेज दी जाएंगी।",
+              "Test queuing & auto-sync without turning off Wi-Fi. Disabling will flush queued entries to the server."
+            )}
           </p>
         </CardContent>
       </Card>

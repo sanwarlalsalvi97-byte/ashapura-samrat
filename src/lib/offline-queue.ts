@@ -49,7 +49,26 @@ export function getQueue() {
   return readQueue();
 }
 
+const SIMULATE_OFFLINE_KEY = "hajiri-simulate-offline";
+
+export function isSimulatedOffline() {
+  try {
+    return localStorage.getItem(SIMULATE_OFFLINE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setSimulatedOffline(on: boolean) {
+  try {
+    if (on) localStorage.setItem(SIMULATE_OFFLINE_KEY, "1");
+    else localStorage.removeItem(SIMULATE_OFFLINE_KEY);
+  } catch {}
+  notify();
+}
+
 export function isOnline() {
+  if (isSimulatedOffline()) return false;
   return typeof navigator === "undefined" ? true : navigator.onLine;
 }
 

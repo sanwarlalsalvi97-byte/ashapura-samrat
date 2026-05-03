@@ -12,7 +12,12 @@ export function useOfflineSync() {
   const [pending, setPending] = useState(getQueueCount());
 
   useEffect(() => {
-    const refresh = () => setPending(getQueueCount());
+    const refresh = () => {
+      setPending(getQueueCount());
+      const nowOnline = isOnline();
+      setOnline(nowOnline);
+      if (nowOnline) tryFlush();
+    };
     const unsub = subscribeQueue(refresh);
 
     const tryFlush = async () => {
@@ -29,10 +34,10 @@ export function useOfflineSync() {
     };
 
     const handleOnline = () => {
-      setOnline(true);
+      setOnline(isOnline());
       tryFlush();
     };
-    const handleOffline = () => setOnline(false);
+    const handleOffline = () => setOnline(isOnline());
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);

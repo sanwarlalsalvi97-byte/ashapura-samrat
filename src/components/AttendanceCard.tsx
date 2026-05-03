@@ -12,6 +12,7 @@ interface Props {
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
   onMarked: () => void;
+  onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
 }
 
 const statusConfig: Record<AttendanceStatus, { label: string; icon: typeof Check; className: string }> = {
@@ -26,9 +27,14 @@ const roleColors: Record<string, string> = {
   "हेल्पर": "bg-muted text-muted-foreground",
 };
 
-export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentAdvance, onMarked, onSelectionChange }: Props) {
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
   const [loading, setLoading] = useState(false);
+
+  const pickStatus = (s: AttendanceStatus) => {
+    setSelectedStatus(s);
+    onSelectionChange?.(worker.id, s);
+  };
 
   const handleSaveAttendance = async () => {
     if (!selectedStatus) {
@@ -85,7 +91,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentAdv
                   size="sm"
                   variant={isActive ? "default" : "outline"}
                   className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
-                  onClick={() => setSelectedStatus(status)}
+                  onClick={() => pickStatus(status)}
                   disabled={loading}
                 >
                   <Icon className="w-3.5 h-3.5" />

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getWorkers, getAttendanceByDate, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
+import { getWorkers, getAttendanceByDate, markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { toast } from "@/hooks/use-toast";
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
@@ -23,7 +24,9 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number }>>({});
+  const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -34,8 +37,61 @@ export default function AttendancePage() {
         map[r.worker_id] = { status: r.status, advance: r.advance };
       });
       setAttendance(map);
+      setSelections({});
     } catch {}
   }, [date]);
+
+  const handleSelectionChange = useCallback((workerId: string, status: AttendanceStatus | undefined) => {
+    setSelections((prev) => {
+      const next = { ...prev };
+      if (status) next[workerId] = status;
+      else delete next[workerId];
+      return next;
+    });
+  }, []);
+
+  const saveAll = async () => {
+    const entries = workers
+      .map((w) => {
+        const sel = selections[w.id];
+        const existing = attendance[w.id];
+        // Skip if no new selection AND already saved
+        if (!sel && existing) return null;
+        const status = sel || existing?.status;
+        if (!status) return null;
+        // Skip if selection equals existing status (no change)
+        if (!sel && existing) return null;
+        return { worker: w, status, advance: existing?.advance || 0 };
+      })
+      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number }[];
+
+    if (entries.length === 0) {
+      toast({ title: "कोई नई हाजिरी नहीं चुनी", variant: "destructive" });
+      return;
+    }
+
+    setSavingAll(true);
+    let ok = 0, fail = 0;
+    for (const e of entries) {
+      try {
+        await markAttendance({
+          worker_id: e.worker.id,
+          date: formatDate(date),
+          status: e.status,
+          advance: e.advance,
+          site_name: e.worker.site_name,
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSavingAll(false);
+    toast({
+      title: `${ok} मजदूर की हाजिरी सेव हो गई${fail > 0 ? ` (${fail} में गलती)` : ""}`,
+    });
+    loadData();
+  };
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -135,18 +191,36 @@ export default function AttendancePage() {
           <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {workers.map((w) => (
-            <AttendanceCard
-              key={w.id}
-              worker={w}
-              date={formatDate(date)}
-              currentStatus={attendance[w.id]?.status}
-              currentAdvance={attendance[w.id]?.advance}
-              onMarked={loadData}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-3 pb-20">
+            {workers.map((w) => (
+              <AttendanceCard
+                key={w.id}
+                worker={w}
+                date={formatDate(date)}
+                currentStatus={attendance[w.id]?.status}
+                currentAdvance={attendance[w.id]?.advance}
+                onMarked={loadData}
+                onSelectionChange={handleSelectionChange}
+              />
+            ))}
+          </div>
+          {Object.keys(selections).length > 0 && (
+            <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
+              <Button
+                className="w-full shadow-lg"
+                size="lg"
+                onClick={saveAll}
+                disabled={savingAll}
+              >
+                <Check className="w-5 h-5" />
+                {savingAll
+                  ? "सेव हो रहा है..."
+                  : `सब की हाजिरी सेव करें (${Object.keys(selections).length})`}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
