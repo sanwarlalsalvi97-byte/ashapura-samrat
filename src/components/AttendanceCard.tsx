@@ -12,6 +12,7 @@ interface Props {
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
   onMarked: () => void;
+  onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
 }
 
 const statusConfig: Record<AttendanceStatus, { label: string; icon: typeof Check; className: string }> = {
