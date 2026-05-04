@@ -107,14 +107,19 @@ export default function AttendancePage() {
     loadData();
   };
 
-  const exportToday = (format: "csv" | "pdf") => {
+  const exportToday = async (format: "csv" | "pdf") => {
     const dateStr = formatDate(date);
     const displayDate = `${formatDisplayDate(date)} (${dateStr})`;
+    const mode = getGroupingMode();
+    let contractors: Contractor[] = [];
+    if (mode === "contractor") {
+      try { contractors = await getContractors(); } catch { contractors = []; }
+    }
 
-    // Group by contractor (using site_name as contractor grouping)
+    // Group by contractor/site based on user preference
     const groups = new Map<string, Worker[]>();
     workers.forEach((w) => {
-      const key = w.site_name?.trim() || "—";
+      const key = resolveGroupLabel(w, contractors, mode);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(w);
     });
