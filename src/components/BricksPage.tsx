@@ -35,6 +35,8 @@ export default function BricksPage() {
     thickness: "9", // 9 inch (single brick wall) default
     unit: "ft" as "ft" | "m",
     wastage: "5",
+    ratio: "1:6", // mortar mix
+    mortarWastage: "10",
   });
   const [form, setForm] = useState({
     date: today(),
@@ -44,6 +46,23 @@ export default function BricksPage() {
     rate: "",
     notes: "",
   });
+
+  // Material (cement / sand) stock — local
+  const [materials, setMaterials] = useState<MaterialEntry[]>([]);
+  const [matOpen, setMatOpen] = useState(false);
+  const [matForm, setMatForm] = useState({
+    date: today(),
+    kind: "cement" as MaterialKind,
+    entry_type: "In" as "In" | "Out",
+    quantity: "",
+    rate: "",
+    site_name: "",
+    notes: "",
+  });
+  const reloadMaterials = () => setMaterials(getMaterialEntries());
+  useEffect(() => { reloadMaterials(); }, []);
+  const cementTotals = useMemo(() => getMaterialTotals("cement"), [materials]);
+  const sandTotals = useMemo(() => getMaterialTotals("sand"), [materials]);
 
   const load = async () => {
     try { setEntries(await getBrickEntries()); }
