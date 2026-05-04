@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { getMonthlyReport, deleteWorkerMonthAttendance } from "@/lib/supabase-helpers";
+import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
+import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText } from "lucide-react";
@@ -99,14 +100,27 @@ export default function ReportPage() {
     setYear(y);
   };
 
-  const exportMonthly = (format: "csv" | "pdf") => {
+  const exportMonthly = async (format: "csv" | "pdf") => {
     if (summary.length === 0) return;
-    const headers = ["नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
-    const rows: (string | number)[][] = summary.map((s) => [
-      s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
-      s.totalEarning, s.totalAdvance, s.netPayable,
-    ]);
-    rows.push(["कुल", "", "", "", "", "", "", "", grandTotal]);
+    const mode = getGroupingMode();
+    let workers: Worker[] = [];
+    let contractors: Contractor[] = [];
+    try {
+      workers = await getWorkers();
+      if (mode === "contractor") contractors = await getContractors();
+    } catch {}
+    const workerById = new Map(workers.map((w) => [w.id, w]));
+
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
+    const rows: (string | number)[][] = summary.map((s) => {
+      const w = workerById.get(s.workerId);
+      const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
+      return [
+        group, s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
+        s.totalEarning, s.totalAdvance, s.netPayable,
+      ];
+    });
+    rows.push(["", "कुल", "", "", "", "", "", "", "", grandTotal]);
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
     if (format === "csv") {
       exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
