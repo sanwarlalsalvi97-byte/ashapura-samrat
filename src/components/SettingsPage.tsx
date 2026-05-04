@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users } from "lucide-react";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
+import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   );
 
   const [simOffline, setSimOffline] = useState(isSimulatedOffline());
+  const [groupingMode, setGroupingModeState] = useState<GroupingMode>(getGroupingMode());
 
   useEffect(() => {
     loadProfile();
