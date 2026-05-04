@@ -380,15 +380,44 @@ export default function BricksPage() {
                 ))}
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>ईंट wastage (%)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.wastage}
+                  onChange={(e) => setCalc({ ...calc, wastage: e.target.value })}
+                  placeholder="5"
+                />
+              </div>
+              <div>
+                <Label>mortar wastage (%)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={calc.mortarWastage}
+                  onChange={(e) => setCalc({ ...calc, mortarWastage: e.target.value })}
+                  placeholder="10"
+                />
+              </div>
+            </div>
+
             <div>
-              <Label>wastage (%)</Label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={calc.wastage}
-                onChange={(e) => setCalc({ ...calc, wastage: e.target.value })}
-                placeholder="5"
-              />
+              <Label>mortar अनुपात (cement : रेत)</Label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {MORTAR_RATIOS.map((r) => (
+                  <Button
+                    key={r}
+                    type="button"
+                    size="sm"
+                    variant={calc.ratio === r ? "default" : "outline"}
+                    onClick={() => setCalc({ ...calc, ratio: r })}
+                  >
+                    {r}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {calcResult ? (
@@ -408,8 +437,21 @@ export default function BricksPage() {
                       {calcResult.bricks.toLocaleString()}
                     </span>
                   </div>
+                  {calcResult.mortar && (
+                    <div className="border-t border-border pt-2 space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground">mortar (अनुपात {calcResult.mortar.ratio})</p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">सीमेंट</span>
+                        <span className="font-bold text-primary">{calcResult.mortar.cementBags} बैग (50kg)</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">रेत</span>
+                        <span className="font-bold text-primary">{calcResult.mortar.sandCFT} CFT</span>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-[10px] text-muted-foreground pt-1">
-                    * मानक ईंट 9"×4.5"×3" + mortar gap के हिसाब से
+                    * मानक ईंट 9"×4.5"×3" + mortar gap, dry volume × 1.33 के हिसाब से
                   </p>
                 </CardContent>
               </Card>
