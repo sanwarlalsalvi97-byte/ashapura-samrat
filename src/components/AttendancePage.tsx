@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getWorkers, getAttendanceByDate, markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
+import { getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
+import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import AttendanceCard from "./AttendanceCard";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
