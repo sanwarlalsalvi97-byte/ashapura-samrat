@@ -133,8 +133,40 @@ export default function BricksPage() {
     const brickVolWithMortar = (9.5 / 12) * (4.75 / 12) * (3.25 / 12);
     const bricksRaw = wallVol / brickVolWithMortar;
     const bricks = Math.ceil(bricksRaw * (1 + W / 100));
-    return { wallVol: wallVol.toFixed(2), bricks, bricksRaw: Math.ceil(bricksRaw) };
+    const mortar = calcMortarForBricks({
+      bricks,
+      ratio: calc.ratio,
+      wastagePct: parseFloat(calc.mortarWastage) || 0,
+    });
+    return { wallVol: wallVol.toFixed(2), bricks, bricksRaw: Math.ceil(bricksRaw), mortar };
   }, [calc]);
+
+  const saveMaterial = () => {
+    const qty = parseFloat(matForm.quantity);
+    if (!qty || qty <= 0) {
+      toast({ title: "मात्रा डालें", variant: "destructive" });
+      return;
+    }
+    addMaterialEntry({
+      date: matForm.date,
+      kind: matForm.kind,
+      entry_type: matForm.entry_type,
+      quantity: qty,
+      rate: parseFloat(matForm.rate) || 0,
+      site_name: matForm.site_name.trim() || undefined,
+      notes: matForm.notes.trim() || undefined,
+    });
+    toast({ title: "✅ entry जुड़ गई" });
+    setMatOpen(false);
+    setMatForm({ date: today(), kind: matForm.kind, entry_type: "In", quantity: "", rate: "", site_name: "", notes: "" });
+    reloadMaterials();
+  };
+
+  const removeMaterial = (id: string) => {
+    deleteMaterialEntry(id);
+    toast({ title: "✅ हटा दिया" });
+    reloadMaterials();
+  };
 
   return (
     <div className="space-y-4">
