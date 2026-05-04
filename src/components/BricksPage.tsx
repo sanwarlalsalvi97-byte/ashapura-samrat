@@ -477,6 +477,141 @@ export default function BricksPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* ===== Material (cement / sand) Stock ===== */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Package className="w-5 h-5" /> सीमेंट / रेत
+          </h2>
+          <Button size="sm" onClick={() => setMatOpen(true)} className="gap-1">
+            <Plus className="w-4 h-4" /> entry
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">सीमेंट स्टॉक</p>
+              <p className="text-lg font-bold text-primary">{cementTotals.stock.toLocaleString()} <span className="text-xs font-normal">बैग</span></p>
+              <p className="text-[10px] text-muted-foreground mt-1">खर्च ₹{cementTotals.inCost.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground">रेत स्टॉक</p>
+              <p className="text-lg font-bold text-primary">{sandTotals.stock.toLocaleString()} <span className="text-xs font-normal">CFT</span></p>
+              <p className="text-[10px] text-muted-foreground mt-1">खर्च ₹{sandTotals.inCost.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {materials.length === 0 ? (
+          <p className="text-center text-xs text-muted-foreground py-4">अभी कोई material entry नहीं</p>
+        ) : (
+          <div className="space-y-2">
+            {materials.map((m) => (
+              <Card key={m.id}>
+                <CardContent className="p-3 flex items-center justify-between gap-2">
+                  <div className={`p-2 rounded-full shrink-0 ${m.entry_type === "In" ? "bg-accent/15 text-accent" : "bg-destructive/15 text-destructive"}`}>
+                    {m.entry_type === "In" ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold capitalize">
+                        {m.kind === "cement" ? "सीमेंट" : "रेत"} — {m.quantity.toLocaleString()} {m.kind === "cement" ? "बैग" : "CFT"}
+                      </span>
+                      {m.entry_type === "In" && m.rate > 0 && (
+                        <span className="text-xs text-muted-foreground">@ ₹{m.rate}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(m.date).toLocaleDateString("hi-IN", { day: "numeric", month: "short" })}
+                      {m.site_name && ` • ${m.site_name}`}
+                    </p>
+                    {m.notes && <p className="text-xs italic text-muted-foreground mt-0.5">{m.notes}</p>}
+                  </div>
+                  <button onClick={() => removeMaterial(m.id)} className="p-2 rounded-full bg-destructive/10 text-destructive">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Material entry dialog */}
+      <Dialog open={matOpen} onOpenChange={setMatOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>नई material entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={matForm.kind === "cement" ? "default" : "outline"}
+                onClick={() => setMatForm({ ...matForm, kind: "cement" })}
+              >
+                सीमेंट (बैग)
+              </Button>
+              <Button
+                type="button"
+                variant={matForm.kind === "sand" ? "default" : "outline"}
+                onClick={() => setMatForm({ ...matForm, kind: "sand" })}
+              >
+                रेत (CFT)
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={matForm.entry_type === "In" ? "default" : "outline"}
+                onClick={() => setMatForm({ ...matForm, entry_type: "In" })}
+                className="gap-1"
+              >
+                <ArrowDownToLine className="w-4 h-4" /> आई
+              </Button>
+              <Button
+                type="button"
+                variant={matForm.entry_type === "Out" ? "default" : "outline"}
+                onClick={() => setMatForm({ ...matForm, entry_type: "Out" })}
+                className="gap-1"
+              >
+                <ArrowUpFromLine className="w-4 h-4" /> इस्तेमाल
+              </Button>
+            </div>
+            <div>
+              <Label>तारीख</Label>
+              <Input type="date" value={matForm.date} onChange={(e) => setMatForm({ ...matForm, date: e.target.value })} />
+            </div>
+            <div>
+              <Label>साइट</Label>
+              <Input value={matForm.site_name} onChange={(e) => setMatForm({ ...matForm, site_name: e.target.value })} placeholder="साइट का नाम" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>मात्रा * ({matForm.kind === "cement" ? "बैग" : "CFT"})</Label>
+                <Input type="number" inputMode="decimal" value={matForm.quantity} onChange={(e) => setMatForm({ ...matForm, quantity: e.target.value })} placeholder={matForm.kind === "cement" ? "10" : "100"} />
+              </div>
+              {matForm.entry_type === "In" && (
+                <div>
+                  <Label>rate (₹/{matForm.kind === "cement" ? "बैग" : "CFT"})</Label>
+                  <Input type="number" inputMode="decimal" step="0.01" value={matForm.rate} onChange={(e) => setMatForm({ ...matForm, rate: e.target.value })} placeholder={matForm.kind === "cement" ? "400" : "50"} />
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>नोट्स</Label>
+              <Textarea rows={2} value={matForm.notes} onChange={(e) => setMatForm({ ...matForm, notes: e.target.value })} placeholder="optional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMatOpen(false)}>रद्द</Button>
+            <Button onClick={saveMaterial}>सेव</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
