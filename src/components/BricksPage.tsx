@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { getBrickEntries, addBrickEntry, deleteBrickEntry, type BrickStock, type BrickEntryType } from "@/lib/supabase-helpers";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +12,17 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, Layers, Calculator } from "lucide-react";
+import { Plus, Trash2, ArrowDownToLine, ArrowUpFromLine, Layers, Calculator, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { calcMortarForBricks } from "@/lib/mortar-calc";
+import {
+  getMaterialEntries, addMaterialEntry, deleteMaterialEntry, getMaterialTotals,
+  type MaterialEntry, type MaterialKind,
+} from "@/lib/material-stock";
 
 const today = () => new Date().toISOString().split("T")[0];
+const MORTAR_RATIOS = ["1:4", "1:5", "1:6"];
 
 export default function BricksPage() {
   const [entries, setEntries] = useState<BrickStock[]>([]);
