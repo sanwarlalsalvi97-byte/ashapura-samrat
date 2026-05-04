@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users } from "lucide-react";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
+import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   );
 
   const [simOffline, setSimOffline] = useState(isSimulatedOffline());
+  const [groupingMode, setGroupingModeState] = useState<GroupingMode>(getGroupingMode());
 
   useEffect(() => {
     loadProfile();
@@ -253,6 +255,39 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t("बंद करें = English", "Turn on = हिंदी")}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Grouping for exports */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            {t("शीट में ठेकेदार/साइट का आधार", "Sheet grouping field")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant={groupingMode === "site" ? "default" : "outline"}
+              onClick={() => { setGroupingModeState("site"); setGroupingMode("site"); toast({ title: t("✅ साइट के नाम से grouping", "✅ Grouped by site name") }); }}
+            >
+              {t("साइट का नाम", "Site name")}
+            </Button>
+            <Button
+              size="sm"
+              variant={groupingMode === "contractor" ? "default" : "outline"}
+              onClick={() => { setGroupingModeState("contractor"); setGroupingMode("contractor"); toast({ title: t("✅ ठेकेदार के नाम से grouping", "✅ Grouped by contractor") }); }}
+            >
+              {t("ठेकेदार", "Contractor")}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {groupingMode === "site"
+              ? t("एक्सपोर्ट में मजदूर की साइट के नाम से group होगा।", "Workers grouped by site name in exports.")
+              : t("एक्सपोर्ट में Contractors टैब से जुड़े ठेकेदार के नाम से group होगा (मिलान न मिले तो साइट के नाम से)।", "Workers grouped by contractor from Contractors tab (falls back to site name).")}
           </p>
         </CardContent>
       </Card>
