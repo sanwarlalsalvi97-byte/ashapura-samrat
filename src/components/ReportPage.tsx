@@ -158,12 +158,47 @@ export default function ReportPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between bg-card rounded-xl p-3">
-        <Button variant="ghost" size="icon" onClick={() => changeMonth(-1)}>
+      <div className="flex items-center justify-between gap-2 bg-card rounded-xl p-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0"
+          onClick={() => changeMonth(-1)}
+          aria-label="पिछला महीना"
+        >
           <ChevronLeft className="w-5 h-5" />
         </Button>
-        <p className="font-semibold">{monthNames[month - 1]} {year}</p>
-        <Button variant="ghost" size="icon" onClick={() => changeMonth(1)}>
+        <div className="flex-1 flex items-center justify-center gap-2">
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="bg-background border border-input rounded-md px-2 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="महीना चुनें"
+          >
+            {monthNames.map((n, i) => (
+              <option key={i} value={i + 1}>{n}</option>
+            ))}
+          </select>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="bg-background border border-input rounded-md px-2 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="साल चुनें"
+          >
+            {Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0"
+          onClick={() => changeMonth(1)}
+          aria-label="अगला महीना"
+        >
           <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
