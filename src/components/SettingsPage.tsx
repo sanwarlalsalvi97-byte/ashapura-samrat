@@ -7,7 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
