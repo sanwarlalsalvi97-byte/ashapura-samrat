@@ -148,6 +148,94 @@ export default function SettingsPage() {
     }
   };
 
+  const scanDuplicates = async () => {
+    setDedupeScanning(true);
+    setDupes([]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("लॉगिन ज़रूरी है", "Login required"));
+
+      const { data: workers, error: wErr } = await supabase
+        .from("workers")
+        .select("id, name, role, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (wErr) throw wErr;
+      if (!workers || workers.length === 0) {
+        toast({ title: t("कोई वर्कर नहीं मिला", "No workers found") });
+        return;
+      }
+
+      // Group by trimmed lowercase name
+      const groups = new Map<string, typeof workers>();
+      workers.forEach((w) => {
+        const key = (w.name || "").trim().toLowerCase();
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(w);
+      });
+
+      // For names with 2+ entries, find which have zero attendance
+      const candidates: { id: string; name: string; role: string }[] = [];
+      for (const [, list] of groups) {
+        if (list.length < 2) continue;
+        // Check attendance count for each
+        const ids = list.map((w) => w.id);
+        const { data: att, error: aErr } = await supabase
+          .from("attendance")
+          .select("worker_id")
+          .in("worker_id", ids);
+        if (aErr) throw aErr;
+        const counts = new Map<string, number>();
+        ids.forEach((id) => counts.set(id, 0));
+        (att || []).forEach((r: any) => {
+          counts.set(r.worker_id, (counts.get(r.worker_id) || 0) + 1);
+        });
+        // Keep at least one per name: prefer one with attendance, else the oldest.
+        const withAtt = list.filter((w) => (counts.get(w.id) || 0) > 0);
+        const empties = list.filter((w) => (counts.get(w.id) || 0) === 0);
+        // If at least one has attendance OR there are multiple empties, all empties are safe to remove
+        // (but always keep one row for the name if all are empty)
+        let removable = empties;
+        if (withAtt.length === 0 && empties.length > 0) {
+          // keep the oldest (first) empty, remove the rest
+          removable = empties.slice(1);
+        }
+        removable.forEach((w) => candidates.push({ id: w.id, name: w.name, role: w.role }));
+      }
+
+      setDupes(candidates);
+      if (candidates.length === 0) {
+        toast({ title: t("कोई डुप्लिकेट नहीं मिला ✅", "No duplicates found ✅") });
+      } else {
+        toast({
+          title: t(`${candidates.length} डुप्लिकेट मिले`, `Found ${candidates.length} duplicates`),
+          description: t("नीचे देखें और हटाएं", "Review below and delete"),
+        });
+      }
+    } catch (err: any) {
+      toast({ title: t("गलती", "Error"), description: err.message, variant: "destructive" });
+    } finally {
+      setDedupeScanning(false);
+    }
+  };
+
+  const deleteDuplicates = async () => {
+    if (dupes.length === 0) return;
+    setDedupeDeleting(true);
+    try {
+      const ids = dupes.map((d) => d.id);
+      const { error } = await supabase.from("workers").delete().in("id", ids);
+      if (error) throw error;
+      toast({ title: t(`✅ ${ids.length} डुप्लिकेट हटाए गए`, `✅ Deleted ${ids.length} duplicates`) });
+      setDupes([]);
+    } catch (err: any) {
+      toast({ title: t("गलती", "Error"), description: err.message, variant: "destructive" });
+    } finally {
+      setDedupeDeleting(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
