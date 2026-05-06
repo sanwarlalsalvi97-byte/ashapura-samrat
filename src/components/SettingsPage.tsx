@@ -33,6 +33,9 @@ export default function SettingsPage() {
   const [isHindi, setIsHindi] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [dedupeScanning, setDedupeScanning] = useState(false);
+  const [dedupeDeleting, setDedupeDeleting] = useState(false);
+  const [dupes, setDupes] = useState<{ id: string; name: string; role: string }[]>([]);
 
   // Work time + alarm
   const [checkIn, setCheckIn] = useState("08:00");
