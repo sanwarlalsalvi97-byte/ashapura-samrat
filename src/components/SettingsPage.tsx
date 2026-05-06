@@ -427,6 +427,88 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Duplicate workers cleanup */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+            {t("डुप्लिकेट वर्कर साफ करें", "Clean Duplicate Workers")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "एक ही नाम के कई वर्कर ढूंढता है और जिन पर एक भी हाजिरी नहीं है उन्हें हटाने की सुविधा देता है। हाजिरी वाले वर्कर सुरक्षित रहते हैं।",
+              "Finds workers with the same name and lets you remove the ones with no attendance. Workers with attendance are kept safe."
+            )}
+          </p>
+          <Button
+            onClick={scanDuplicates}
+            disabled={dedupeScanning || dedupeDeleting}
+            variant="outline"
+            className="w-full"
+            size="sm"
+          >
+            {dedupeScanning
+              ? t("स्कैन हो रहा है...", "Scanning...")
+              : t("डुप्लिकेट खोजें", "Scan for duplicates")}
+          </Button>
+
+          {dupes.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">
+                {t(`हटाने योग्य: ${dupes.length}`, `Removable: ${dupes.length}`)}
+              </p>
+              <div className="max-h-40 overflow-y-auto space-y-1 rounded-md border border-border p-2">
+                {dupes.map((d) => (
+                  <div key={d.id} className="text-xs flex items-center justify-between gap-2">
+                    <span className="truncate">{d.name}</span>
+                    <span className="text-muted-foreground shrink-0">{d.role}</span>
+                  </div>
+                ))}
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={dedupeDeleting}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {dedupeDeleting
+                      ? t("हट रहा है...", "Deleting...")
+                      : t(`${dupes.length} डुप्लिकेट हटाएं`, `Delete ${dupes.length} duplicates`)}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("क्या आप पक्के हैं?", "Are you sure?")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(
+                        `${dupes.length} डुप्लिकेट वर्कर हट जाएंगे (इन पर कोई हाजिरी नहीं है)। यह वापस नहीं आएगा।`,
+                        `${dupes.length} duplicate workers will be removed (none have attendance). This cannot be undone.`
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("रद्द करें", "Cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteDuplicates}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t("हटाएं", "Delete")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Export */}
       <Card>
         <CardHeader className="pb-3">
