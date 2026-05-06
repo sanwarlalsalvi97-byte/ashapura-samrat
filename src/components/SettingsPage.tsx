@@ -7,7 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
@@ -22,6 +33,9 @@ export default function SettingsPage() {
   const [isHindi, setIsHindi] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [dedupeScanning, setDedupeScanning] = useState(false);
+  const [dedupeDeleting, setDedupeDeleting] = useState(false);
+  const [dupes, setDupes] = useState<{ id: string; name: string; role: string }[]>([]);
 
   // Work time + alarm
   const [checkIn, setCheckIn] = useState("08:00");
@@ -131,6 +145,94 @@ export default function SettingsPage() {
       toast({ title: isHindi ? "गलती" : "Error", description: err.message, variant: "destructive" });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const scanDuplicates = async () => {
+    setDedupeScanning(true);
+    setDupes([]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("लॉगिन ज़रूरी है", "Login required"));
+
+      const { data: workers, error: wErr } = await supabase
+        .from("workers")
+        .select("id, name, role, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (wErr) throw wErr;
+      if (!workers || workers.length === 0) {
+        toast({ title: t("कोई वर्कर नहीं मिला", "No workers found") });
+        return;
+      }
+
+      // Group by trimmed lowercase name
+      const groups = new Map<string, typeof workers>();
+      workers.forEach((w) => {
+        const key = (w.name || "").trim().toLowerCase();
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(w);
+      });
+
+      // For names with 2+ entries, find which have zero attendance
+      const candidates: { id: string; name: string; role: string }[] = [];
+      for (const [, list] of groups) {
+        if (list.length < 2) continue;
+        // Check attendance count for each
+        const ids = list.map((w) => w.id);
+        const { data: att, error: aErr } = await supabase
+          .from("attendance")
+          .select("worker_id")
+          .in("worker_id", ids);
+        if (aErr) throw aErr;
+        const counts = new Map<string, number>();
+        ids.forEach((id) => counts.set(id, 0));
+        (att || []).forEach((r: any) => {
+          counts.set(r.worker_id, (counts.get(r.worker_id) || 0) + 1);
+        });
+        // Keep at least one per name: prefer one with attendance, else the oldest.
+        const withAtt = list.filter((w) => (counts.get(w.id) || 0) > 0);
+        const empties = list.filter((w) => (counts.get(w.id) || 0) === 0);
+        // If at least one has attendance OR there are multiple empties, all empties are safe to remove
+        // (but always keep one row for the name if all are empty)
+        let removable = empties;
+        if (withAtt.length === 0 && empties.length > 0) {
+          // keep the oldest (first) empty, remove the rest
+          removable = empties.slice(1);
+        }
+        removable.forEach((w) => candidates.push({ id: w.id, name: w.name, role: w.role }));
+      }
+
+      setDupes(candidates);
+      if (candidates.length === 0) {
+        toast({ title: t("कोई डुप्लिकेट नहीं मिला ✅", "No duplicates found ✅") });
+      } else {
+        toast({
+          title: t(`${candidates.length} डुप्लिकेट मिले`, `Found ${candidates.length} duplicates`),
+          description: t("नीचे देखें और हटाएं", "Review below and delete"),
+        });
+      }
+    } catch (err: any) {
+      toast({ title: t("गलती", "Error"), description: err.message, variant: "destructive" });
+    } finally {
+      setDedupeScanning(false);
+    }
+  };
+
+  const deleteDuplicates = async () => {
+    if (dupes.length === 0) return;
+    setDedupeDeleting(true);
+    try {
+      const ids = dupes.map((d) => d.id);
+      const { error } = await supabase.from("workers").delete().in("id", ids);
+      if (error) throw error;
+      toast({ title: t(`✅ ${ids.length} डुप्लिकेट हटाए गए`, `✅ Deleted ${ids.length} duplicates`) });
+      setDupes([]);
+    } catch (err: any) {
+      toast({ title: t("गलती", "Error"), description: err.message, variant: "destructive" });
+    } finally {
+      setDedupeDeleting(false);
     }
   };
 
@@ -322,6 +424,88 @@ export default function SettingsPage() {
               "Test queuing & auto-sync without turning off Wi-Fi. Disabling will flush queued entries to the server."
             )}
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Duplicate workers cleanup */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+            {t("डुप्लिकेट वर्कर साफ करें", "Clean Duplicate Workers")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "एक ही नाम के कई वर्कर ढूंढता है और जिन पर एक भी हाजिरी नहीं है उन्हें हटाने की सुविधा देता है। हाजिरी वाले वर्कर सुरक्षित रहते हैं।",
+              "Finds workers with the same name and lets you remove the ones with no attendance. Workers with attendance are kept safe."
+            )}
+          </p>
+          <Button
+            onClick={scanDuplicates}
+            disabled={dedupeScanning || dedupeDeleting}
+            variant="outline"
+            className="w-full"
+            size="sm"
+          >
+            {dedupeScanning
+              ? t("स्कैन हो रहा है...", "Scanning...")
+              : t("डुप्लिकेट खोजें", "Scan for duplicates")}
+          </Button>
+
+          {dupes.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">
+                {t(`हटाने योग्य: ${dupes.length}`, `Removable: ${dupes.length}`)}
+              </p>
+              <div className="max-h-40 overflow-y-auto space-y-1 rounded-md border border-border p-2">
+                {dupes.map((d) => (
+                  <div key={d.id} className="text-xs flex items-center justify-between gap-2">
+                    <span className="truncate">{d.name}</span>
+                    <span className="text-muted-foreground shrink-0">{d.role}</span>
+                  </div>
+                ))}
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={dedupeDeleting}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {dedupeDeleting
+                      ? t("हट रहा है...", "Deleting...")
+                      : t(`${dupes.length} डुप्लिकेट हटाएं`, `Delete ${dupes.length} duplicates`)}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {t("क्या आप पक्के हैं?", "Are you sure?")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t(
+                        `${dupes.length} डुप्लिकेट वर्कर हट जाएंगे (इन पर कोई हाजिरी नहीं है)। यह वापस नहीं आएगा।`,
+                        `${dupes.length} duplicate workers will be removed (none have attendance). This cannot be undone.`
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("रद्द करें", "Cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteDuplicates}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t("हटाएं", "Delete")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </CardContent>
       </Card>
 
