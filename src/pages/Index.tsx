@@ -6,6 +6,8 @@ import AttendancePage from "@/components/AttendancePage";
 import AdvancePage from "@/components/AdvancePage";
 import WorkersPage from "@/components/WorkersPage";
 import BricksPage from "@/components/BricksPage";
+import ContractorsPage from "@/components/ContractorsPage";
+import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import BottomNav, { type TabId } from "@/components/BottomNav";
@@ -57,6 +59,8 @@ export default function Index() {
         {tab === "advance" && <AdvancePage />}
         {tab === "workers" && <WorkersPage />}
         {tab === "bricks" && <BricksPage />}
+        {tab === "contractors" && <ContractorsPage />}
+        {tab === "roof" && <RoofPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage />}
       </main>
