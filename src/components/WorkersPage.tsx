@@ -76,6 +76,11 @@ export default function WorkersPage() {
                   </div>
                     <div className="flex items-center gap-2">
                     <EditWorkerDialog worker={w} onUpdated={load} />
+                    {(w as any).upi_id && (
+                      <button onClick={() => setPayTarget(w)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="UPI से पेमेंट">
+                        <Smartphone className="w-4 h-4" />
+                      </button>
+                    )}
                     {w.phone && (
                       <a href={`tel:${w.phone}`} className="p-2 rounded-full bg-accent/10 text-accent">
                         <Phone className="w-4 h-4" />
