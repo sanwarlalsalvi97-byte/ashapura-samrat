@@ -12,8 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle } from "lucide-react";
+import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
+import UpiPayDialog from "./UpiPayDialog";
 import { toast } from "@/hooks/use-toast";
 
 interface FormState {
