@@ -82,6 +82,7 @@ export default function ContractorsPage() {
       notes: c.notes ?? "",
       status: c.status ?? "चालू",
       progress: String(c.progress ?? 0),
+      upi_id: c.upi_id ?? "",
     });
     setOpen(true);
   };
