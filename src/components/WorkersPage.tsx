@@ -28,6 +28,7 @@ const roleColors: Record<string, string> = {
 
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [payTarget, setPayTarget] = useState<Worker | null>(null);
 
   const load = async () => {
     try { setWorkers(await getWorkers()); } catch {}
