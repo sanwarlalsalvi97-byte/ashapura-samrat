@@ -103,6 +103,7 @@ export default function ContractorsPage() {
         notes: form.notes.trim() || null,
         status: form.status,
         progress: Math.max(0, Math.min(100, parseInt(form.progress) || 0)),
+        upi_id: form.upi_id.trim() || null,
       };
       if (editing) {
         await updateContractor(editing.id, payload);
