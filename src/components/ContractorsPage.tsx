@@ -45,6 +45,9 @@ export default function ContractorsPage() {
   const [payTarget, setPayTarget] = useState<Contractor | null>(null);
   const [payAmount, setPayAmount] = useState("");
 
+  // UPI dialog
+  const [upiTarget, setUpiTarget] = useState<Contractor | null>(null);
+
   const load = async () => {
     try { setList(await getContractors()); } catch (e: any) {
       toast({ title: "गलती", description: e.message, variant: "destructive" });
