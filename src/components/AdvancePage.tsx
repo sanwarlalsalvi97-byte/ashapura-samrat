@@ -171,6 +171,18 @@ export default function AdvancePage() {
                         <Check className="w-4 h-4" />
                         सेव
                       </Button>
+                      {(worker as any).upi_id && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setUpiTarget(worker)}
+                          title="UPI से भेजें"
+                          className="shrink-0"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -179,6 +191,15 @@ export default function AdvancePage() {
           })}
         </div>
       )}
+
+      <UpiPayDialog
+        open={!!upiTarget}
+        onOpenChange={(v) => !v && setUpiTarget(null)}
+        payeeName={upiTarget?.name || ""}
+        payeeVpa={(upiTarget as any)?.upi_id}
+        defaultAmount={upiTarget ? parseInt(rows[upiTarget.id]?.amount || "0") || undefined : undefined}
+        defaultNote={upiTarget ? `${upiTarget.name} - एडवांस ${formatDate(date)}` : ""}
+      />
     </div>
   );
 }
