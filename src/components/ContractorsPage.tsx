@@ -26,9 +26,10 @@ interface FormState {
   notes: string;
   status: string;
   progress: string;
+  upi_id: string;
 }
 
-const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0" };
+const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0", upi_id: "" };
 const STATUSES = ["चालू", "पूरा", "रुका"] as const;
 
 export default function ContractorsPage() {
