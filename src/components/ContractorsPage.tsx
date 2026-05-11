@@ -230,9 +230,14 @@ export default function ContractorsPage() {
                         {c.site_name && <p className="text-xs text-muted-foreground mt-0.5">📍 {c.site_name}</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openPay(c)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="पेमेंट">
+                        <button onClick={() => openPay(c)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="पेमेंट लॉग">
                           <Wallet className="w-4 h-4" />
                         </button>
+                        {c.upi_id && (
+                          <button onClick={() => setUpiTarget(c)} className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20" title="UPI से पेमेंट">
+                            <Smartphone className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => openEdit(c)} className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
                           <Pencil className="w-4 h-4" />
                         </button>
