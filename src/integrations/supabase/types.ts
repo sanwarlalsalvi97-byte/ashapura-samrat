@@ -114,6 +114,7 @@ export type Database = {
           site_name: string | null
           status: string
           updated_at: string
+          upi_id: string | null
           user_id: string
         }
         Insert: {
@@ -129,6 +130,7 @@ export type Database = {
           site_name?: string | null
           status?: string
           updated_at?: string
+          upi_id?: string | null
           user_id: string
         }
         Update: {
@@ -144,6 +146,7 @@ export type Database = {
           site_name?: string | null
           status?: string
           updated_at?: string
+          upi_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -159,6 +162,7 @@ export type Database = {
           role: Database["public"]["Enums"]["worker_role"]
           site_name: string | null
           updated_at: string
+          upi_id: string | null
           user_id: string
         }
         Insert: {
@@ -171,6 +175,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["worker_role"]
           site_name?: string | null
           updated_at?: string
+          upi_id?: string | null
           user_id: string
         }
         Update: {
@@ -183,6 +188,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["worker_role"]
           site_name?: string | null
           updated_at?: string
+          upi_id?: string | null
           user_id?: string
         }
         Relationships: []

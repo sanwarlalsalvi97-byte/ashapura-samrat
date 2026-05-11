@@ -3,7 +3,8 @@ import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
-import { Phone, Trash2 } from "lucide-react";
+import UpiPayDialog from "./UpiPayDialog";
+import { Phone, Trash2, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -27,6 +28,7 @@ const roleColors: Record<string, string> = {
 
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [payTarget, setPayTarget] = useState<Worker | null>(null);
 
   const load = async () => {
     try { setWorkers(await getWorkers()); } catch {}
@@ -74,6 +76,11 @@ export default function WorkersPage() {
                   </div>
                     <div className="flex items-center gap-2">
                     <EditWorkerDialog worker={w} onUpdated={load} />
+                    {(w as any).upi_id && (
+                      <button onClick={() => setPayTarget(w)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="UPI से पेमेंट">
+                        <Smartphone className="w-4 h-4" />
+                      </button>
+                    )}
                     {w.phone && (
                       <a href={`tel:${w.phone}`} className="p-2 rounded-full bg-accent/10 text-accent">
                         <Phone className="w-4 h-4" />
@@ -107,6 +114,14 @@ export default function WorkersPage() {
           ))}
         </div>
       )}
+
+      <UpiPayDialog
+        open={!!payTarget}
+        onOpenChange={(v) => !v && setPayTarget(null)}
+        payeeName={payTarget?.name || ""}
+        payeeVpa={(payTarget as any)?.upi_id}
+        defaultAmount={payTarget?.daily_rate}
+      />
     </div>
   );
 }

@@ -19,6 +19,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
   const [dailyRate, setDailyRate] = useState(String(worker.daily_rate));
   const [siteName, setSiteName] = useState(worker.site_name || "");
   const [phone, setPhone] = useState(worker.phone || "");
+  const [upiId, setUpiId] = useState((worker as any).upi_id || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,6 +33,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
         daily_rate: parseInt(dailyRate) || 500,
         site_name: siteName.trim() || null,
         phone: phone.trim() || null,
+        upi_id: upiId.trim() || null,
       });
       toast({ title: "✅ जानकारी अपडेट हो गई!" });
       setOpen(false);
@@ -68,6 +70,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
           <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
           <Input placeholder="साइट का नाम" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "अपडेट हो रहा है..." : "अपडेट करें"}
           </Button>

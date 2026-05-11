@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Wallet, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Wallet, Check, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import UpiPayDialog from "./UpiPayDialog";
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
@@ -31,6 +32,7 @@ export default function AdvancePage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [upiTarget, setUpiTarget] = useState<Worker | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -169,6 +171,18 @@ export default function AdvancePage() {
                         <Check className="w-4 h-4" />
                         सेव
                       </Button>
+                      {(worker as any).upi_id && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setUpiTarget(worker)}
+                          title="UPI से भेजें"
+                          className="shrink-0"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -177,6 +191,15 @@ export default function AdvancePage() {
           })}
         </div>
       )}
+
+      <UpiPayDialog
+        open={!!upiTarget}
+        onOpenChange={(v) => !v && setUpiTarget(null)}
+        payeeName={upiTarget?.name || ""}
+        payeeVpa={(upiTarget as any)?.upi_id}
+        defaultAmount={upiTarget ? parseInt(rows[upiTarget.id]?.amount || "0") || undefined : undefined}
+        defaultNote={upiTarget ? `${upiTarget.name} - एडवांस ${formatDate(date)}` : ""}
+      />
     </div>
   );
 }

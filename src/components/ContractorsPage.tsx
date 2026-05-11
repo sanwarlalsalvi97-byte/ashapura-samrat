@@ -12,8 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle } from "lucide-react";
+import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
+import UpiPayDialog from "./UpiPayDialog";
 import { toast } from "@/hooks/use-toast";
 
 interface FormState {
@@ -25,9 +26,10 @@ interface FormState {
   notes: string;
   status: string;
   progress: string;
+  upi_id: string;
 }
 
-const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0" };
+const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0", upi_id: "" };
 const STATUSES = ["चालू", "पूरा", "रुका"] as const;
 
 export default function ContractorsPage() {
@@ -42,6 +44,9 @@ export default function ContractorsPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Contractor | null>(null);
   const [payAmount, setPayAmount] = useState("");
+
+  // UPI dialog
+  const [upiTarget, setUpiTarget] = useState<Contractor | null>(null);
 
   const load = async () => {
     try { setList(await getContractors()); } catch (e: any) {
@@ -80,6 +85,7 @@ export default function ContractorsPage() {
       notes: c.notes ?? "",
       status: c.status ?? "चालू",
       progress: String(c.progress ?? 0),
+      upi_id: c.upi_id ?? "",
     });
     setOpen(true);
   };
@@ -100,6 +106,7 @@ export default function ContractorsPage() {
         notes: form.notes.trim() || null,
         status: form.status,
         progress: Math.max(0, Math.min(100, parseInt(form.progress) || 0)),
+        upi_id: form.upi_id.trim() || null,
       };
       if (editing) {
         await updateContractor(editing.id, payload);
@@ -223,9 +230,14 @@ export default function ContractorsPage() {
                         {c.site_name && <p className="text-xs text-muted-foreground mt-0.5">📍 {c.site_name}</p>}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => openPay(c)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="पेमेंट">
+                        <button onClick={() => openPay(c)} className="p-2 rounded-full bg-accent/10 text-accent hover:bg-accent/20" title="पेमेंट लॉग">
                           <Wallet className="w-4 h-4" />
                         </button>
+                        {c.upi_id && (
+                          <button onClick={() => setUpiTarget(c)} className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20" title="UPI से पेमेंट">
+                            <Smartphone className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => openEdit(c)} className="p-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -364,6 +376,10 @@ export default function ContractorsPage() {
               />
             </div>
             <div>
+              <Label>UPI ID (ऑनलाइन पेमेंट के लिए)</Label>
+              <Input value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} placeholder="जैसे 9876543210@upi" />
+            </div>
+            <div>
               <Label>नोट्स</Label>
               <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="कोई जानकारी..." />
             </div>
@@ -398,6 +414,15 @@ export default function ContractorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UpiPayDialog
+        open={!!upiTarget}
+        onOpenChange={(v) => !v && setUpiTarget(null)}
+        payeeName={upiTarget?.name || ""}
+        payeeVpa={(upiTarget as any)?.upi_id}
+        defaultAmount={upiTarget ? Math.max(0, upiTarget.contract_amount - upiTarget.advance_paid) : undefined}
+        defaultNote={upiTarget ? `${upiTarget.name} - ठेकेदार पेमेंट` : ""}
+      />
     </div>
   );
 }
