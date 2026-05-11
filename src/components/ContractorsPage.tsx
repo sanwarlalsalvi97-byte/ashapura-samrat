@@ -414,6 +414,15 @@ export default function ContractorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UpiPayDialog
+        open={!!upiTarget}
+        onOpenChange={(v) => !v && setUpiTarget(null)}
+        payeeName={upiTarget?.name || ""}
+        payeeVpa={(upiTarget as any)?.upi_id}
+        defaultAmount={upiTarget ? Math.max(0, upiTarget.contract_amount - upiTarget.advance_paid) : undefined}
+        defaultNote={upiTarget ? `${upiTarget.name} - ठेकेदार पेमेंट` : ""}
+      />
     </div>
   );
 }
