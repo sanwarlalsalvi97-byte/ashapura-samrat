@@ -3,7 +3,8 @@ import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
-import { Phone, Trash2 } from "lucide-react";
+import UpiPayDialog from "./UpiPayDialog";
+import { Phone, Trash2, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import {
