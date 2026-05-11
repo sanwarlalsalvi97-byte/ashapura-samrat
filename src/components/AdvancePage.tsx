@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Wallet, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Wallet, Check, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import UpiPayDialog from "./UpiPayDialog";
 
 function formatDate(d: Date) {
   return d.toISOString().split("T")[0];
