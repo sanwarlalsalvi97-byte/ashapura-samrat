@@ -32,6 +32,7 @@ export default function AdvancePage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [upiTarget, setUpiTarget] = useState<Worker | null>(null);
 
   const loadData = useCallback(async () => {
     try {
