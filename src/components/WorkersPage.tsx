@@ -114,6 +114,14 @@ export default function WorkersPage() {
           ))}
         </div>
       )}
+
+      <UpiPayDialog
+        open={!!payTarget}
+        onOpenChange={(v) => !v && setPayTarget(null)}
+        payeeName={payTarget?.name || ""}
+        payeeVpa={(payTarget as any)?.upi_id}
+        defaultAmount={payTarget?.daily_rate}
+      />
     </div>
   );
 }
