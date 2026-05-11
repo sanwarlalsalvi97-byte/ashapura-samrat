@@ -376,6 +376,10 @@ export default function ContractorsPage() {
               />
             </div>
             <div>
+              <Label>UPI ID (ऑनलाइन पेमेंट के लिए)</Label>
+              <Input value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} placeholder="जैसे 9876543210@upi" />
+            </div>
+            <div>
               <Label>नोट्स</Label>
               <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="कोई जानकारी..." />
             </div>
