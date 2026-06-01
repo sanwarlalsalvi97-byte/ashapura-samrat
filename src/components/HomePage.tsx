@@ -50,7 +50,7 @@ export default function HomePage({ onNavigate }: Props) {
         workers: w.count || 0,
         present: att.filter((x) => x.status === "Present").length,
         absent: att.filter((x) => x.status === "Absent").length,
-        half: att.filter((x) => x.status === "Half Day").length,
+        half: att.filter((x) => x.status === "Half-Day").length,
         income: cb.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0),
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
       });
