@@ -24,6 +24,7 @@ import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
 import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
+import RolesSection from "./RolesSection";
 
 export default function SettingsPage() {
   const [email, setEmail] = useState("");
@@ -245,6 +246,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold">{t("सेटिंग्स", "Settings")}</h2>
+
+      <RolesSection />
 
       {/* Profile */}
       <Card>
