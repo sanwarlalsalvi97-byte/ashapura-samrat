@@ -1,6 +1,6 @@
-import { CalendarCheck, Users, BarChart3, Settings, Wallet, Layers, HardHat, Home } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet, Layers, HardHat, Home, BookOpen } from "lucide-react";
 
-export type TabId = "attendance" | "advance" | "workers" | "contractors" | "bricks" | "roof" | "report" | "settings";
+export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" | "contractors" | "bricks" | "roof" | "report" | "settings";
 
 interface Props {
   active: TabId;
@@ -8,12 +8,14 @@ interface Props {
 }
 
 const tabs = [
+  { id: "home" as const, label: "होम", icon: Home },
   { id: "attendance" as const, label: "हाजिरी", icon: CalendarCheck },
   { id: "advance" as const, label: "एडवांस", icon: Wallet },
+  { id: "cashbook" as const, label: "हिसाब", icon: BookOpen },
   { id: "workers" as const, label: "मजदूर", icon: Users },
   { id: "contractors" as const, label: "ठेकेदार", icon: HardHat },
   { id: "bricks" as const, label: "ईंट", icon: Layers },
-  { id: "roof" as const, label: "छत", icon: Home },
+  { id: "roof" as const, label: "छत", icon: HardHat },
   { id: "report" as const, label: "रिपोर्ट", icon: BarChart3 },
   { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
 ];

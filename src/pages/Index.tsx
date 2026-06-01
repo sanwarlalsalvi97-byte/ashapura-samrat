@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import Auth from "./Auth";
+import HomePage from "@/components/HomePage";
 import AttendancePage from "@/components/AttendancePage";
 import AdvancePage from "@/components/AdvancePage";
+import CashbookPage from "@/components/CashbookPage";
 import WorkersPage from "@/components/WorkersPage";
 import BricksPage from "@/components/BricksPage";
 import ContractorsPage from "@/components/ContractorsPage";
@@ -18,7 +20,7 @@ import { useOfflineSync } from "@/hooks/use-offline-sync";
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabId>("attendance");
+  const [tab, setTab] = useState<TabId>("home");
   useAttendanceAlarm();
   useOfflineSync();
 
@@ -55,8 +57,10 @@ export default function Index() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4">
+        {tab === "home" && <HomePage onNavigate={setTab} />}
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
+        {tab === "cashbook" && <CashbookPage />}
         {tab === "workers" && <WorkersPage />}
         {tab === "bricks" && <BricksPage />}
         {tab === "contractors" && <ContractorsPage />}
