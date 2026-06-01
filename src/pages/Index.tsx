@@ -57,8 +57,10 @@ export default function Index() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4">
+        {tab === "home" && <HomePage onNavigate={setTab} />}
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
+        {tab === "cashbook" && <CashbookPage />}
         {tab === "workers" && <WorkersPage />}
         {tab === "bricks" && <BricksPage />}
         {tab === "contractors" && <ContractorsPage />}
