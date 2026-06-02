@@ -11,11 +11,7 @@ const tabs = [
   { id: "home" as const, label: "होम", icon: Home },
   { id: "attendance" as const, label: "हाजिरी", icon: CalendarCheck },
   { id: "advance" as const, label: "एडवांस", icon: Wallet },
-  { id: "cashbook" as const, label: "हिसाब", icon: BookOpen },
   { id: "workers" as const, label: "मजदूर", icon: Users },
-  { id: "contractors" as const, label: "ठेकेदार", icon: HardHat },
-  { id: "bricks" as const, label: "ईंट", icon: Layers },
-  { id: "roof" as const, label: "छत", icon: HardHat },
   { id: "report" as const, label: "रिपोर्ट", icon: BarChart3 },
   { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
 ];
@@ -28,7 +24,7 @@ export default function BottomNav({ active, onNavigate }: Props) {
           <button
             key={id}
             onClick={() => onNavigate(id)}
-            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors shrink-0 min-w-[52px] ${
+            className={`flex flex-1 flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors shrink-0 min-w-[52px] ${
               active === id
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
