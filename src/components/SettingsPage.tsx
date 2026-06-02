@@ -256,6 +256,62 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
       <RolesSection />
 
+      {/* Theme */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            {theme === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            {t("थीम", "Theme")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{t("डार्क मोड", "Dark mode")}</span>
+            <Switch
+              checked={theme === "dark"}
+              onCheckedChange={(c) => {
+                const next: Theme = c ? "dark" : "light";
+                setThemeState(next);
+                persistTheme(next);
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("आपकी पसंद याद रखी जाएगी", "Your choice is remembered")}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Tools / Modules */}
+      {onNavigate && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">{t("टूल्स", "Tools")}</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-border">
+            {[
+              { id: "contractors" as TabId, hi: "ठेकेदार / अनुबंध", en: "Contractor / Agreement", icon: HardHat },
+              { id: "cashbook" as TabId, hi: "हिसाब (आय/खर्च)", en: "Cashbook", icon: BookOpen },
+              { id: "bricks" as TabId, hi: "ईंट गणना", en: "Brick calculator", icon: Layers },
+              { id: "roof" as TabId, hi: "छत / RCC गणना", en: "Roof / RCC calculator", icon: HardHat },
+            ].map(({ id, hi, en, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => onNavigate(id)}
+                className="w-full flex items-center gap-3 py-3 text-left hover:bg-muted/40 rounded-md px-1 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className="text-sm flex-1">{t(hi, en)}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* Profile */}
       <Card>
         <CardHeader className="pb-3">
