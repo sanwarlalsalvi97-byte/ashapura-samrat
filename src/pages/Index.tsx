@@ -66,7 +66,7 @@ export default function Index() {
         {tab === "contractors" && <ContractorsPage />}
         {tab === "roof" && <RoofPage />}
         {tab === "report" && <ReportPage />}
-        {tab === "settings" && <SettingsPage />}
+        {tab === "settings" && <SettingsPage onNavigate={setTab} />}
       </main>
 
       <BottomNav active={tab} onNavigate={setTab} />
