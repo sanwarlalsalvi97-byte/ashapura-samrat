@@ -68,6 +68,7 @@ export default function Index() {
         {tab === "roof" && <RoofPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage onNavigate={setTab} />}
+        {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
       <BottomNav active={tab} onNavigate={setTab} />
