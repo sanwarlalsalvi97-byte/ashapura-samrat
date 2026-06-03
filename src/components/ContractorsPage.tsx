@@ -62,8 +62,14 @@ export default function ContractorsPage() {
   // UPI dialog
   const [upiTarget, setUpiTarget] = useState<Contractor | null>(null);
 
+  const [workersList, setWorkersList] = useState<Worker[]>([]);
+
   const load = async () => {
-    try { setList(await getContractors()); } catch (e: any) {
+    try {
+      const [c, w] = await Promise.all([getContractors(), getWorkers()]);
+      setList(c);
+      setWorkersList(w);
+    } catch (e: any) {
       toast({ title: "गलती", description: e.message, variant: "destructive" });
     }
   };
