@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getContractors, addContractor, deleteContractor, updateContractor, type Contractor } from "@/lib/supabase-helpers";
+import { getContractors, addContractor, deleteContractor, updateContractor, getWorkers, type Contractor, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
