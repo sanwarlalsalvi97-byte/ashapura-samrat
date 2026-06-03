@@ -43,6 +43,8 @@ export default function AttendancePage() {
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
+  const [view, setView] = useState<"list" | "calendar">("list");
+  const [search, setSearch] = useState("");
 
   const loadData = useCallback(async () => {
     try {
