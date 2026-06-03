@@ -20,17 +20,31 @@ import { toast } from "@/hooks/use-toast";
 interface FormState {
   name: string;
   phone: string;
+  address: string;
   site_name: string;
+  work_type: string;
+  start_date: string;
+  end_date: string;
   contract_amount: string;
   advance_paid: string;
+  payment_mode: string;
+  assigned_workers: string[];
   notes: string;
   status: string;
   progress: string;
   upi_id: string;
 }
 
-const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0", upi_id: "" };
+const empty: FormState = {
+  name: "", phone: "", address: "", site_name: "", work_type: "लेबर",
+  start_date: "", end_date: "",
+  contract_amount: "", advance_paid: "",
+  payment_mode: "नकद", assigned_workers: [],
+  notes: "", status: "चालू", progress: "0", upi_id: "",
+};
 const STATUSES = ["चालू", "पूरा", "रुका"] as const;
+const WORK_TYPES = ["लेबर", "मटेरियल", "कुल कॉन्ट्रैक्ट"] as const;
+const PAYMENT_MODES = ["नकद", "UPI", "बैंक"] as const;
 
 export default function ContractorsPage() {
   const [list, setList] = useState<Contractor[]>([]);
