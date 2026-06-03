@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getContractors, addContractor, deleteContractor, updateContractor, type Contractor } from "@/lib/supabase-helpers";
+import { getContractors, addContractor, deleteContractor, updateContractor, getWorkers, type Contractor, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,17 +20,31 @@ import { toast } from "@/hooks/use-toast";
 interface FormState {
   name: string;
   phone: string;
+  address: string;
   site_name: string;
+  work_type: string;
+  start_date: string;
+  end_date: string;
   contract_amount: string;
   advance_paid: string;
+  payment_mode: string;
+  assigned_workers: string[];
   notes: string;
   status: string;
   progress: string;
   upi_id: string;
 }
 
-const empty: FormState = { name: "", phone: "", site_name: "", contract_amount: "", advance_paid: "", notes: "", status: "चालू", progress: "0", upi_id: "" };
+const empty: FormState = {
+  name: "", phone: "", address: "", site_name: "", work_type: "लेबर",
+  start_date: "", end_date: "",
+  contract_amount: "", advance_paid: "",
+  payment_mode: "नकद", assigned_workers: [],
+  notes: "", status: "चालू", progress: "0", upi_id: "",
+};
 const STATUSES = ["चालू", "पूरा", "रुका"] as const;
+const WORK_TYPES = ["लेबर", "मटेरियल", "कुल कॉन्ट्रैक्ट"] as const;
+const PAYMENT_MODES = ["नकद", "UPI", "बैंक"] as const;
 
 export default function ContractorsPage() {
   const [list, setList] = useState<Contractor[]>([]);
@@ -48,8 +62,14 @@ export default function ContractorsPage() {
   // UPI dialog
   const [upiTarget, setUpiTarget] = useState<Contractor | null>(null);
 
+  const [workersList, setWorkersList] = useState<Worker[]>([]);
+
   const load = async () => {
-    try { setList(await getContractors()); } catch (e: any) {
+    try {
+      const [c, w] = await Promise.all([getContractors(), getWorkers()]);
+      setList(c);
+      setWorkersList(w);
+    } catch (e: any) {
       toast({ title: "गलती", description: e.message, variant: "destructive" });
     }
   };
@@ -79,9 +99,15 @@ export default function ContractorsPage() {
     setForm({
       name: c.name,
       phone: c.phone ?? "",
+      address: c.address ?? "",
       site_name: c.site_name ?? "",
+      work_type: c.work_type ?? "लेबर",
+      start_date: c.start_date ?? "",
+      end_date: c.end_date ?? "",
       contract_amount: String(c.contract_amount),
       advance_paid: String(c.advance_paid),
+      payment_mode: c.payment_mode ?? "नकद",
+      assigned_workers: Array.isArray(c.assigned_workers) ? c.assigned_workers : [],
       notes: c.notes ?? "",
       status: c.status ?? "चालू",
       progress: String(c.progress ?? 0),
@@ -100,9 +126,15 @@ export default function ContractorsPage() {
       const payload: any = {
         name: form.name.trim(),
         phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
         site_name: form.site_name.trim() || null,
+        work_type: form.work_type || null,
+        start_date: form.start_date || null,
+        end_date: form.end_date || null,
         contract_amount: parseInt(form.contract_amount) || 0,
         advance_paid: parseInt(form.advance_paid) || 0,
+        payment_mode: form.payment_mode || null,
+        assigned_workers: form.assigned_workers,
         notes: form.notes.trim() || null,
         status: form.status,
         progress: Math.max(0, Math.min(100, parseInt(form.progress) || 0)),
@@ -330,58 +362,147 @@ export default function ContractorsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "ठेकेदार बदलें" : "नया ठेकेदार"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>नाम *</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="ठेकेदार का नाम" />
-            </div>
-            <div>
-              <Label>फ़ोन</Label>
-              <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" />
-            </div>
-            <div>
-              <Label>साइट</Label>
-              <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="साइट का नाम" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4">
+            {/* ठेकेदार विवरण */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-primary uppercase tracking-wide">ठेकेदार विवरण</div>
               <div>
-                <Label>कुल राशि (₹)</Label>
-                <Input type="number" inputMode="numeric" value={form.contract_amount} onChange={(e) => setForm({ ...form, contract_amount: e.target.value })} placeholder="0" />
+                <Label>ठेकेदार का नाम *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="जैसे श्याम कंस्ट्रक्शन" />
               </div>
               <div>
-                <Label>दी गई (₹)</Label>
-                <Input type="number" inputMode="numeric" value={form.advance_paid} onChange={(e) => setForm({ ...form, advance_paid: e.target.value })} placeholder="0" />
+                <Label>मोबाइल नंबर</Label>
+                <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" />
+              </div>
+              <div>
+                <Label>पता</Label>
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="शहर, राज्य" />
               </div>
             </div>
-            <div>
-              <Label>स्टेटस</Label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                {STATUSES.map((s) => (
-                  <Button key={s} type="button" size="sm" variant={form.status === s ? "default" : "outline"} onClick={() => setForm({ ...form, status: s })}>
-                    {s}
-                  </Button>
-                ))}
+
+            {/* प्रोजेक्ट विवरण */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="text-xs font-bold text-primary uppercase tracking-wide">प्रोजेक्ट विवरण</div>
+              <div>
+                <Label>प्रोजेक्ट / साइट का नाम *</Label>
+                <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="जैसे शर्मा रेजिडेंसी" />
+              </div>
+              <div>
+                <Label>काम का प्रकार</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {WORK_TYPES.map((s) => (
+                    <Button key={s} type="button" size="sm" variant={form.work_type === s ? "default" : "outline"} onClick={() => setForm({ ...form, work_type: s })}>
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>शुरू तारीख</Label>
+                  <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label>समाप्ति तारीख</Label>
+                  <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+                </div>
               </div>
             </div>
-            <div>
-              <Label>प्रोग्रेस: {form.progress}%</Label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={form.progress}
-                onChange={(e) => setForm({ ...form, progress: e.target.value })}
-                className="w-full mt-2"
-              />
+
+            {/* राशि विवरण */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="text-xs font-bold text-primary uppercase tracking-wide">राशि विवरण</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>कुल अनुबंध राशि (₹) *</Label>
+                  <Input type="number" inputMode="numeric" value={form.contract_amount} onChange={(e) => setForm({ ...form, contract_amount: e.target.value })} placeholder="500000" />
+                </div>
+                <div>
+                  <Label>एडवांस भुगतान (₹)</Label>
+                  <Input type="number" inputMode="numeric" value={form.advance_paid} onChange={(e) => setForm({ ...form, advance_paid: e.target.value })} placeholder="100000" />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2 flex justify-between">
+                <span>शेष राशि</span>
+                <span className="font-bold text-destructive">
+                  ₹{Math.max(0, (parseInt(form.contract_amount) || 0) - (parseInt(form.advance_paid) || 0)).toLocaleString()}
+                </span>
+              </div>
+              <div>
+                <Label>भुगतान माध्यम</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {PAYMENT_MODES.map((s) => (
+                    <Button key={s} type="button" size="sm" variant={form.payment_mode === s ? "default" : "outline"} onClick={() => setForm({ ...form, payment_mode: s })}>
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {form.payment_mode === "UPI" && (
+                <div>
+                  <Label>UPI ID</Label>
+                  <Input value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} placeholder="9876543210@upi" />
+                </div>
+              )}
             </div>
-            <div>
-              <Label>UPI ID (ऑनलाइन पेमेंट के लिए)</Label>
-              <Input value={form.upi_id} onChange={(e) => setForm({ ...form, upi_id: e.target.value })} placeholder="जैसे 9876543210@upi" />
+
+            {/* मजदूर असाइनमेंट */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="text-xs font-bold text-primary uppercase tracking-wide">मजदूर असाइनमेंट</div>
+              {workersList.length === 0 ? (
+                <p className="text-xs text-muted-foreground">पहले मजदूर जोड़ें</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-lg border border-border bg-muted/40">
+                  {workersList.map((w) => {
+                    const on = form.assigned_workers.includes(w.id);
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => setForm({
+                          ...form,
+                          assigned_workers: on
+                            ? form.assigned_workers.filter((id) => id !== w.id)
+                            : [...form.assigned_workers, w.id],
+                        })}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                          on ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"
+                        }`}
+                      >
+                        {w.name} {on && "×"}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">{form.assigned_workers.length} मजदूर चुने गए</p>
             </div>
-            <div>
-              <Label>नोट्स</Label>
-              <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="कोई जानकारी..." />
+
+            {/* स्टेटस / प्रोग्रेस / नोट्स */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div>
+                <Label>स्टेटस</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {STATUSES.map((s) => (
+                    <Button key={s} type="button" size="sm" variant={form.status === s ? "default" : "outline"} onClick={() => setForm({ ...form, status: s })}>
+                      {s}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>प्रोग्रेस: {form.progress}%</Label>
+                <input
+                  type="range" min="0" max="100" step="5"
+                  value={form.progress}
+                  onChange={(e) => setForm({ ...form, progress: e.target.value })}
+                  className="w-full mt-2"
+                />
+              </div>
+              <div>
+                <Label>नोट्स</Label>
+                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="साइट पर सभी प्रकार का मटेरियल ठेकेदार देगा।" />
+              </div>
             </div>
           </div>
           <DialogFooter>

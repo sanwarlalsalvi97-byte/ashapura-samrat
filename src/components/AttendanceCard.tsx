@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
-import { Check, X, Clock } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Props {
@@ -14,74 +12,55 @@ interface Props {
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
 }
 
-const statusConfig: Record<AttendanceStatus, { label: string; icon: typeof Check; className: string }> = {
-  Present: { label: "हाजिर", icon: Check, className: "bg-success text-success-foreground" },
-  "Half-Day": { label: "आधा दिन", icon: Clock, className: "bg-warning text-warning-foreground" },
-  Absent: { label: "गैरहाजिर", icon: X, className: "bg-destructive text-destructive-foreground" },
+const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
+const PILL: Record<string, { label: string; bg: string }> = {
+  Present: { label: "P", bg: "bg-emerald-500" },
+  Absent: { label: "A", bg: "bg-rose-500" },
+  "Half-Day": { label: "HD", bg: "bg-amber-500" },
 };
 
-const roleColors: Record<string, string> = {
-  "मिस्त्री": "bg-primary/15 text-primary",
-  "मजदूर": "bg-accent/15 text-accent",
-  "हेल्पर": "bg-muted text-muted-foreground",
-};
+function initials(name: string) {
+  return name.trim().slice(0, 1).toUpperCase() || "?";
+}
 
-export default function AttendanceCard({ worker, currentStatus, currentAdvance, onSelectionChange }: Props) {
-  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | undefined>(currentStatus);
+export default function AttendanceCard({ worker, currentStatus, onSelectionChange }: Props) {
+  const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
 
-  const pickStatus = (s: AttendanceStatus) => {
-    setSelectedStatus(s);
-    onSelectionChange?.(worker.id, s);
+  const cycle = () => {
+    const cur = sel || currentStatus;
+    const idx = cur ? ORDER.indexOf(cur) : -1;
+    const next = ORDER[(idx + 1) % ORDER.length];
+    setSel(next);
+    onSelectionChange?.(worker.id, next);
   };
 
+  const shown = sel || currentStatus;
+  const pill = shown ? PILL[shown] : null;
+
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <Card className={`overflow-hidden ${currentStatus ? "ring-2 ring-primary/20" : ""}`}>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-base">{worker.name}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[worker.role] || ""}`}>
-                  {worker.role}
-                </span>
-                <span className="text-xs text-muted-foreground">₹{worker.daily_rate}/दिन</span>
-              </div>
-            </div>
-            {currentStatus && (
-              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusConfig[currentStatus].className}`}>
-                {statusConfig[currentStatus].label}
-              </span>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            {(Object.keys(statusConfig) as AttendanceStatus[]).map((status) => {
-              const config = statusConfig[status];
-              const Icon = config.icon;
-              const isActive = selectedStatus === status;
-              return (
-                <Button
-                  key={status}
-                  size="sm"
-                  variant={isActive ? "default" : "outline"}
-                  className={`flex-1 gap-1 text-xs ${isActive ? config.className : ""}`}
-                  onClick={() => pickStatus(status)}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {config.label}
-                </Button>
-              );
-            })}
-          </div>
-
-          {(currentAdvance || 0) > 0 && (
-            <p className="text-xs text-muted-foreground text-center">
-              एडवांस: ₹{currentAdvance}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-card border border-border/60 shadow-sm"
+    >
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-orange-400 dark:from-orange-700 dark:to-orange-900 grid place-items-center text-white text-sm font-bold shrink-0">
+        {initials(worker.name)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm truncate">{worker.name}</div>
+        <div className="text-[11px] text-muted-foreground truncate">{worker.role}</div>
+      </div>
+      <button
+        onClick={cycle}
+        className={`w-14 h-9 rounded-lg text-white text-sm font-bold grid place-items-center shadow active:scale-95 transition ${
+          pill ? pill.bg : "bg-muted text-muted-foreground"
+        }`}
+        aria-label="Toggle status"
+      >
+        {pill ? pill.label : "—"}
+      </button>
+      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
     </motion.div>
   );
 }

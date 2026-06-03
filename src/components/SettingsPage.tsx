@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import type { TabId } from "./BottomNav";
 import {
@@ -290,6 +290,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           </CardHeader>
           <CardContent className="divide-y divide-border">
             {[
+              { id: "subscription" as TabId, hi: "Subscription / प्लान", en: "Subscription / Plans", icon: Crown },
               { id: "contractors" as TabId, hi: "ठेकेदार / अनुबंध", en: "Contractor / Agreement", icon: HardHat },
               { id: "cashbook" as TabId, hi: "हिसाब (आय/खर्च)", en: "Cashbook", icon: BookOpen },
               { id: "bricks" as TabId, hi: "ईंट गणना", en: "Brick calculator", icon: Layers },

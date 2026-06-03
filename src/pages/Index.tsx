@@ -12,6 +12,7 @@ import ContractorsPage from "@/components/ContractorsPage";
 import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
+import SubscriptionPage from "@/components/SubscriptionPage";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
@@ -67,6 +68,7 @@ export default function Index() {
         {tab === "roof" && <RoofPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage onNavigate={setTab} />}
+        {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
       <BottomNav active={tab} onNavigate={setTab} />

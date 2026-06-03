@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import AttendanceCard from "./AttendanceCard";
+import AttendanceCalendarView from "./AttendanceCalendarView";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText, List, CalendarDays, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
@@ -41,6 +43,8 @@ export default function AttendancePage() {
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
+  const [view, setView] = useState<"list" | "calendar">("list");
+  const [search, setSearch] = useState("");
 
   const loadData = useCallback(async () => {
     try {
@@ -186,6 +190,27 @@ export default function AttendancePage() {
   const workTime = useMemo(() => getWorkTime(), []);
   const { online, pending } = useOfflineSync();
 
+  const filteredWorkers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workers;
+    return workers.filter((w) => w.name.toLowerCase().includes(q) || (w.role || "").toLowerCase().includes(q));
+  }, [workers, search]);
+
+  const totals = useMemo(() => {
+    const merged: Record<string, AttendanceStatus> = {};
+    workers.forEach((w) => {
+      const s = selections[w.id] ?? attendance[w.id]?.status;
+      if (s) merged[w.id] = s;
+    });
+    const vals = Object.values(merged);
+    return {
+      P: vals.filter((s) => s === "Present").length,
+      A: vals.filter((s) => s === "Absent").length,
+      H: vals.filter((s) => s === "Half-Day").length,
+      total: workers.length,
+    };
+  }, [workers, attendance, selections]);
+
   return (
     <div className="space-y-4">
       {(!online || pending > 0) && (
@@ -257,59 +282,118 @@ export default function AttendancePage() {
         </Button>
       </div>
 
-      {workers.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full gap-2">
-              <FileDown className="w-4 h-4" />
-              आज की हाजिरी एक्सपोर्ट करें
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => exportToday("csv")}>
-              <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportToday("pdf")}>
-              <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      {/* View toggle: List / Calendar */}
+      <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+        <button
+          onClick={() => setView("list")}
+          className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+            view === "list" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          <List className="w-4 h-4" /> लिस्ट
+        </button>
+        <button
+          onClick={() => setView("calendar")}
+          className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+            view === "calendar" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          <CalendarDays className="w-4 h-4" /> कैलेंडर
+        </button>
+      </div>
 
-      {workers.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg font-medium">कोई मजदूर नहीं</p>
-          <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
-        </div>
+      {view === "calendar" ? (
+        <AttendanceCalendarView />
       ) : (
         <>
-          <div className="space-y-3 pb-20">
-            {workers.map((w) => (
-              <AttendanceCard
-                key={w.id}
-                worker={w}
-                date={formatDate(date)}
-                currentStatus={attendance[w.id]?.status}
-                currentAdvance={attendance[w.id]?.advance}
-                onMarked={loadData}
-                onSelectionChange={handleSelectionChange}
-              />
-            ))}
-          </div>
-          {Object.keys(selections).length > 0 && (
-            <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
-              <Button
-                className="w-full shadow-lg"
-                size="lg"
-                onClick={saveAll}
-                disabled={savingAll}
-              >
-                <Check className="w-5 h-5" />
-                {savingAll
-                  ? "सेव हो रहा है..."
-                  : `सब की हाजिरी सेव करें (${Object.keys(selections).length})`}
-              </Button>
+          {workers.length > 0 && (
+            <>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="मजदूर खोजें..."
+                  className="pl-9 rounded-xl"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full gap-2">
+                    <FileDown className="w-4 h-4" />
+                    आज की हाजिरी एक्सपोर्ट करें
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => exportToday("csv")}>
+                    <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportToday("pdf")}>
+                    <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          {workers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg font-medium">कोई मजदूर नहीं</p>
+              <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
             </div>
+          ) : (
+            <>
+              <div className="space-y-2 pb-44">
+                {filteredWorkers.map((w) => (
+                  <AttendanceCard
+                    key={w.id}
+                    worker={w}
+                    date={formatDate(date)}
+                    currentStatus={attendance[w.id]?.status}
+                    currentAdvance={attendance[w.id]?.advance}
+                    onMarked={loadData}
+                    onSelectionChange={handleSelectionChange}
+                  />
+                ))}
+              </div>
+
+              {/* Totals strip + Save button (sticky bottom) */}
+              <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
+                <div className="max-w-lg mx-auto space-y-2">
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-emerald-600">P</div>
+                      <div className="text-base font-extrabold text-emerald-600 leading-none">{totals.P}</div>
+                    </div>
+                    <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-rose-600">A</div>
+                      <div className="text-base font-extrabold text-rose-600 leading-none">{totals.A}</div>
+                    </div>
+                    <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-amber-600">HD</div>
+                      <div className="text-base font-extrabold text-amber-600 leading-none">{totals.H}</div>
+                    </div>
+                    <div className="rounded-xl bg-muted border border-border p-2 text-center">
+                      <div className="text-[10px] font-semibold text-muted-foreground">कुल</div>
+                      <div className="text-base font-extrabold leading-none">{totals.total}</div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full shadow-lg"
+                    size="lg"
+                    onClick={saveAll}
+                    disabled={savingAll || Object.keys(selections).length === 0}
+                  >
+                    <Check className="w-5 h-5" />
+                    {savingAll
+                      ? "सेव हो रहा है..."
+                      : Object.keys(selections).length > 0
+                        ? `हाजिरी सेव करें (${Object.keys(selections).length})`
+                        : "हाजिरी सेव करें"}
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}

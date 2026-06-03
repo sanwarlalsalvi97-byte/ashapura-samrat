@@ -141,52 +141,70 @@ export type Database = {
       }
       contractors: {
         Row: {
+          address: string | null
           advance_paid: number
+          assigned_workers: string[] | null
           contract_amount: number
           created_at: string
+          end_date: string | null
           id: string
           is_active: boolean
           name: string
           notes: string | null
+          payment_mode: string | null
           phone: string | null
           progress: number
           site_name: string | null
+          start_date: string | null
           status: string
           updated_at: string
           upi_id: string | null
           user_id: string
+          work_type: string | null
         }
         Insert: {
+          address?: string | null
           advance_paid?: number
+          assigned_workers?: string[] | null
           contract_amount?: number
           created_at?: string
+          end_date?: string | null
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
+          payment_mode?: string | null
           phone?: string | null
           progress?: number
           site_name?: string | null
+          start_date?: string | null
           status?: string
           updated_at?: string
           upi_id?: string | null
           user_id: string
+          work_type?: string | null
         }
         Update: {
+          address?: string | null
           advance_paid?: number
+          assigned_workers?: string[] | null
           contract_amount?: number
           created_at?: string
+          end_date?: string | null
           id?: string
           is_active?: boolean
           name?: string
           notes?: string | null
+          payment_mode?: string | null
           phone?: string | null
           progress?: number
           site_name?: string | null
+          start_date?: string | null
           status?: string
           updated_at?: string
           upi_id?: string | null
           user_id?: string
+          work_type?: string | null
         }
         Relationships: []
       }
