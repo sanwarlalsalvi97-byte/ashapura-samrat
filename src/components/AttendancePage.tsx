@@ -282,24 +282,59 @@ export default function AttendancePage() {
         </Button>
       </div>
 
-      {workers.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full gap-2">
-              <FileDown className="w-4 h-4" />
-              आज की हाजिरी एक्सपोर्ट करें
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => exportToday("csv")}>
-              <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportToday("pdf")}>
-              <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      {/* View toggle: List / Calendar */}
+      <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+        <button
+          onClick={() => setView("list")}
+          className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+            view === "list" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          <List className="w-4 h-4" /> लिस्ट
+        </button>
+        <button
+          onClick={() => setView("calendar")}
+          className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+            view === "calendar" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          <CalendarDays className="w-4 h-4" /> कैलेंडर
+        </button>
+      </div>
+
+      {view === "calendar" ? (
+        <AttendanceCalendarView />
+      ) : (
+        <>
+          {workers.length > 0 && (
+            <>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="मजदूर खोजें..."
+                  className="pl-9 rounded-xl"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full gap-2">
+                    <FileDown className="w-4 h-4" />
+                    आज की हाजिरी एक्सपोर्ट करें
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => exportToday("csv")}>
+                    <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportToday("pdf")}>
+                    <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
 
       {workers.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
