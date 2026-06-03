@@ -336,40 +336,64 @@ export default function AttendancePage() {
             </>
           )}
 
-      {workers.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg font-medium">कोई मजदूर नहीं</p>
-          <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-3 pb-20">
-            {workers.map((w) => (
-              <AttendanceCard
-                key={w.id}
-                worker={w}
-                date={formatDate(date)}
-                currentStatus={attendance[w.id]?.status}
-                currentAdvance={attendance[w.id]?.advance}
-                onMarked={loadData}
-                onSelectionChange={handleSelectionChange}
-              />
-            ))}
-          </div>
-          {Object.keys(selections).length > 0 && (
-            <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
-              <Button
-                className="w-full shadow-lg"
-                size="lg"
-                onClick={saveAll}
-                disabled={savingAll}
-              >
-                <Check className="w-5 h-5" />
-                {savingAll
-                  ? "सेव हो रहा है..."
-                  : `सब की हाजिरी सेव करें (${Object.keys(selections).length})`}
-              </Button>
+          {workers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg font-medium">कोई मजदूर नहीं</p>
+              <p className="text-sm mt-1">पहले "मजदूर" टैब में मजदूर जोड़ें</p>
             </div>
+          ) : (
+            <>
+              <div className="space-y-2 pb-44">
+                {filteredWorkers.map((w) => (
+                  <AttendanceCard
+                    key={w.id}
+                    worker={w}
+                    date={formatDate(date)}
+                    currentStatus={attendance[w.id]?.status}
+                    currentAdvance={attendance[w.id]?.advance}
+                    onMarked={loadData}
+                    onSelectionChange={handleSelectionChange}
+                  />
+                ))}
+              </div>
+
+              {/* Totals strip + Save button (sticky bottom) */}
+              <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
+                <div className="max-w-lg mx-auto space-y-2">
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-emerald-600">P</div>
+                      <div className="text-base font-extrabold text-emerald-600 leading-none">{totals.P}</div>
+                    </div>
+                    <div className="rounded-xl bg-rose-500/10 border border-rose-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-rose-600">A</div>
+                      <div className="text-base font-extrabold text-rose-600 leading-none">{totals.A}</div>
+                    </div>
+                    <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-2 text-center">
+                      <div className="text-[10px] font-semibold text-amber-600">HD</div>
+                      <div className="text-base font-extrabold text-amber-600 leading-none">{totals.H}</div>
+                    </div>
+                    <div className="rounded-xl bg-muted border border-border p-2 text-center">
+                      <div className="text-[10px] font-semibold text-muted-foreground">कुल</div>
+                      <div className="text-base font-extrabold leading-none">{totals.total}</div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full shadow-lg"
+                    size="lg"
+                    onClick={saveAll}
+                    disabled={savingAll || Object.keys(selections).length === 0}
+                  >
+                    <Check className="w-5 h-5" />
+                    {savingAll
+                      ? "सेव हो रहा है..."
+                      : Object.keys(selections).length > 0
+                        ? `हाजिरी सेव करें (${Object.keys(selections).length})`
+                        : "हाजिरी सेव करें"}
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}
