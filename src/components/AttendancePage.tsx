@@ -190,6 +190,27 @@ export default function AttendancePage() {
   const workTime = useMemo(() => getWorkTime(), []);
   const { online, pending } = useOfflineSync();
 
+  const filteredWorkers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workers;
+    return workers.filter((w) => w.name.toLowerCase().includes(q) || (w.role || "").toLowerCase().includes(q));
+  }, [workers, search]);
+
+  const totals = useMemo(() => {
+    const merged: Record<string, AttendanceStatus> = {};
+    workers.forEach((w) => {
+      const s = selections[w.id] ?? attendance[w.id]?.status;
+      if (s) merged[w.id] = s;
+    });
+    const vals = Object.values(merged);
+    return {
+      P: vals.filter((s) => s === "Present").length,
+      A: vals.filter((s) => s === "Absent").length,
+      H: vals.filter((s) => s === "Half-Day").length,
+      total: workers.length,
+    };
+  }, [workers, attendance, selections]);
+
   return (
     <div className="space-y-4">
       {(!online || pending > 0) && (
