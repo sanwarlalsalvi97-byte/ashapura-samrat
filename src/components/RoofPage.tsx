@@ -12,18 +12,29 @@ export default function RoofPage() {
   const [width, setWidth] = useState("");
   const [thickness, setThickness] = useState("5");
   const [ratio, setRatio] = useState("1:1.5:3");
+  const [customMode, setCustomMode] = useState(false);
+  const [customC, setCustomC] = useState("1");
+  const [customS, setCustomS] = useState("2");
+  const [customA, setCustomA] = useState("4");
   const [wastage, setWastage] = useState("5");
   const [steel, setSteel] = useState("3.5");
+
+  const effectiveRatio = useMemo(() => {
+    if (!customMode) return ratio;
+    const c = parseFloat(customC), s = parseFloat(customS), a = parseFloat(customA);
+    if (!c || !s || !a) return ratio;
+    return `${c}:${s}:${a}`;
+  }, [customMode, customC, customS, customA, ratio]);
 
   const result = useMemo(() => calcRcc({
     length: parseFloat(length),
     width: parseFloat(width),
     thicknessIn: parseFloat(thickness),
     unit,
-    ratio,
+    ratio: effectiveRatio,
     wastagePct: parseFloat(wastage) || 0,
     steelKgPerCft: parseFloat(steel) || 0,
-  }), [length, width, thickness, unit, ratio, wastage, steel]);
+  }), [length, width, thickness, unit, effectiveRatio, wastage, steel]);
 
   return (
     <div className="space-y-4">
@@ -61,13 +72,35 @@ export default function RoofPage() {
 
           <div>
             <Label>कंक्रीट ग्रेड</Label>
-            <div className="grid grid-cols-3 gap-2 mt-1">
+            <div className="grid grid-cols-4 gap-2 mt-1">
               {RCC_RATIOS.map((r) => (
-                <Button key={r.v} size="sm" variant={ratio === r.v ? "default" : "outline"} onClick={() => setRatio(r.v)} className="text-[11px] px-1">
+                <Button key={r.v} size="sm" variant={!customMode && ratio === r.v ? "default" : "outline"} onClick={() => { setCustomMode(false); setRatio(r.v); }} className="text-[11px] px-1">
                   {r.l}
                 </Button>
               ))}
+              <Button size="sm" variant={customMode ? "default" : "outline"} onClick={() => setCustomMode(true)} className="text-[11px] px-1">
+                कस्टम
+              </Button>
             </div>
+            {customMode && (
+              <div className="mt-2 space-y-1">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-[10px]">सीमेंट</Label>
+                    <Input type="number" inputMode="decimal" value={customC} onChange={(e) => setCustomC(e.target.value)} placeholder="1" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">रेत</Label>
+                    <Input type="number" inputMode="decimal" value={customS} onChange={(e) => setCustomS(e.target.value)} placeholder="2" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">गिट्टी</Label>
+                    <Input type="number" inputMode="decimal" value={customA} onChange={(e) => setCustomA(e.target.value)} placeholder="4" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">अपना ratio: <b>{effectiveRatio}</b></p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">

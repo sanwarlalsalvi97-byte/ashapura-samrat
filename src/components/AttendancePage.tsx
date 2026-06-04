@@ -41,6 +41,8 @@ export default function AttendancePage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
+  const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
+  const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -68,6 +70,18 @@ export default function AttendancePage() {
     });
   }, []);
 
+  const handleSiteChange = useCallback((workerId: string, site: string) => {
+    setSiteOverrides((p) => ({ ...p, [workerId]: site }));
+  }, []);
+
+  const handleGpsChange = useCallback((workerId: string, gps: { lat: number; lng: number } | undefined) => {
+    setGpsMap((p) => {
+      const n = { ...p };
+      if (gps) n[workerId] = gps; else delete n[workerId];
+      return n;
+    });
+  }, []);
+
   const saveAll = async () => {
     const entries = workers
       .map((w) => {
@@ -92,12 +106,15 @@ export default function AttendancePage() {
     let ok = 0, fail = 0;
     for (const e of entries) {
       try {
+        const siteOverride = siteOverrides[e.worker.id];
+        const gps = gpsMap[e.worker.id];
         await markAttendance({
           worker_id: e.worker.id,
           date: formatDate(date),
           status: e.status,
           advance: e.advance,
-          site_name: e.worker.site_name,
+          site_name: (siteOverride && siteOverride.trim()) || e.worker.site_name,
+          notes: gps ? `GPS:${gps.lat},${gps.lng}` : null,
         });
         ok++;
       } catch {
@@ -353,6 +370,8 @@ export default function AttendancePage() {
                     currentAdvance={attendance[w.id]?.advance}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
+                    onSiteChange={handleSiteChange}
+                    onGpsChange={handleGpsChange}
                   />
                 ))}
               </div>
