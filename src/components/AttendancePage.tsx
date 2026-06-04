@@ -370,6 +370,8 @@ export default function AttendancePage() {
                     currentAdvance={attendance[w.id]?.advance}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
+                    onSiteChange={handleSiteChange}
+                    onGpsChange={handleGpsChange}
                   />
                 ))}
               </div>
