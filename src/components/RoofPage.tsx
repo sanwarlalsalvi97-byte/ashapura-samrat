@@ -12,6 +12,10 @@ export default function RoofPage() {
   const [width, setWidth] = useState("");
   const [thickness, setThickness] = useState("5");
   const [ratio, setRatio] = useState("1:1.5:3");
+  const [customMode, setCustomMode] = useState(false);
+  const [customC, setCustomC] = useState("1");
+  const [customS, setCustomS] = useState("2");
+  const [customA, setCustomA] = useState("4");
   const [wastage, setWastage] = useState("5");
   const [steel, setSteel] = useState("3.5");
 
