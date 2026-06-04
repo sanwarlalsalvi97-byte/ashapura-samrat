@@ -19,15 +19,22 @@ export default function RoofPage() {
   const [wastage, setWastage] = useState("5");
   const [steel, setSteel] = useState("3.5");
 
+  const effectiveRatio = useMemo(() => {
+    if (!customMode) return ratio;
+    const c = parseFloat(customC), s = parseFloat(customS), a = parseFloat(customA);
+    if (!c || !s || !a) return ratio;
+    return `${c}:${s}:${a}`;
+  }, [customMode, customC, customS, customA, ratio]);
+
   const result = useMemo(() => calcRcc({
     length: parseFloat(length),
     width: parseFloat(width),
     thicknessIn: parseFloat(thickness),
     unit,
-    ratio,
+    ratio: effectiveRatio,
     wastagePct: parseFloat(wastage) || 0,
     steelKgPerCft: parseFloat(steel) || 0,
-  }), [length, width, thickness, unit, ratio, wastage, steel]);
+  }), [length, width, thickness, unit, effectiveRatio, wastage, steel]);
 
   return (
     <div className="space-y-4">
