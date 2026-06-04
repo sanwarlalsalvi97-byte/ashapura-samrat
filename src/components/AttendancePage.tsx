@@ -328,6 +328,31 @@ export default function AttendancePage() {
         <>
           {workers.length > 0 && (
             <>
+              {/* Mode toggle: Manual / GPS */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+                <button
+                  onClick={() => setMode("manual")}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+                    mode === "manual" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <Hand className="w-4 h-4" /> मैनुअल
+                </button>
+                <button
+                  onClick={() => setMode("gps")}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+                    mode === "gps" ? "bg-card shadow text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <MapPin className="w-4 h-4" /> GPS
+                </button>
+              </div>
+              {mode === "gps" && (
+                <p className="text-[11px] text-muted-foreground -mt-1 px-1">
+                  GPS बटन दबाने पर मजदूर अपने आप "हाजिर" मार्क होगा और लोकेशन सेव होगी।
+                </p>
+              )}
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
