@@ -47,6 +47,9 @@ export default function AttendancePage() {
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [search, setSearch] = useState("");
+  const [mode, setMode] = useState<"manual" | "gps">(() => (localStorage.getItem("att-mode") as "manual" | "gps") || "manual");
+
+  useEffect(() => { localStorage.setItem("att-mode", mode); }, [mode]);
 
   const loadData = useCallback(async () => {
     try {
