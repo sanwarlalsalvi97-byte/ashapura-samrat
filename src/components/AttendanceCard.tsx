@@ -14,6 +14,7 @@ interface Props {
   date: string;
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
+  mode?: "manual" | "gps";
   onMarked: () => void;
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
   onSiteChange?: (workerId: string, site: string) => void;
@@ -34,7 +35,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, mode = "manual", onSelectionChange, onSiteChange, onGpsChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
@@ -69,7 +70,14 @@ export default function AttendanceCard({ worker, date, currentStatus, onSelectio
         setGps(g);
         onGpsChange?.(worker.id, g);
         setGpsLoading(false);
-        toast({ title: `📍 GPS सेव हुआ (${g.lat}, ${g.lng})` });
+        // In GPS mode, auto-mark Present on successful capture
+        if (mode === "gps") {
+          setSel("Present");
+          onSelectionChange?.(worker.id, "Present");
+          toast({ title: `✅ ${worker.name} — हाजिर (GPS लॉक)` });
+        } else {
+          toast({ title: `📍 GPS सेव हुआ (${g.lat}, ${g.lng})` });
+        }
       },
       (err) => {
         setGpsLoading(false);
@@ -100,6 +108,16 @@ export default function AttendanceCard({ worker, date, currentStatus, onSelectio
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
           </div>
         </button>
+        {mode === "gps" && (
+          <button
+            onClick={(e) => { e.stopPropagation(); captureGps(); }}
+            disabled={gpsLoading}
+            className={`w-9 h-9 grid place-items-center rounded-lg ${gps ? "bg-emerald-500/15 text-emerald-600" : "bg-primary/10 text-primary"} hover:bg-primary/20 disabled:opacity-60`}
+            title="GPS से हाजिर करें"
+          >
+            {gpsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); setCalOpen(true); }}
           className="w-9 h-9 grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
