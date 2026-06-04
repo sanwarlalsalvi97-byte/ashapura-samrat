@@ -117,28 +117,51 @@ export default function ContractorsPage() {
   };
 
   const save = async () => {
-    if (!form.name.trim()) {
-      toast({ title: "नाम डालें", variant: "destructive" });
-      return;
+    // ---- Validation ----
+    const name = form.name.trim();
+    const site = form.site_name.trim();
+    const phone = form.phone.trim();
+    const upi = form.upi_id.trim();
+    const contract = parseInt(form.contract_amount) || 0;
+    const advance = parseInt(form.advance_paid) || 0;
+
+    if (!name) { toast({ title: "ठेकेदार का नाम डालें", variant: "destructive" }); return; }
+    if (name.length > 100) { toast({ title: "नाम बहुत लम्बा है", variant: "destructive" }); return; }
+    if (!site) { toast({ title: "साइट / प्रोजेक्ट का नाम डालें", variant: "destructive" }); return; }
+    if (phone && !/^[+0-9\s-]{7,15}$/.test(phone)) {
+      toast({ title: "मोबाइल नंबर सही नहीं है", variant: "destructive" }); return;
     }
+    if (contract <= 0) {
+      toast({ title: "कुल अनुबंध राशि डालें", variant: "destructive" }); return;
+    }
+    if (advance < 0 || advance > contract) {
+      toast({ title: "एडवांस, कुल राशि से ज़्यादा नहीं हो सकता", variant: "destructive" }); return;
+    }
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      toast({ title: "समाप्ति तारीख शुरू तारीख के बाद होनी चाहिए", variant: "destructive" }); return;
+    }
+    if (form.payment_mode === "UPI" && upi && !/^[\w.\-]{2,}@[\w]{2,}$/.test(upi)) {
+      toast({ title: "UPI ID सही नहीं है (जैसे name@bank)", variant: "destructive" }); return;
+    }
+
     setSaving(true);
     try {
       const payload: any = {
-        name: form.name.trim(),
-        phone: form.phone.trim() || null,
+        name,
+        phone: phone || null,
         address: form.address.trim() || null,
-        site_name: form.site_name.trim() || null,
+        site_name: site,
         work_type: form.work_type || null,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
-        contract_amount: parseInt(form.contract_amount) || 0,
-        advance_paid: parseInt(form.advance_paid) || 0,
+        contract_amount: contract,
+        advance_paid: advance,
         payment_mode: form.payment_mode || null,
         assigned_workers: form.assigned_workers,
         notes: form.notes.trim() || null,
         status: form.status,
         progress: Math.max(0, Math.min(100, parseInt(form.progress) || 0)),
-        upi_id: form.upi_id.trim() || null,
+        upi_id: upi || null,
       };
       if (editing) {
         await updateContractor(editing.id, payload);
