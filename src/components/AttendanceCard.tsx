@@ -108,6 +108,16 @@ export default function AttendanceCard({ worker, date, currentStatus, mode = "ma
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
           </div>
         </button>
+        {mode === "gps" && (
+          <button
+            onClick={(e) => { e.stopPropagation(); captureGps(); }}
+            disabled={gpsLoading}
+            className={`w-9 h-9 grid place-items-center rounded-lg ${gps ? "bg-emerald-500/15 text-emerald-600" : "bg-primary/10 text-primary"} hover:bg-primary/20 disabled:opacity-60`}
+            title="GPS से हाजिर करें"
+          >
+            {gpsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); setCalOpen(true); }}
           className="w-9 h-9 grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
