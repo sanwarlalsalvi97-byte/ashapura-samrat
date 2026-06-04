@@ -106,12 +106,15 @@ export default function AttendancePage() {
     let ok = 0, fail = 0;
     for (const e of entries) {
       try {
+        const siteOverride = siteOverrides[e.worker.id];
+        const gps = gpsMap[e.worker.id];
         await markAttendance({
           worker_id: e.worker.id,
           date: formatDate(date),
           status: e.status,
           advance: e.advance,
-          site_name: e.worker.site_name,
+          site_name: (siteOverride && siteOverride.trim()) || e.worker.site_name,
+          notes: gps ? `GPS:${gps.lat},${gps.lng}` : null,
         });
         ok++;
       } catch {
