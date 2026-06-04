@@ -72,13 +72,35 @@ export default function RoofPage() {
 
           <div>
             <Label>कंक्रीट ग्रेड</Label>
-            <div className="grid grid-cols-3 gap-2 mt-1">
+            <div className="grid grid-cols-4 gap-2 mt-1">
               {RCC_RATIOS.map((r) => (
-                <Button key={r.v} size="sm" variant={ratio === r.v ? "default" : "outline"} onClick={() => setRatio(r.v)} className="text-[11px] px-1">
+                <Button key={r.v} size="sm" variant={!customMode && ratio === r.v ? "default" : "outline"} onClick={() => { setCustomMode(false); setRatio(r.v); }} className="text-[11px] px-1">
                   {r.l}
                 </Button>
               ))}
+              <Button size="sm" variant={customMode ? "default" : "outline"} onClick={() => setCustomMode(true)} className="text-[11px] px-1">
+                कस्टम
+              </Button>
             </div>
+            {customMode && (
+              <div className="mt-2 space-y-1">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-[10px]">सीमेंट</Label>
+                    <Input type="number" inputMode="decimal" value={customC} onChange={(e) => setCustomC(e.target.value)} placeholder="1" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">रेत</Label>
+                    <Input type="number" inputMode="decimal" value={customS} onChange={(e) => setCustomS(e.target.value)} placeholder="2" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px]">गिट्टी</Label>
+                    <Input type="number" inputMode="decimal" value={customA} onChange={(e) => setCustomA(e.target.value)} placeholder="4" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">अपना ratio: <b>{effectiveRatio}</b></p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
