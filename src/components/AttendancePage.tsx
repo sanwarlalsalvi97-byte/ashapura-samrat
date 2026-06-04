@@ -41,6 +41,8 @@ export default function AttendancePage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
+  const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
+  const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -65,6 +67,18 @@ export default function AttendancePage() {
       if (status) next[workerId] = status;
       else delete next[workerId];
       return next;
+    });
+  }, []);
+
+  const handleSiteChange = useCallback((workerId: string, site: string) => {
+    setSiteOverrides((p) => ({ ...p, [workerId]: site }));
+  }, []);
+
+  const handleGpsChange = useCallback((workerId: string, gps: { lat: number; lng: number } | undefined) => {
+    setGpsMap((p) => {
+      const n = { ...p };
+      if (gps) n[workerId] = gps; else delete n[workerId];
+      return n;
     });
   }, []);
 
