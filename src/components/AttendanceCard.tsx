@@ -70,7 +70,14 @@ export default function AttendanceCard({ worker, date, currentStatus, mode = "ma
         setGps(g);
         onGpsChange?.(worker.id, g);
         setGpsLoading(false);
-        toast({ title: `📍 GPS सेव हुआ (${g.lat}, ${g.lng})` });
+        // In GPS mode, auto-mark Present on successful capture
+        if (mode === "gps") {
+          setSel("Present");
+          onSelectionChange?.(worker.id, "Present");
+          toast({ title: `✅ ${worker.name} — हाजिर (GPS लॉक)` });
+        } else {
+          toast({ title: `📍 GPS सेव हुआ (${g.lat}, ${g.lng})` });
+        }
       },
       (err) => {
         setGpsLoading(false);
