@@ -251,6 +251,49 @@ export default function HomePage({ onNavigate }: Props) {
         </CardContent>
       </Card>
 
+      {/* Monthly Report card */}
+      <Card className="rounded-2xl overflow-hidden border-border/60 relative"
+            style={{ background: "linear-gradient(135deg, hsl(260 70% 55% / 0.08), hsl(220 90% 55% / 0.06))" }}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl grid place-items-center text-white shadow-md"
+                   style={{ background: "linear-gradient(135deg, hsl(260 70% 55%), hsl(220 90% 55%))" }}>
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold">मासिक रिपोर्ट</h2>
+                <p className="text-[10px] text-muted-foreground">{HINDI_MONTHS[today.getMonth()]} {today.getFullYear()}</p>
+              </div>
+            </div>
+            <button onClick={() => onNavigate("report")} className="text-xs text-primary font-medium flex items-center gap-0.5">
+              देखें <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="rounded-xl p-3 mb-3 text-white shadow-md"
+               style={{ background: "linear-gradient(135deg, hsl(260 70% 55%), hsl(220 90% 55%))" }}>
+            <div className="text-[10px] uppercase tracking-wider opacity-90">कुल देय राशि</div>
+            <div className="text-2xl font-extrabold leading-tight">₹{report.payable.toLocaleString("hi-IN")}</div>
+            <div className="text-[10px] opacity-90 mt-0.5">{report.workers} मजदूर</div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="bg-emerald-500/10 rounded-lg p-2">
+              <p className="text-emerald-600 font-bold text-base">{report.present}</p>
+              <p className="text-muted-foreground text-[10px]">हाजिर</p>
+            </div>
+            <div className="bg-amber-500/10 rounded-lg p-2">
+              <p className="text-amber-600 font-bold text-base">{report.half}</p>
+              <p className="text-muted-foreground text-[10px]">आधा दिन</p>
+            </div>
+            <div className="bg-rose-500/10 rounded-lg p-2">
+              <p className="text-rose-600 font-bold text-base">{report.absent}</p>
+              <p className="text-muted-foreground text-[10px]">गैरहाजिर</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {/* Cashbook preview */}
       <Card className="rounded-2xl border-border/60">
         <CardContent className="p-4">
