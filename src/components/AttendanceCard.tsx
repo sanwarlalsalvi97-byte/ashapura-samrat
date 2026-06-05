@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import {
