@@ -76,7 +76,9 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function loadStats() {
     try {
-      const [w, a, c, r] = await Promise.all([
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const [w, a, c, r, mAtt, wAll] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount"),
@@ -85,6 +87,8 @@ export default function HomePage({ onNavigate }: Props) {
           .select("id,type,amount,category,date,notes")
           .order("date", { ascending: false })
           .limit(3),
+        supabase.from("attendance").select("worker_id,status,advance").gte("date", monthStart).lte("date", monthEnd),
+        supabase.from("workers").select("id,daily_rate").eq("is_active", true),
       ]);
       const att = a.data || [];
       const cb = c.data || [];
@@ -97,6 +101,24 @@ export default function HomePage({ onNavigate }: Props) {
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
       });
       setRecent((r.data || []) as Tx[]);
+
+      // Monthly report aggregates
+      const rateMap = new Map((wAll.data || []).map((x: any) => [x.id, x.daily_rate || 0]));
+      const m = mAtt.data || [];
+      let p = 0, h = 0, ab = 0, payable = 0;
+      const earnByWorker: Record<string, { earn: number; adv: number }> = {};
+      m.forEach((x: any) => {
+        if (x.status === "Present") p++;
+        else if (x.status === "Half-Day") h++;
+        else ab++;
+        const rate = rateMap.get(x.worker_id) || 0;
+        const add = x.status === "Present" ? rate : x.status === "Half-Day" ? rate * 0.5 : 0;
+        if (!earnByWorker[x.worker_id]) earnByWorker[x.worker_id] = { earn: 0, adv: 0 };
+        earnByWorker[x.worker_id].earn += add;
+        earnByWorker[x.worker_id].adv += x.advance || 0;
+      });
+      payable = Object.values(earnByWorker).reduce((s, v) => s + (v.earn - v.adv), 0);
+      setReport({ payable, present: p, half: h, absent: ab, workers: Object.keys(earnByWorker).length });
     } finally {
       setLoading(false);
     }
