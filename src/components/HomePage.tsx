@@ -17,6 +17,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
+  BarChart3,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 
