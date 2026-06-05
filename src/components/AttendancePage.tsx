@@ -89,21 +89,24 @@ export default function AttendancePage() {
     const entries = workers
       .map((w) => {
         const sel = selections[w.id];
+        if (!sel) return null;
         const existing = attendance[w.id];
-        // Skip if no new selection AND already saved
-        if (!sel && existing) return null;
-        const status = sel || existing?.status;
-        if (!status) return null;
         // Skip if selection equals existing status (no change)
-        if (!sel && existing) return null;
-        return { worker: w, status, advance: existing?.advance || 0 };
+        if (existing && existing.status === sel) return null;
+        return { worker: w, status: sel, advance: existing?.advance || 0, wasEdit: !!existing };
       })
-      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number }[];
+      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number; wasEdit: boolean }[];
 
     if (entries.length === 0) {
       toast({ title: "कोई नई हाजिरी नहीं चुनी", variant: "destructive" });
       return;
     }
+
+    const edits = entries.filter((e) => e.wasEdit).length;
+    const news = entries.length - edits;
+    const msg = `${entries.length} एंट्री सेव होगी${edits > 0 ? ` (${news} नई, ${edits} अपडेट)` : ""}। क्या आप पक्का सेव करना चाहते हैं?`;
+    if (!window.confirm(msg)) return;
+
 
     setSavingAll(true);
     let ok = 0, fail = 0;
