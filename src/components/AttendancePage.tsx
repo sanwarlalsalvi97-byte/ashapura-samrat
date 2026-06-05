@@ -399,6 +399,7 @@ export default function AttendancePage() {
                     date={formatDate(date)}
                     currentStatus={attendance[w.id]?.status}
                     currentAdvance={attendance[w.id]?.advance}
+                    currentUpdatedAt={attendance[w.id]?.updated_at}
                     mode={mode}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
