@@ -39,7 +39,7 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; updated_at?: string }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
@@ -56,8 +56,8 @@ export default function AttendancePage() {
       const [w, a] = await Promise.all([getWorkers(), getAttendanceByDate(formatDate(date))]);
       setWorkers(w);
       const map: typeof attendance = {};
-      a.forEach((r) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance };
+      a.forEach((r: any) => {
+        map[r.worker_id] = { status: r.status, advance: r.advance, updated_at: r.updated_at };
       });
       setAttendance(map);
       setSelections({});
@@ -89,21 +89,24 @@ export default function AttendancePage() {
     const entries = workers
       .map((w) => {
         const sel = selections[w.id];
+        if (!sel) return null;
         const existing = attendance[w.id];
-        // Skip if no new selection AND already saved
-        if (!sel && existing) return null;
-        const status = sel || existing?.status;
-        if (!status) return null;
         // Skip if selection equals existing status (no change)
-        if (!sel && existing) return null;
-        return { worker: w, status, advance: existing?.advance || 0 };
+        if (existing && existing.status === sel) return null;
+        return { worker: w, status: sel, advance: existing?.advance || 0, wasEdit: !!existing };
       })
-      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number }[];
+      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number; wasEdit: boolean }[];
 
     if (entries.length === 0) {
       toast({ title: "कोई नई हाजिरी नहीं चुनी", variant: "destructive" });
       return;
     }
+
+    const edits = entries.filter((e) => e.wasEdit).length;
+    const news = entries.length - edits;
+    const msg = `${entries.length} एंट्री सेव होगी${edits > 0 ? ` (${news} नई, ${edits} अपडेट)` : ""}। क्या आप पक्का सेव करना चाहते हैं?`;
+    if (!window.confirm(msg)) return;
+
 
     setSavingAll(true);
     let ok = 0, fail = 0;
@@ -396,6 +399,7 @@ export default function AttendancePage() {
                     date={formatDate(date)}
                     currentStatus={attendance[w.id]?.status}
                     currentAdvance={attendance[w.id]?.advance}
+                    currentUpdatedAt={attendance[w.id]?.updated_at}
                     mode={mode}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}

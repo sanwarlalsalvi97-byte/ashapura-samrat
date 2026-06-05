@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,7 @@ interface Props {
   date: string;
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
+  currentUpdatedAt?: string;
   mode?: "manual" | "gps";
   onMarked: () => void;
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
@@ -35,7 +36,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, mode = "manual", onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
@@ -88,24 +89,36 @@ export default function AttendanceCard({ worker, date, currentStatus, mode = "ma
   };
 
   const pill = sel ? PILL[sel] : null;
+  const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
+  const updatedLabel = currentUpdatedAt
+    ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
+    : null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden"
+      className={`rounded-2xl bg-card border ${isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
     >
       <div className="flex items-center gap-3 px-3 py-2.5">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-orange-400 dark:from-orange-700 dark:to-orange-900 grid place-items-center text-white text-sm font-bold shrink-0">
           {initials(worker.name)}
         </div>
         <button onClick={() => setExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate">{worker.name}</div>
+          <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+            {worker.name}
+            {isEdited && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">एडिटेड</span>
+            )}
+          </div>
           <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
             {worker.role}
             {site && <span>• 📍 {site}</span>}
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
+            {updatedLabel && !isEdited && (
+              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{updatedLabel}</span>
+            )}
           </div>
         </button>
         {mode === "gps" && (
@@ -177,30 +190,61 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
   const [cursor, setCursor] = useState(() => new Date());
   const [rows, setRows] = useState<Record<string, AttendanceStatus>>({});
   const [loading, setLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [savingDay, setSavingDay] = useState<string | null>(null);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayIso = new Date().toISOString().slice(0, 10);
 
-  useEffect(() => {
-    if (!open) return;
-    (async () => {
-      setLoading(true);
-      const start = new Date(year, month, 1).toISOString().slice(0, 10);
-      const end = new Date(year, month + 1, 0).toISOString().slice(0, 10);
-      const { data } = await supabase
+  const fetchMonth = async () => {
+    setLoading(true);
+    const start = new Date(year, month, 1).toISOString().slice(0, 10);
+    const end = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("attendance")
+      .select("date,status")
+      .eq("worker_id", worker.id)
+      .gte("date", start)
+      .lte("date", end);
+    const map: Record<string, AttendanceStatus> = {};
+    (data || []).forEach((r: any) => { map[r.date] = r.status; });
+    setRows(map);
+    setLoading(false);
+  };
+
+  useEffect(() => { if (open) fetchMonth(); /* eslint-disable-line */ }, [open, year, month, worker.id]);
+
+  const cycleDay = async (iso: string) => {
+    if (iso > todayIso) {
+      toast({ title: "भविष्य की तारीख edit नहीं हो सकती", variant: "destructive" });
+      return;
+    }
+    const cur = rows[iso];
+    const idx = cur ? ORDER.indexOf(cur) : -1;
+    const next = ORDER[(idx + 1) % ORDER.length];
+    if (!window.confirm(`${iso} — ${cur ? `${cur} → ${next}` : `सेट करें: ${next}`}?`)) return;
+    setSavingDay(iso);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("not signed in");
+      const { error } = await supabase
         .from("attendance")
-        .select("date,status")
-        .eq("worker_id", worker.id)
-        .gte("date", start)
-        .lte("date", end);
-      const map: Record<string, AttendanceStatus> = {};
-      (data || []).forEach((r: any) => { map[r.date] = r.status; });
-      setRows(map);
-      setLoading(false);
-    })();
-  }, [open, year, month, worker.id]);
+        .upsert(
+          { worker_id: worker.id, date: iso, status: next, user_id: user.id },
+          { onConflict: "worker_id,date" }
+        );
+      if (error) throw error;
+      setRows((r) => ({ ...r, [iso]: next }));
+      toast({ title: `✅ ${iso} — ${next}` });
+    } catch (e: any) {
+      toast({ title: "सेव नहीं हुआ", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingDay(null);
+    }
+  };
 
   const cells: ({ day: number; iso: string } | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
@@ -224,7 +268,15 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-sm">{worker.name} — हाजिरी कैलेंडर</DialogTitle>
+          <DialogTitle className="text-sm flex items-center justify-between gap-2">
+            <span>{worker.name} — हाजिरी कैलेंडर</span>
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              className={`text-[11px] font-semibold px-2 py-1 rounded-lg flex items-center gap-1 ${editMode ? "bg-amber-500 text-white" : "bg-primary/10 text-primary"}`}
+            >
+              <Pencil className="w-3 h-3" /> {editMode ? "बंद करें" : "एडिट"}
+            </button>
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -232,6 +284,9 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
             <span className="text-sm font-semibold">{HINDI_MONTHS[month]} {year}</span>
             <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="px-2 py-1 rounded hover:bg-muted text-sm">›</button>
           </div>
+          {editMode && (
+            <p className="text-[10px] text-center text-amber-600 font-medium">किसी दिन पर टैप करें: P → A → HD क्रम में बदलेगा</p>
+          )}
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground">
             {WEEK.map((d) => <div key={d}>{d}</div>)}
           </div>
@@ -240,11 +295,22 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
               if (!c) return <div key={i} className="aspect-square" />;
               const s = rows[c.iso];
               const p = s ? PILL[s] : null;
+              const disabled = !editMode || c.iso > todayIso;
+              const isSaving = savingDay === c.iso;
               return (
-                <div key={i} className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] ${p ? "" : "bg-muted/30"}`}>
+                <button
+                  key={i}
+                  disabled={disabled || isSaving}
+                  onClick={() => cycleDay(c.iso)}
+                  className={`aspect-square rounded-md flex flex-col items-center justify-center text-[10px] ${p ? "" : "bg-muted/30"} ${editMode && c.iso <= todayIso ? "ring-1 ring-amber-400/40 hover:ring-amber-500 active:scale-95 transition" : "cursor-default"}`}
+                >
                   <span className="leading-none">{c.day}</span>
-                  {p && <span className={`mt-0.5 w-4 h-4 rounded-full text-white text-[8px] font-bold grid place-items-center ${p.bg}`}>{p.label}</span>}
-                </div>
+                  {isSaving ? (
+                    <Loader2 className="w-3 h-3 animate-spin mt-0.5" />
+                  ) : p ? (
+                    <span className={`mt-0.5 w-4 h-4 rounded-full text-white text-[8px] font-bold grid place-items-center ${p.bg}`}>{p.label}</span>
+                  ) : null}
+                </button>
               );
             })}
           </div>
