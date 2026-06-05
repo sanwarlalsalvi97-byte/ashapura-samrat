@@ -24,6 +24,22 @@ export default function RolesSection() {
 
   async function claim(role: "admin" | "staff") {
     if (!userId) return;
+    if (role === "admin") {
+      const { data, error } = await supabase.rpc("claim_initial_admin");
+      if (error) {
+        toast({ title: "गलती", description: error.message, variant: "destructive" });
+      } else if (data === true) {
+        toast({ title: "एडमिन रोल सेट हो गया" });
+        load();
+      } else {
+        toast({
+          title: "अनुमति नहीं",
+          description: "एडमिन पहले से मौजूद है। केवल पहला यूज़र एडमिन बन सकता है।",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
     if (error) toast({ title: "गलती", description: error.message, variant: "destructive" });
     else { toast({ title: "रोल सेट हो गया" }); load(); }
