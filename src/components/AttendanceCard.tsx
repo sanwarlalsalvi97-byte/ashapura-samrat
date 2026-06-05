@@ -313,8 +313,6 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
                 </button>
               );
             })}
-              );
-            })}
           </div>
           <div className="grid grid-cols-4 gap-2 text-center text-[11px] pt-2 border-t border-border">
             <div><div className="text-emerald-600 font-bold">{totals.P}</div><div className="text-muted-foreground">P</div></div>
