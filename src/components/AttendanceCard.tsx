@@ -89,24 +89,36 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
   };
 
   const pill = sel ? PILL[sel] : null;
+  const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
+  const updatedLabel = currentUpdatedAt
+    ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
+    : null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="rounded-2xl bg-card border border-border/60 shadow-sm overflow-hidden"
+      className={`rounded-2xl bg-card border ${isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
     >
       <div className="flex items-center gap-3 px-3 py-2.5">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-orange-400 dark:from-orange-700 dark:to-orange-900 grid place-items-center text-white text-sm font-bold shrink-0">
           {initials(worker.name)}
         </div>
         <button onClick={() => setExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate">{worker.name}</div>
+          <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+            {worker.name}
+            {isEdited && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">एडिटेड</span>
+            )}
+          </div>
           <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
             {worker.role}
             {site && <span>• 📍 {site}</span>}
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
+            {updatedLabel && !isEdited && (
+              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{updatedLabel}</span>
+            )}
           </div>
         </button>
         {mode === "gps" && (
