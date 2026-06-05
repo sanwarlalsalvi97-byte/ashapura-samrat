@@ -14,6 +14,7 @@ interface Props {
   date: string;
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
+  currentUpdatedAt?: string;
   mode?: "manual" | "gps";
   onMarked: () => void;
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
