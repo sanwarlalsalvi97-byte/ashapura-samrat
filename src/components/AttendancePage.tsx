@@ -56,8 +56,8 @@ export default function AttendancePage() {
       const [w, a] = await Promise.all([getWorkers(), getAttendanceByDate(formatDate(date))]);
       setWorkers(w);
       const map: typeof attendance = {};
-      a.forEach((r) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance };
+      a.forEach((r: any) => {
+        map[r.worker_id] = { status: r.status, advance: r.advance, updated_at: r.updated_at };
       });
       setAttendance(map);
       setSelections({});
