@@ -56,6 +56,7 @@ type Tx = {
 export default function HomePage({ onNavigate }: Props) {
   const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0 });
   const [recent, setRecent] = useState<Tx[]>([]);
+  const [report, setReport] = useState({ payable: 0, present: 0, half: 0, absent: 0, workers: 0 });
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
 
