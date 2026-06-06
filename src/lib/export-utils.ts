@@ -1,4 +1,5 @@
 // Lightweight export helpers — CSV download + print-to-PDF (works with Devanagari)
+export const APP_NAME = "Ashapura Samrat";
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -35,8 +36,10 @@ export function exportPDF(title: string, headers: string[], rows: (string | numb
   th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
   th { background: #f3f4f6; }
   tr:nth-child(even) td { background: #fafafa; }
+  .brand { font-size: 12px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
   @media print { body { padding: 12px; } }
 </style></head><body>
+<div class="brand">${APP_NAME}</div>
 <h1>${title}</h1>${subtitle ? `<div class="sub">${subtitle}</div>` : ""}
 <table>
   <thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
