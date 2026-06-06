@@ -48,7 +48,7 @@ export default function Auth() {
   };
 
   const title =
-    mode === "forgot" ? "पासवर्ड भूल गए?" : mode === "signup" ? "नया अकाउंट" : "हाजिरी ऐप";
+    mode === "forgot" ? "पासवर्ड भूल गए?" : mode === "signup" ? "नया अकाउंट" : "Ashapura Samrat";
   const subtitle =
     mode === "forgot"
       ? "ईमेल डालें, हम लिंक भेजेंगे"
