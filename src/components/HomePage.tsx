@@ -17,7 +17,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
-  BarChart3,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 
@@ -57,7 +56,6 @@ type Tx = {
 export default function HomePage({ onNavigate }: Props) {
   const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0 });
   const [recent, setRecent] = useState<Tx[]>([]);
-  const [report, setReport] = useState({ payable: 0, present: 0, half: 0, absent: 0, workers: 0 });
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
 
@@ -77,9 +75,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function loadStats() {
     try {
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-      const [w, a, c, r, mAtt, wAll] = await Promise.all([
+      const [w, a, c, r] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount"),
@@ -88,8 +84,6 @@ export default function HomePage({ onNavigate }: Props) {
           .select("id,type,amount,category,date,notes")
           .order("date", { ascending: false })
           .limit(3),
-        supabase.from("attendance").select("worker_id,status,advance").gte("date", monthStart).lte("date", monthEnd),
-        supabase.from("workers").select("id,daily_rate").eq("is_active", true),
       ]);
       const att = a.data || [];
       const cb = c.data || [];
@@ -102,24 +96,6 @@ export default function HomePage({ onNavigate }: Props) {
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
       });
       setRecent((r.data || []) as Tx[]);
-
-      // Monthly report aggregates
-      const rateMap = new Map((wAll.data || []).map((x: any) => [x.id, x.daily_rate || 0]));
-      const m = mAtt.data || [];
-      let p = 0, h = 0, ab = 0, payable = 0;
-      const earnByWorker: Record<string, { earn: number; adv: number }> = {};
-      m.forEach((x: any) => {
-        if (x.status === "Present") p++;
-        else if (x.status === "Half-Day") h++;
-        else ab++;
-        const rate = rateMap.get(x.worker_id) || 0;
-        const add = x.status === "Present" ? rate : x.status === "Half-Day" ? rate * 0.5 : 0;
-        if (!earnByWorker[x.worker_id]) earnByWorker[x.worker_id] = { earn: 0, adv: 0 };
-        earnByWorker[x.worker_id].earn += add;
-        earnByWorker[x.worker_id].adv += x.advance || 0;
-      });
-      payable = Object.values(earnByWorker).reduce((s, v) => s + (v.earn - v.adv), 0);
-      setReport({ payable, present: p, half: h, absent: ab, workers: Object.keys(earnByWorker).length });
     } finally {
       setLoading(false);
     }
@@ -251,49 +227,6 @@ export default function HomePage({ onNavigate }: Props) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Monthly Report card */}
-      <Card className="rounded-2xl overflow-hidden border-border/60 relative"
-            style={{ background: "linear-gradient(135deg, hsl(260 70% 55% / 0.08), hsl(220 90% 55% / 0.06))" }}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl grid place-items-center text-white shadow-md"
-                   style={{ background: "linear-gradient(135deg, hsl(260 70% 55%), hsl(220 90% 55%))" }}>
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold">मासिक रिपोर्ट</h2>
-                <p className="text-[10px] text-muted-foreground">{HINDI_MONTHS[today.getMonth()]} {today.getFullYear()}</p>
-              </div>
-            </div>
-            <button onClick={() => onNavigate("report")} className="text-xs text-primary font-medium flex items-center gap-0.5">
-              देखें <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="rounded-xl p-3 mb-3 text-white shadow-md"
-               style={{ background: "linear-gradient(135deg, hsl(260 70% 55%), hsl(220 90% 55%))" }}>
-            <div className="text-[10px] uppercase tracking-wider opacity-90">कुल देय राशि</div>
-            <div className="text-2xl font-extrabold leading-tight">₹{report.payable.toLocaleString("hi-IN")}</div>
-            <div className="text-[10px] opacity-90 mt-0.5">{report.workers} मजदूर</div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="bg-emerald-500/10 rounded-lg p-2">
-              <p className="text-emerald-600 font-bold text-base">{report.present}</p>
-              <p className="text-muted-foreground text-[10px]">हाजिर</p>
-            </div>
-            <div className="bg-amber-500/10 rounded-lg p-2">
-              <p className="text-amber-600 font-bold text-base">{report.half}</p>
-              <p className="text-muted-foreground text-[10px]">आधा दिन</p>
-            </div>
-            <div className="bg-rose-500/10 rounded-lg p-2">
-              <p className="text-rose-600 font-bold text-base">{report.absent}</p>
-              <p className="text-muted-foreground text-[10px]">गैरहाजिर</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
 
       {/* Cashbook preview */}
       <Card className="rounded-2xl border-border/60">
