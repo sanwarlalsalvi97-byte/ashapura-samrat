@@ -31,7 +31,12 @@ export default function WorkersPage() {
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
 
   const load = async () => {
-    try { setWorkers(await getWorkers()); } catch {}
+    try {
+      const ws = await getWorkers();
+      setWorkers(ws);
+      const { mergeSitesFrom } = await import("@/lib/sites");
+      mergeSitesFrom(ws.map((w) => w.site_name));
+    } catch {}
   };
 
   useEffect(() => { load(); }, []);
