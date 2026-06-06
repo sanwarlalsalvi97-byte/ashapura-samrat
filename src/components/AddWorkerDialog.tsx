@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addWorker, type WorkerRole } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { UserPlus } from "lucide-react";
+import SiteNameInput from "./SiteNameInput";
+import { addSite } from "@/lib/sites";
 
 interface Props {
   onAdded: () => void;
@@ -26,6 +28,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
+      if (siteName.trim()) addSite(siteName);
       await addWorker({
         name: name.trim(),
         role,
@@ -73,7 +76,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
             </SelectContent>
           </Select>
           <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
-          <Input placeholder="साइट का नाम" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+          <SiteNameInput value={siteName} onChange={setSiteName} />
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
           <Button type="submit" className="w-full" disabled={loading}>

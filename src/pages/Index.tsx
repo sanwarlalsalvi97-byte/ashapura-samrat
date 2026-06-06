@@ -52,7 +52,7 @@ export default function Index() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <HardHat className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-lg font-bold">हाजिरी ऐप</h1>
+            <h1 className="text-lg font-bold">Ashapura Samrat</h1>
           </div>
         </div>
       </header>
