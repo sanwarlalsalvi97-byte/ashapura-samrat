@@ -13,6 +13,7 @@ import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
+import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
@@ -49,10 +50,8 @@ export default function Index() {
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-lg mx-auto flex items-center px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <HardHat className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <h1 className="text-lg font-bold">Ashapura Samrat</h1>
+            <img src={logoUrl} alt="Ashapura Samrat लोगो" width={32} height={32} className="w-8 h-8 object-contain drop-shadow-sm" />
+            <h1 className="text-lg font-bold tracking-tight">Ashapura Samrat</h1>
           </div>
         </div>
       </header>

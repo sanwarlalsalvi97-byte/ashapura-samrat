@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { HardHat, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import logoUrl from "@/assets/logo.png";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -60,8 +61,8 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm animate-slide-up">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <HardHat className="w-9 h-9 text-primary-foreground" />
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-950/40 dark:to-amber-950/40 flex items-center justify-center shadow-sm">
+            <img src={logoUrl} alt="Ashapura Samrat लोगो" width={64} height={64} className="w-14 h-14 object-contain" />
           </div>
           <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <p className="text-muted-foreground text-sm">{subtitle}</p>
