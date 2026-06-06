@@ -165,9 +165,9 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
           >
             <div className="pt-2">
               <label className="text-[11px] text-muted-foreground">साइट का नाम</label>
-              <Input
+              <SiteNameInput
                 value={site}
-                onChange={(e) => updateSite(e.target.value)}
+                onChange={updateSite}
                 placeholder="जैसे शर्मा रेजिडेंसी"
                 className="h-9 text-sm"
               />
