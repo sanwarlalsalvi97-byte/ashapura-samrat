@@ -110,6 +110,7 @@ export default function AttendancePage() {
 
     setSavingAll(true);
     let ok = 0, fail = 0;
+    const savedAt = new Date().toISOString();
     for (const e of entries) {
       try {
         const siteOverride = siteOverrides[e.worker.id];
@@ -122,9 +123,24 @@ export default function AttendancePage() {
           site_name: (siteOverride && siteOverride.trim()) || e.worker.site_name,
           notes: gps ? `GPS:${gps.lat},${gps.lng}` : null,
         });
+        setAttendance((prev) => ({
+          ...prev,
+          [e.worker.id]: {
+            status: e.status,
+            advance: e.advance,
+            created_at: prev[e.worker.id]?.created_at || savedAt,
+            updated_at: savedAt,
+          },
+        }));
+        setSelections((prev) => {
+          const next = { ...prev };
+          delete next[e.worker.id];
+          return next;
+        });
         ok++;
-      } catch {
+      } catch (err: any) {
         fail++;
+        toast({ title: `${e.worker.name} सेव नहीं हुआ`, description: err?.message, variant: "destructive" });
       }
     }
     setSavingAll(false);
