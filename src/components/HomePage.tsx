@@ -196,6 +196,35 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </div>
 
+      {/* Site filter dropdown — applies to balance / income / expense / site-wise card */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
+          <Building2 className="w-4 h-4 text-primary" />
+          साइट:
+        </div>
+        <Select value={siteFilter} onValueChange={setSiteFilter}>
+          <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+            <SelectValue placeholder="सभी साइट" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">सभी साइट</SelectItem>
+            {sites.map((s) => (
+              <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+            ))}
+            {sites.length === 0 && (
+              <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        <button
+          onClick={() => onNavigate("sites")}
+          className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
+        >
+          प्रबंधन
+        </button>
+      </div>
+
+
       {/* Horizontal scroll summary */}
       <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
         <div className="flex gap-3 w-max">
