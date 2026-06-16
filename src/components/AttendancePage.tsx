@@ -210,6 +210,11 @@ export default function AttendancePage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, loadData);
+    return () => window.removeEventListener(ATTENDANCE_UPDATED_EVENT, loadData);
+  }, [loadData]);
+
   const changeDate = (dir: number) => {
     setDate((d) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n; });
   };
