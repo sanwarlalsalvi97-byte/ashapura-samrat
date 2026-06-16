@@ -98,17 +98,18 @@ export default function WorkersPage() {
           {workers.map((w, i) => (
             <motion.div key={w.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">{w.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
-                        {w.role}
-                      </span>
-                      <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
-                      {w.site_name && <span className="text-xs text-muted-foreground">• {w.site_name}</span>}
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate">{w.name}</h3>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
+                          {w.role}
+                        </span>
+                        <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
+                      </div>
                     </div>
-                  </div>
+
                     <div className="flex items-center gap-2">
                     <EditWorkerDialog worker={w} onUpdated={load} />
                     {(w as any).upi_id && (
