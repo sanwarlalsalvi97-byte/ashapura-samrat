@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import SiteNameInput from "./SiteNameInput";
-import { addSite } from "@/lib/sites";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listSites, createSite, type Site } from "@/lib/sites";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
