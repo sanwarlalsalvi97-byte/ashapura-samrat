@@ -160,12 +160,16 @@ export default function HomePage({ onNavigate }: Props) {
     }
   }
 
-  // Per-site expense breakdown (always shows all known sites, even with ₹0)
+  // Per-site expense breakdown (respects location filter; always shows all known sites)
   const sitewise = useMemo(() => {
     const map = new Map<string, number>();
-    sites.forEach((s) => map.set(s.name, 0));
+    const includedSites = sitesInLocation
+      ? sites.filter((s) => sitesInLocation.has(s.name))
+      : sites;
+    includedSites.forEach((s) => map.set(s.name, 0));
     allCash
       .filter((x) => x.type === "expense")
+      .filter((x) => !sitesInLocation || sitesInLocation.has(x.site_name || ""))
       .forEach((x) => {
         const key = (x.site_name || "").trim() || "अन्य";
         map.set(key, (map.get(key) || 0) + (x.amount || 0));
@@ -175,7 +179,8 @@ export default function HomePage({ onNavigate }: Props) {
     const total = rows.reduce((s, r) => s + r.amount, 0);
     const max = Math.max(1, ...rows.map((r) => r.amount));
     return { rows, total, max };
-  }, [allCash, sites]);
+  }, [allCash, sites, sitesInLocation]);
+
 
 
   const balance = stats.income - stats.expense;
