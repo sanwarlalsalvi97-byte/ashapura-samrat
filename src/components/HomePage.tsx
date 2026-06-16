@@ -333,6 +333,85 @@ export default function HomePage({ onNavigate }: Props) {
         </CardContent>
       </Card>
 
+      {/* Site-wise expense card (live) */}
+      <Card className="rounded-2xl border-border/60">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/15 grid place-items-center text-primary">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-bold">साइट-वाइज खर्च</h2>
+            </div>
+            <div className="text-sm font-extrabold text-primary">
+              ₹{sitewise.total.toLocaleString("hi-IN")}
+            </div>
+          </div>
+
+          {sitewise.rows.length === 0 ? (
+            <div className="text-center text-xs text-muted-foreground py-6">कोई साइट नहीं — पहले साइट जोड़ें</div>
+          ) : (
+            <>
+              <div className="relative h-40 mt-1 mb-3 pl-10 pr-1">
+                <div className="absolute inset-y-0 left-10 right-1 flex flex-col justify-between pointer-events-none">
+                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
+                    <div key={f} className="border-t border-dashed border-border/70" />
+                  ))}
+                </div>
+                <div className="absolute inset-y-0 left-0 w-10 flex flex-col justify-between text-[10px] text-muted-foreground text-right pr-1">
+                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
+                    <span key={f}>₹{shortInr(sitewise.max * f)}</span>
+                  ))}
+                </div>
+                <div className="absolute inset-y-0 left-10 right-1 flex items-end justify-around gap-2">
+                  {sitewise.rows.slice(0, 6).map((r) => {
+                    const h = sitewise.max > 0 ? (r.amount / sitewise.max) * 100 : 0;
+                    return (
+                      <div key={r.name} className="flex-1 flex flex-col items-center justify-end h-full">
+                        <div
+                          className="w-full max-w-[42px] rounded-t bg-primary transition-all"
+                          style={{ height: `${h}%`, minHeight: r.amount > 0 ? 4 : 0 }}
+                          title={`${r.name}: ₹${r.amount.toLocaleString("hi-IN")}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="pl-10 pr-1 flex justify-around gap-2 mb-3">
+                {sitewise.rows.slice(0, 6).map((r) => (
+                  <div key={r.name} className="flex-1 text-center text-[10px] text-muted-foreground truncate">
+                    {r.name.length > 8 ? r.name.slice(0, 8) + "…" : r.name}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {sitewise.rows.map((r) => {
+                  const pct = sitewise.total > 0 ? (r.amount / sitewise.total) * 100 : 0;
+                  return (
+                    <div key={r.name}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold truncate pr-2">{r.name}</span>
+                        <span className="tabular-nums">
+                          ₹{r.amount.toLocaleString("hi-IN")}{" "}
+                          <span className="text-muted-foreground text-xs">({pct.toFixed(0)}%)</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       {/* Calculator shortcuts */}
       <div>
         <div className="flex items-center justify-between mb-2">
