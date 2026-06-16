@@ -186,14 +186,23 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         )}
       </AnimatePresence>
 
-      <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} />
+      <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} onSaved={onMarked} />
     </motion.div>
   );
 }
 
-function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; onOpenChange: (v: boolean) => void; worker: Worker }) {
+type CalendarAttendance = {
+  status: AttendanceStatus;
+  advance: number;
+  site_name: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: boolean; onOpenChange: (v: boolean) => void; worker: Worker; onSaved: () => void }) {
   const [cursor, setCursor] = useState(() => new Date());
-  const [rows, setRows] = useState<Record<string, AttendanceStatus>>({});
+  const [rows, setRows] = useState<Record<string, CalendarAttendance>>({});
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [savingDay, setSavingDay] = useState<string | null>(null);
@@ -210,12 +219,12 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
     const end = new Date(year, month + 1, 0).toISOString().slice(0, 10);
     const { data } = await supabase
       .from("attendance")
-      .select("date,status")
+      .select("date,status,advance,site_name,notes,created_at,updated_at")
       .eq("worker_id", worker.id)
       .gte("date", start)
       .lte("date", end);
-    const map: Record<string, AttendanceStatus> = {};
-    (data || []).forEach((r: any) => { map[r.date] = r.status; });
+    const map: Record<string, CalendarAttendance> = {};
+    (data || []).forEach((r: any) => { map[r.date] = r; });
     setRows(map);
     setLoading(false);
   };
