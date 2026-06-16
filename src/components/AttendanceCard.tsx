@@ -145,11 +145,13 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         </button>
         <button
           onClick={cycle}
-          className={`w-14 h-9 rounded-lg text-white text-sm font-bold grid place-items-center shadow active:scale-95 transition ${
+          className={`w-16 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-1 shadow active:scale-95 transition ${
             pill ? pill.bg : "bg-muted text-muted-foreground"
           }`}
-          aria-label="Toggle status"
+          aria-label="Edit Attendance"
+          title="Edit Attendance"
         >
+          {currentStatus && <Pencil className="w-3 h-3" />}
           {pill ? pill.label : "—"}
         </button>
         <button onClick={() => setExpanded((v) => !v)} className="text-muted-foreground">
