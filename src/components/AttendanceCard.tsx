@@ -237,21 +237,31 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
       return;
     }
     const cur = rows[iso];
-    const idx = cur ? ORDER.indexOf(cur) : -1;
+    const idx = cur ? ORDER.indexOf(cur.status) : -1;
     const next = ORDER[(idx + 1) % ORDER.length];
-    if (!window.confirm(`${iso} — ${cur ? `${cur} → ${next}` : `सेट करें: ${next}`}?`)) return;
+    if (!window.confirm(`${iso} — ${cur ? `${cur.status} → ${next}` : `सेट करें: ${next}`}?`)) return;
     setSavingDay(iso);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("not signed in");
-      const { error } = await supabase
-        .from("attendance")
-        .upsert(
-          { worker_id: worker.id, date: iso, status: next, user_id: user.id },
-          { onConflict: "worker_id,date" }
-        );
-      if (error) throw error;
-      setRows((r) => ({ ...r, [iso]: next }));
+      const saved = await markAttendance({
+        worker_id: worker.id,
+        date: iso,
+        status: next,
+        advance: cur?.advance || 0,
+        site_name: cur?.site_name ?? worker.site_name,
+        notes: cur?.notes ?? null,
+      });
+      setRows((r) => ({
+        ...r,
+        [iso]: {
+          status: next,
+          advance: saved.advance ?? cur?.advance ?? 0,
+          site_name: saved.site_name ?? cur?.site_name ?? worker.site_name,
+          notes: saved.notes ?? cur?.notes ?? null,
+          created_at: saved.created_at ?? cur?.created_at,
+          updated_at: saved.updated_at ?? new Date().toISOString(),
+        },
+      }));
+      onSaved();
       toast({ title: `✅ ${iso} — ${next}` });
     } catch (e: any) {
       toast({ title: "सेव नहीं हुआ", description: e.message, variant: "destructive" });
@@ -268,10 +278,10 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
   }
 
   const totals = Object.values(rows).reduce(
-    (acc, s) => {
-      if (s === "Present") acc.P++;
-      else if (s === "Absent") acc.A++;
-      else if (s === "Half-Day") acc.H++;
+    (acc, row) => {
+      if (row.status === "Present") acc.P++;
+      else if (row.status === "Absent") acc.A++;
+      else if (row.status === "Half-Day") acc.H++;
       return acc;
     },
     { P: 0, A: 0, H: 0 }
@@ -308,7 +318,7 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
             {cells.map((c, i) => {
               if (!c) return <div key={i} className="aspect-square" />;
               const s = rows[c.iso];
-              const p = s ? PILL[s] : null;
+              const p = s ? PILL[s.status] : null;
               const disabled = !editMode || c.iso > todayIso;
               const isSaving = savingDay === c.iso;
               return (
