@@ -8,7 +8,7 @@ import UpiPayDialog from "./UpiPayDialog";
 import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { listSites, type Site, mergeSitesFrom } from "@/lib/sites";
+import { listSites, type Site, mergeSitesFrom, createSite } from "@/lib/sites";
 
 import {
   AlertDialog,
@@ -51,6 +51,17 @@ export default function WorkersPage() {
   }, []);
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
+    if (newSite === "__add__") {
+      const name = window.prompt("नई साइट का नाम लिखें:")?.trim();
+      if (!name) return;
+      const created = createSite({ name });
+      if (!created) {
+        toast({ title: "यह साइट पहले से है या नाम गलत है", variant: "destructive" });
+        return;
+      }
+      setSites(listSites());
+      newSite = created.name;
+    }
     const site_name = newSite === "__none__" ? null : newSite;
     // Optimistic update
     setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, site_name } : x)));
@@ -159,17 +170,14 @@ export default function WorkersPage() {
                       </SelectTrigger>
                       <SelectContent className="z-[100] bg-popover">
                         <SelectItem value="__none__">— कोई नहीं —</SelectItem>
-                        {sites.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                            अभी कोई साइट नहीं।<br />"साइट" टैब से जोड़ें।
-                          </div>
-                        ) : (
-                          sites.map((s) => (
-                            <SelectItem key={s.id} value={s.name}>
-                              {s.name}{s.location ? ` · ${s.location}` : ""}
-                            </SelectItem>
-                          ))
-                        )}
+                        {sites.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>
+                            {s.name}{s.location ? ` · ${s.location}` : ""}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__add__" className="text-primary font-medium">
+                          ➕ नई साइट जोड़ें
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
