@@ -1,6 +1,6 @@
-import { CalendarCheck, Users, BarChart3, Settings, Wallet, Layers, HardHat, Home, BookOpen } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet, Layers, HardHat, Home, BookOpen, Building2 } from "lucide-react";
 
-export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" | "contractors" | "bricks" | "roof" | "report" | "settings" | "subscription";
+export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" | "contractors" | "bricks" | "roof" | "report" | "settings" | "subscription" | "sites";
 
 interface Props {
   active: TabId;
