@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Users,
   CalendarCheck,
@@ -17,12 +18,16 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
+  Building2,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
+import { listSites, type Site } from "@/lib/sites";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
 }
+
+type CashRow = { type: "income" | "expense"; amount: number; site_name: string | null };
 
 const HINDI_DAYS = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
 const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
