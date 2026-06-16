@@ -13,6 +13,7 @@ import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
+import SitesPage from "@/components/SitesPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat } from "lucide-react";
@@ -67,6 +68,7 @@ export default function Index() {
         {tab === "roof" && <RoofPage />}
         {tab === "report" && <ReportPage />}
         {tab === "settings" && <SettingsPage onNavigate={setTab} />}
+        {tab === "sites" && <SitesPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
