@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import SiteNameInput from "./SiteNameInput";
-import { addSite } from "@/lib/sites";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listSites, createSite, type Site } from "@/lib/sites";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -43,24 +43,40 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
+  const [sites, setSites] = useState<Site[]>(() => listSites());
   const [gps, setGps] = useState<{ lat: number; lng: number } | undefined>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
+  useEffect(() => {
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
+  }, []);
 
-  const cycle = () => {
-    const cur = sel;
-    const idx = cur ? ORDER.indexOf(cur) : -1;
+  const cycleStatus = () => {
+    const idx = sel ? ORDER.indexOf(sel) : -1;
     const next = ORDER[(idx + 1) % ORDER.length];
     setSel(next);
     onSelectionChange?.(worker.id, next);
   };
 
   const updateSite = (v: string) => {
-    setSite(v);
-    onSiteChange?.(worker.id, v);
-    if (v.trim()) addSite(v);
+    if (v === "__add__") {
+      const name = window.prompt("नई साइट का नाम लिखें:")?.trim();
+      if (!name) return;
+      const created = createSite({ name });
+      if (!created) {
+        toast({ title: "यह साइट पहले से है या नाम गलत है", variant: "destructive" });
+        return;
+      }
+      setSites(listSites());
+      v = created.name;
+    }
+    const val = v === "__none__" ? "" : v;
+    setSite(val);
+    onSiteChange?.(worker.id, val);
   };
 
   const captureGps = () => {
@@ -144,7 +160,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           <CalendarDays className="w-4 h-4" />
         </button>
         <button
-          onClick={cycle}
+          onClick={cycleStatus}
           className={`w-16 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-1 shadow active:scale-95 transition ${
             pill ? pill.bg : "bg-muted text-muted-foreground"
           }`}
@@ -169,12 +185,22 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           >
             <div className="pt-2">
               <label className="text-[11px] text-muted-foreground">साइट का नाम</label>
-              <SiteNameInput
-                value={site}
-                onChange={updateSite}
-                placeholder="जैसे शर्मा रेजिडेंसी"
-                className="h-9 text-sm"
-              />
+              <Select value={site || "__none__"} onValueChange={updateSite}>
+                <SelectTrigger className="h-9 text-sm bg-background border-primary/40">
+                  <SelectValue placeholder="साइट चुनें" />
+                </SelectTrigger>
+                <SelectContent className="z-[100] bg-popover">
+                  <SelectItem value="__none__">— कोई नहीं —</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}{s.location ? ` · ${s.location}` : ""}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__add__" className="text-primary font-medium">
+                    ➕ नई साइट जोड़ें
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <button
               onClick={captureGps}
