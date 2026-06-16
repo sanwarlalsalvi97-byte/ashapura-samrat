@@ -185,12 +185,22 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           >
             <div className="pt-2">
               <label className="text-[11px] text-muted-foreground">साइट का नाम</label>
-              <SiteNameInput
-                value={site}
-                onChange={updateSite}
-                placeholder="जैसे शर्मा रेजिडेंसी"
-                className="h-9 text-sm"
-              />
+              <Select value={site || "__none__"} onValueChange={updateSite}>
+                <SelectTrigger className="h-9 text-sm bg-background border-primary/40">
+                  <SelectValue placeholder="साइट चुनें" />
+                </SelectTrigger>
+                <SelectContent className="z-[100] bg-popover">
+                  <SelectItem value="__none__">— कोई नहीं —</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}{s.location ? ` · ${s.location}` : ""}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__add__" className="text-primary font-medium">
+                    ➕ नई साइट जोड़ें
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <button
               onClick={captureGps}
