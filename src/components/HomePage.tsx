@@ -236,33 +236,59 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Site filter dropdown — applies to balance / income / expense / site-wise card */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-          <Building2 className="w-4 h-4 text-primary" />
-          साइट:
+      {/* Site & Location filter dropdowns — apply to balance / income / expense / site-wise card live */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
+            <Building2 className="w-4 h-4 text-primary" />
+            साइट
+          </div>
+          <Select value={siteFilter} onValueChange={setSiteFilter}>
+            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+              <SelectValue placeholder="सभी साइट" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">सभी साइट</SelectItem>
+              {sites.map((s) => (
+                <SelectItem key={s.id} value={s.name}>
+                  {s.name}{s.location ? ` · ${s.location}` : ""}
+                </SelectItem>
+              ))}
+              {sites.length === 0 && (
+                <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => onNavigate("sites")}
+            className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
+          >
+            प्रबंधन
+          </button>
         </div>
-        <Select value={siteFilter} onValueChange={setSiteFilter}>
-          <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
-            <SelectValue placeholder="सभी साइट" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">सभी साइट</SelectItem>
-            {sites.map((s) => (
-              <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-            ))}
-            {sites.length === 0 && (
-              <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-        <button
-          onClick={() => onNavigate("sites")}
-          className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
-        >
-          प्रबंधन
-        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
+            <Sparkles className="w-4 h-4 text-primary" />
+            लोकेशन
+          </div>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+              <SelectValue placeholder="सभी लोकेशन" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">सभी लोकेशन</SelectItem>
+              {locations.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+              {locations.length === 0 && (
+                <SelectItem value="__no_loc__" disabled>कोई लोकेशन नहीं</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
 
       {/* Horizontal scroll summary */}
