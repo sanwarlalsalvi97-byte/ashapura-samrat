@@ -420,6 +420,7 @@ export default function AttendancePage() {
                     date={formatDate(date)}
                     currentStatus={attendance[w.id]?.status}
                     currentAdvance={attendance[w.id]?.advance}
+                    currentCreatedAt={attendance[w.id]?.created_at}
                     currentUpdatedAt={attendance[w.id]?.updated_at}
                     mode={mode}
                     onMarked={loadData}
