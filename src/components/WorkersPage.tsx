@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
+import { getWorkers, deleteWorker, updateWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
 import UpiPayDialog from "./UpiPayDialog";
-import { Phone, Trash2, Smartphone } from "lucide-react";
+import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { listSites, type Site, mergeSitesFrom } from "@/lib/sites";
+
 import {
   AlertDialog,
   AlertDialogAction,
