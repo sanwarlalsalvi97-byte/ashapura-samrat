@@ -2,6 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { enqueueAttendance, getQueue, isOnline } from "@/lib/offline-queue";
 
+export const ATTENDANCE_UPDATED_EVENT = "attendance-updated";
+
+export function notifyAttendanceUpdated() {
+  try {
+    window.dispatchEvent(new Event(ATTENDANCE_UPDATED_EVENT));
+  } catch {}
+}
+
 type Worker = Database["public"]["Tables"]["workers"]["Row"];
 type WorkerInsert = Database["public"]["Tables"]["workers"]["Insert"];
 type Attendance = Database["public"]["Tables"]["attendance"]["Row"];
@@ -89,6 +97,7 @@ export async function markAttendance(record: Omit<AttendanceInsert, "user_id">) 
   // If offline, queue and return optimistically.
   if (!isOnline()) {
     enqueueAttendance(payload);
+    notifyAttendanceUpdated();
     return { ...payload, _pending: true } as any;
   }
 
@@ -99,11 +108,18 @@ export async function markAttendance(record: Omit<AttendanceInsert, "user_id">) 
       .select()
       .single();
     if (error) throw error;
+    notifyAttendanceUpdated();
     return data;
-  } catch (err) {
-    // Network/transient failure — queue for later.
-    enqueueAttendance(payload);
-    return { ...payload, _pending: true } as any;
+  } catch (err: any) {
+    // Only queue real network/offline failures. Database/RLS/constraint errors
+    // must be shown so users don't think an unsaved update succeeded.
+    const message = String(err?.message || "").toLowerCase();
+    if (!isOnline() || message.includes("failed to fetch") || message.includes("network")) {
+      enqueueAttendance(payload);
+      notifyAttendanceUpdated();
+      return { ...payload, _pending: true } as any;
+    }
+    throw err;
   }
 }
 
