@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Users,
   CalendarCheck,
@@ -17,11 +18,21 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
+  Building2,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
+import { listSites, type Site } from "@/lib/sites";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
+}
+
+type CashRow = { type: "income" | "expense"; amount: number; site_name: string | null };
+
+function shortInr(n: number): string {
+  if (n >= 100000) return `${(n / 100000).toFixed(n >= 1000000 ? 0 : 1)}L`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return `${Math.round(n)}`;
 }
 
 const HINDI_DAYS = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
@@ -56,8 +67,11 @@ type Tx = {
 export default function HomePage({ onNavigate }: Props) {
   const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0 });
   const [recent, setRecent] = useState<Tx[]>([]);
+  const [allCash, setAllCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
+  const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [siteFilter, setSiteFilter] = useState<string>("__all__");
 
   const today = new Date();
   const dateStr = `${today.getDate()} ${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
@@ -71,14 +85,29 @@ export default function HomePage({ onNavigate }: Props) {
       const e = data.user?.email;
       if (e) setName(e.split("@")[0]);
     });
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
   }, []);
+
+  // Recompute totals when site filter changes
+  useEffect(() => {
+    const filtered = siteFilter === "__all__"
+      ? allCash
+      : allCash.filter((x) => (x.site_name || "") === siteFilter);
+    setStats((s) => ({
+      ...s,
+      income: filtered.filter((x) => x.type === "income").reduce((sum, x) => sum + (x.amount || 0), 0),
+      expense: filtered.filter((x) => x.type === "expense").reduce((sum, x) => sum + (x.amount || 0), 0),
+    }));
+  }, [siteFilter, allCash]);
 
   async function loadStats() {
     try {
       const [w, a, c, r] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
-        supabase.from("cashbook").select("type,amount"),
+        supabase.from("cashbook").select("type,amount,site_name"),
         supabase
           .from("cashbook")
           .select("id,type,amount,category,date,notes")
@@ -86,7 +115,8 @@ export default function HomePage({ onNavigate }: Props) {
           .limit(3),
       ]);
       const att = a.data || [];
-      const cb = c.data || [];
+      const cb = (c.data || []) as CashRow[];
+      setAllCash(cb);
       setStats({
         workers: w.count || 0,
         present: att.filter((x) => x.status === "Present").length,
@@ -100,6 +130,24 @@ export default function HomePage({ onNavigate }: Props) {
       setLoading(false);
     }
   }
+
+  // Per-site expense breakdown (always shows all known sites, even with ₹0)
+  const sitewise = useMemo(() => {
+    const map = new Map<string, number>();
+    sites.forEach((s) => map.set(s.name, 0));
+    allCash
+      .filter((x) => x.type === "expense")
+      .forEach((x) => {
+        const key = (x.site_name || "").trim() || "अन्य";
+        map.set(key, (map.get(key) || 0) + (x.amount || 0));
+      });
+    const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
+    rows.sort((a, b) => b.amount - a.amount);
+    const total = rows.reduce((s, r) => s + r.amount, 0);
+    const max = Math.max(1, ...rows.map((r) => r.amount));
+    return { rows, total, max };
+  }, [allCash, sites]);
+
 
   const balance = stats.income - stats.expense;
   const totalAtt = stats.present + stats.absent + stats.half;
@@ -153,6 +201,35 @@ export default function HomePage({ onNavigate }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Site filter dropdown — applies to balance / income / expense / site-wise card */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
+          <Building2 className="w-4 h-4 text-primary" />
+          साइट:
+        </div>
+        <Select value={siteFilter} onValueChange={setSiteFilter}>
+          <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+            <SelectValue placeholder="सभी साइट" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">सभी साइट</SelectItem>
+            {sites.map((s) => (
+              <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+            ))}
+            {sites.length === 0 && (
+              <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        <button
+          onClick={() => onNavigate("sites")}
+          className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
+        >
+          प्रबंधन
+        </button>
+      </div>
+
 
       {/* Horizontal scroll summary */}
       <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
@@ -261,6 +338,85 @@ export default function HomePage({ onNavigate }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Site-wise expense card (live) */}
+      <Card className="rounded-2xl border-border/60">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/15 grid place-items-center text-primary">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-bold">साइट-वाइज खर्च</h2>
+            </div>
+            <div className="text-sm font-extrabold text-primary">
+              ₹{sitewise.total.toLocaleString("hi-IN")}
+            </div>
+          </div>
+
+          {sitewise.rows.length === 0 ? (
+            <div className="text-center text-xs text-muted-foreground py-6">कोई साइट नहीं — पहले साइट जोड़ें</div>
+          ) : (
+            <>
+              <div className="relative h-40 mt-1 mb-3 pl-10 pr-1">
+                <div className="absolute inset-y-0 left-10 right-1 flex flex-col justify-between pointer-events-none">
+                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
+                    <div key={f} className="border-t border-dashed border-border/70" />
+                  ))}
+                </div>
+                <div className="absolute inset-y-0 left-0 w-10 flex flex-col justify-between text-[10px] text-muted-foreground text-right pr-1">
+                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
+                    <span key={f}>₹{shortInr(sitewise.max * f)}</span>
+                  ))}
+                </div>
+                <div className="absolute inset-y-0 left-10 right-1 flex items-end justify-around gap-2">
+                  {sitewise.rows.slice(0, 6).map((r) => {
+                    const h = sitewise.max > 0 ? (r.amount / sitewise.max) * 100 : 0;
+                    return (
+                      <div key={r.name} className="flex-1 flex flex-col items-center justify-end h-full">
+                        <div
+                          className="w-full max-w-[42px] rounded-t bg-primary transition-all"
+                          style={{ height: `${h}%`, minHeight: r.amount > 0 ? 4 : 0 }}
+                          title={`${r.name}: ₹${r.amount.toLocaleString("hi-IN")}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="pl-10 pr-1 flex justify-around gap-2 mb-3">
+                {sitewise.rows.slice(0, 6).map((r) => (
+                  <div key={r.name} className="flex-1 text-center text-[10px] text-muted-foreground truncate">
+                    {r.name.length > 8 ? r.name.slice(0, 8) + "…" : r.name}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {sitewise.rows.map((r) => {
+                  const pct = sitewise.total > 0 ? (r.amount / sitewise.total) * 100 : 0;
+                  return (
+                    <div key={r.name}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold truncate pr-2">{r.name}</span>
+                        <span className="tabular-nums">
+                          ₹{r.amount.toLocaleString("hi-IN")}{" "}
+                          <span className="text-muted-foreground text-xs">({pct.toFixed(0)}%)</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {/* Calculator shortcuts */}
       <div>
