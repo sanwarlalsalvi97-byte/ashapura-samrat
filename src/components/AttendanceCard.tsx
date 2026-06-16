@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
+import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ interface Props {
   date: string;
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
+  currentCreatedAt?: string;
   currentUpdatedAt?: string;
   mode?: "manual" | "gps";
   onMarked: () => void;
@@ -38,7 +39,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
@@ -93,6 +94,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
 
   const pill = sel ? PILL[sel] : null;
   const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
+  const wasEdited = !!currentCreatedAt && !!currentUpdatedAt && Math.abs(new Date(currentUpdatedAt).getTime() - new Date(currentCreatedAt).getTime()) > 1000;
   const updatedLabel = currentUpdatedAt
     ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
     : null;
@@ -111,16 +113,16 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
         <button onClick={() => setExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
             {worker.name}
-            {isEdited && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">एडिटेड</span>
+            {(isEdited || wasEdited) && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">Edited</span>
             )}
           </div>
           <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
             {worker.role}
             {site && <span>• 📍 {site}</span>}
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
-            {updatedLabel && !isEdited && (
-              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{updatedLabel}</span>
+            {updatedLabel && (
+              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />Last Updated: {updatedLabel}</span>
             )}
           </div>
         </button>
