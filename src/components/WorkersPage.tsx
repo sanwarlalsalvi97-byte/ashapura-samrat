@@ -147,23 +147,29 @@ export default function WorkersPage() {
                   </div>
 
                   {/* Inline site selector */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-                    <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="text-[11px] text-muted-foreground shrink-0">साइट:</span>
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                    <Building2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground shrink-0">साइट:</span>
                     <Select
                       value={w.site_name || "__none__"}
                       onValueChange={(v) => handleSiteChange(w, v)}
                     >
-                      <SelectTrigger className="h-8 rounded-lg text-xs flex-1">
+                      <SelectTrigger className="h-9 rounded-lg text-xs flex-1 bg-background border-primary/30">
                         <SelectValue placeholder="साइट चुनें" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[100] bg-popover">
                         <SelectItem value="__none__">— कोई नहीं —</SelectItem>
-                        {sites.map((s) => (
-                          <SelectItem key={s.id} value={s.name}>
-                            {s.name}{s.location ? ` · ${s.location}` : ""}
-                          </SelectItem>
-                        ))}
+                        {sites.length === 0 ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                            अभी कोई साइट नहीं।<br />"साइट" टैब से जोड़ें।
+                          </div>
+                        ) : (
+                          sites.map((s) => (
+                            <SelectItem key={s.id} value={s.name}>
+                              {s.name}{s.location ? ` · ${s.location}` : ""}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
