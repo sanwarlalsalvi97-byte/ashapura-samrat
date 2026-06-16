@@ -32,17 +32,44 @@ const roleColors: Record<string, string> = {
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
+  const [sites, setSites] = useState<Site[]>(() => listSites());
 
   const load = async () => {
     try {
       const ws = await getWorkers();
       setWorkers(ws);
-      const { mergeSitesFrom } = await import("@/lib/sites");
       mergeSitesFrom(ws.map((w) => w.site_name));
+      setSites(listSites());
     } catch {}
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
+  }, []);
+
+  const handleSiteChange = async (w: Worker, newSite: string) => {
+    const site_name = newSite === "__none__" ? null : newSite;
+    // Optimistic update
+    setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, site_name } : x)));
+    try {
+      await updateWorker(w.id, {
+        name: w.name,
+        role: w.role as any,
+        daily_rate: w.daily_rate,
+        site_name,
+        phone: w.phone ?? null,
+        upi_id: (w as any).upi_id ?? null,
+      });
+      toast({ title: `✅ ${w.name} — साइट अपडेट` });
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+      load();
+    }
+  };
+
 
   const handleDelete = async (worker: Worker) => {
     try {
