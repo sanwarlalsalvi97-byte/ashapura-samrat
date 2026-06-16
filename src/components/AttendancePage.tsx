@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
+import { ATTENDANCE_UPDATED_EVENT, getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import AttendanceCard from "./AttendanceCard";
 import AttendanceCalendarView from "./AttendanceCalendarView";
@@ -39,7 +39,7 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; updated_at?: string }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
@@ -57,7 +57,7 @@ export default function AttendancePage() {
       setWorkers(w);
       const map: typeof attendance = {};
       a.forEach((r: any) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance, updated_at: r.updated_at };
+        map[r.worker_id] = { status: r.status, advance: r.advance, created_at: r.created_at, updated_at: r.updated_at };
       });
       setAttendance(map);
       setSelections({});
