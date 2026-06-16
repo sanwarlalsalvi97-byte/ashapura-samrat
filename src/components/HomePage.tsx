@@ -61,8 +61,11 @@ type Tx = {
 export default function HomePage({ onNavigate }: Props) {
   const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0 });
   const [recent, setRecent] = useState<Tx[]>([]);
+  const [allCash, setAllCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
+  const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [siteFilter, setSiteFilter] = useState<string>("__all__");
 
   const today = new Date();
   const dateStr = `${today.getDate()} ${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
@@ -76,14 +79,29 @@ export default function HomePage({ onNavigate }: Props) {
       const e = data.user?.email;
       if (e) setName(e.split("@")[0]);
     });
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
   }, []);
+
+  // Recompute totals when site filter changes
+  useEffect(() => {
+    const filtered = siteFilter === "__all__"
+      ? allCash
+      : allCash.filter((x) => (x.site_name || "") === siteFilter);
+    setStats((s) => ({
+      ...s,
+      income: filtered.filter((x) => x.type === "income").reduce((sum, x) => sum + (x.amount || 0), 0),
+      expense: filtered.filter((x) => x.type === "expense").reduce((sum, x) => sum + (x.amount || 0), 0),
+    }));
+  }, [siteFilter, allCash]);
 
   async function loadStats() {
     try {
       const [w, a, c, r] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
-        supabase.from("cashbook").select("type,amount"),
+        supabase.from("cashbook").select("type,amount,site_name"),
         supabase
           .from("cashbook")
           .select("id,type,amount,category,date,notes")
@@ -91,7 +109,8 @@ export default function HomePage({ onNavigate }: Props) {
           .limit(3),
       ]);
       const att = a.data || [];
-      const cb = c.data || [];
+      const cb = (c.data || []) as CashRow[];
+      setAllCash(cb);
       setStats({
         workers: w.count || 0,
         present: att.filter((x) => x.status === "Present").length,
@@ -105,6 +124,24 @@ export default function HomePage({ onNavigate }: Props) {
       setLoading(false);
     }
   }
+
+  // Per-site expense breakdown (always shows all known sites, even with ₹0)
+  const sitewise = useMemo(() => {
+    const map = new Map<string, number>();
+    sites.forEach((s) => map.set(s.name, 0));
+    allCash
+      .filter((x) => x.type === "expense")
+      .forEach((x) => {
+        const key = (x.site_name || "").trim() || "अन्य";
+        map.set(key, (map.get(key) || 0) + (x.amount || 0));
+      });
+    const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
+    rows.sort((a, b) => b.amount - a.amount);
+    const total = rows.reduce((s, r) => s + r.amount, 0);
+    const max = Math.max(1, ...rows.map((r) => r.amount));
+    return { rows, total, max };
+  }, [allCash, sites]);
+
 
   const balance = stats.income - stats.expense;
   const totalAtt = stats.present + stats.absent + stats.half;
