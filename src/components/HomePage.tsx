@@ -72,12 +72,20 @@ export default function HomePage({ onNavigate }: Props) {
   const [name, setName] = useState("Admin");
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
+  const [locationFilter, setLocationFilter] = useState<string>("__all__");
 
   const today = new Date();
   const dateStr = `${today.getDate()} ${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
   const dayStr = `${HINDI_DAYS[today.getDay()]} · ${EN_DAYS[today.getDay()]}`;
   const tithiStr = approxTithi(today);
   const todayISO = today.toISOString().slice(0, 10);
+
+  // Unique locations from sites
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    sites.forEach((s) => { const l = (s.location || "").trim(); if (l) set.add(l); });
+    return Array.from(set).sort();
+  }, [sites]);
 
   useEffect(() => {
     loadStats();
@@ -87,20 +95,41 @@ export default function HomePage({ onNavigate }: Props) {
     });
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
-    return () => window.removeEventListener("sites-updated", refresh);
+
+    // Live updates: refetch cashbook on any change
+    const channel = supabase
+      .channel("home-cashbook")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, () => loadStats())
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Recompute totals when site filter changes
+  // Set of site names matching current location filter
+  const sitesInLocation = useMemo(() => {
+    if (locationFilter === "__all__") return null;
+    return new Set(
+      sites.filter((s) => (s.location || "").trim() === locationFilter).map((s) => s.name)
+    );
+  }, [locationFilter, sites]);
+
+  // Recompute totals when filters change
   useEffect(() => {
-    const filtered = siteFilter === "__all__"
-      ? allCash
-      : allCash.filter((x) => (x.site_name || "") === siteFilter);
+    const filtered = allCash.filter((x) => {
+      if (siteFilter !== "__all__" && (x.site_name || "") !== siteFilter) return false;
+      if (sitesInLocation && !sitesInLocation.has(x.site_name || "")) return false;
+      return true;
+    });
     setStats((s) => ({
       ...s,
       income: filtered.filter((x) => x.type === "income").reduce((sum, x) => sum + (x.amount || 0), 0),
       expense: filtered.filter((x) => x.type === "expense").reduce((sum, x) => sum + (x.amount || 0), 0),
     }));
-  }, [siteFilter, allCash]);
+  }, [siteFilter, sitesInLocation, allCash]);
+
 
   async function loadStats() {
     try {
