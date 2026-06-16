@@ -160,7 +160,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           <CalendarDays className="w-4 h-4" />
         </button>
         <button
-          onClick={cycle}
+          onClick={cycleStatus}
           className={`w-16 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-1 shadow active:scale-95 transition ${
             pill ? pill.bg : "bg-muted text-muted-foreground"
           }`}
