@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { getWorkers, deleteWorker, type Worker } from "@/lib/supabase-helpers";
+import { getWorkers, deleteWorker, updateWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
 import UpiPayDialog from "./UpiPayDialog";
-import { Phone, Trash2, Smartphone } from "lucide-react";
+import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { listSites, type Site, mergeSitesFrom } from "@/lib/sites";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,17 +32,44 @@ const roleColors: Record<string, string> = {
 export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
+  const [sites, setSites] = useState<Site[]>(() => listSites());
 
   const load = async () => {
     try {
       const ws = await getWorkers();
       setWorkers(ws);
-      const { mergeSitesFrom } = await import("@/lib/sites");
       mergeSitesFrom(ws.map((w) => w.site_name));
+      setSites(listSites());
     } catch {}
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
+  }, []);
+
+  const handleSiteChange = async (w: Worker, newSite: string) => {
+    const site_name = newSite === "__none__" ? null : newSite;
+    // Optimistic update
+    setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, site_name } : x)));
+    try {
+      await updateWorker(w.id, {
+        name: w.name,
+        role: w.role as any,
+        daily_rate: w.daily_rate,
+        site_name,
+        phone: w.phone ?? null,
+        upi_id: (w as any).upi_id ?? null,
+      });
+      toast({ title: `✅ ${w.name} — साइट अपडेट` });
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+      load();
+    }
+  };
+
 
   const handleDelete = async (worker: Worker) => {
     try {
@@ -68,17 +98,18 @@ export default function WorkersPage() {
           {workers.map((w, i) => (
             <motion.div key={w.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">{w.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
-                        {w.role}
-                      </span>
-                      <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
-                      {w.site_name && <span className="text-xs text-muted-foreground">• {w.site_name}</span>}
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold truncate">{w.name}</h3>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
+                          {w.role}
+                        </span>
+                        <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
+                      </div>
                     </div>
-                  </div>
+
                     <div className="flex items-center gap-2">
                     <EditWorkerDialog worker={w} onUpdated={load} />
                     {(w as any).upi_id && (
@@ -112,8 +143,32 @@ export default function WorkersPage() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    </div>
+                  </div>
+
+                  {/* Inline site selector */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                    <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-[11px] text-muted-foreground shrink-0">साइट:</span>
+                    <Select
+                      value={w.site_name || "__none__"}
+                      onValueChange={(v) => handleSiteChange(w, v)}
+                    >
+                      <SelectTrigger className="h-8 rounded-lg text-xs flex-1">
+                        <SelectValue placeholder="साइट चुनें" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— कोई नहीं —</SelectItem>
+                        {sites.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>
+                            {s.name}{s.location ? ` · ${s.location}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardContent>
+
               </Card>
             </motion.div>
           ))}

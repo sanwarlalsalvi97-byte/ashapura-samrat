@@ -72,12 +72,20 @@ export default function HomePage({ onNavigate }: Props) {
   const [name, setName] = useState("Admin");
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
+  const [locationFilter, setLocationFilter] = useState<string>("__all__");
 
   const today = new Date();
   const dateStr = `${today.getDate()} ${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
   const dayStr = `${HINDI_DAYS[today.getDay()]} · ${EN_DAYS[today.getDay()]}`;
   const tithiStr = approxTithi(today);
   const todayISO = today.toISOString().slice(0, 10);
+
+  // Unique locations from sites
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    sites.forEach((s) => { const l = (s.location || "").trim(); if (l) set.add(l); });
+    return Array.from(set).sort();
+  }, [sites]);
 
   useEffect(() => {
     loadStats();
@@ -87,20 +95,41 @@ export default function HomePage({ onNavigate }: Props) {
     });
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
-    return () => window.removeEventListener("sites-updated", refresh);
+
+    // Live updates: refetch cashbook on any change
+    const channel = supabase
+      .channel("home-cashbook")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, () => loadStats())
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Recompute totals when site filter changes
+  // Set of site names matching current location filter
+  const sitesInLocation = useMemo(() => {
+    if (locationFilter === "__all__") return null;
+    return new Set(
+      sites.filter((s) => (s.location || "").trim() === locationFilter).map((s) => s.name)
+    );
+  }, [locationFilter, sites]);
+
+  // Recompute totals when filters change
   useEffect(() => {
-    const filtered = siteFilter === "__all__"
-      ? allCash
-      : allCash.filter((x) => (x.site_name || "") === siteFilter);
+    const filtered = allCash.filter((x) => {
+      if (siteFilter !== "__all__" && (x.site_name || "") !== siteFilter) return false;
+      if (sitesInLocation && !sitesInLocation.has(x.site_name || "")) return false;
+      return true;
+    });
     setStats((s) => ({
       ...s,
       income: filtered.filter((x) => x.type === "income").reduce((sum, x) => sum + (x.amount || 0), 0),
       expense: filtered.filter((x) => x.type === "expense").reduce((sum, x) => sum + (x.amount || 0), 0),
     }));
-  }, [siteFilter, allCash]);
+  }, [siteFilter, sitesInLocation, allCash]);
+
 
   async function loadStats() {
     try {
@@ -131,12 +160,16 @@ export default function HomePage({ onNavigate }: Props) {
     }
   }
 
-  // Per-site expense breakdown (always shows all known sites, even with ₹0)
+  // Per-site expense breakdown (respects location filter; always shows all known sites)
   const sitewise = useMemo(() => {
     const map = new Map<string, number>();
-    sites.forEach((s) => map.set(s.name, 0));
+    const includedSites = sitesInLocation
+      ? sites.filter((s) => sitesInLocation.has(s.name))
+      : sites;
+    includedSites.forEach((s) => map.set(s.name, 0));
     allCash
       .filter((x) => x.type === "expense")
+      .filter((x) => !sitesInLocation || sitesInLocation.has(x.site_name || ""))
       .forEach((x) => {
         const key = (x.site_name || "").trim() || "अन्य";
         map.set(key, (map.get(key) || 0) + (x.amount || 0));
@@ -146,7 +179,8 @@ export default function HomePage({ onNavigate }: Props) {
     const total = rows.reduce((s, r) => s + r.amount, 0);
     const max = Math.max(1, ...rows.map((r) => r.amount));
     return { rows, total, max };
-  }, [allCash, sites]);
+  }, [allCash, sites, sitesInLocation]);
+
 
 
   const balance = stats.income - stats.expense;
@@ -202,33 +236,59 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* Site filter dropdown — applies to balance / income / expense / site-wise card */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-          <Building2 className="w-4 h-4 text-primary" />
-          साइट:
+      {/* Site & Location filter dropdowns — apply to balance / income / expense / site-wise card live */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
+            <Building2 className="w-4 h-4 text-primary" />
+            साइट
+          </div>
+          <Select value={siteFilter} onValueChange={setSiteFilter}>
+            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+              <SelectValue placeholder="सभी साइट" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">सभी साइट</SelectItem>
+              {sites.map((s) => (
+                <SelectItem key={s.id} value={s.name}>
+                  {s.name}{s.location ? ` · ${s.location}` : ""}
+                </SelectItem>
+              ))}
+              {sites.length === 0 && (
+                <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <button
+            onClick={() => onNavigate("sites")}
+            className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
+          >
+            प्रबंधन
+          </button>
         </div>
-        <Select value={siteFilter} onValueChange={setSiteFilter}>
-          <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
-            <SelectValue placeholder="सभी साइट" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">सभी साइट</SelectItem>
-            {sites.map((s) => (
-              <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-            ))}
-            {sites.length === 0 && (
-              <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-        <button
-          onClick={() => onNavigate("sites")}
-          className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
-        >
-          प्रबंधन
-        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
+            <Sparkles className="w-4 h-4 text-primary" />
+            लोकेशन
+          </div>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
+              <SelectValue placeholder="सभी लोकेशन" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">सभी लोकेशन</SelectItem>
+              {locations.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+              {locations.length === 0 && (
+                <SelectItem value="__no_loc__" disabled>कोई लोकेशन नहीं</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
 
       {/* Horizontal scroll summary */}
