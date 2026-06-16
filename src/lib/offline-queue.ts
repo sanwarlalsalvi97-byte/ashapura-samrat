@@ -5,6 +5,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { AttendanceInsert } from "@/lib/supabase-helpers";
 
+const ATTENDANCE_UPDATED_EVENT = "attendance-updated";
+
+function notifyAttendanceUpdated() {
+  try {
+    window.dispatchEvent(new Event(ATTENDANCE_UPDATED_EVENT));
+  } catch {}
+}
+
 const QUEUE_KEY = "hajiri-offline-queue-v1";
 
 export type QueuedAttendance = {
@@ -111,6 +119,7 @@ export async function flushQueue(): Promise<{ ok: number; failed: number }> {
       }
     }
     writeQueue(remaining);
+    if (ok > 0) notifyAttendanceUpdated();
     return { ok, failed };
   } finally {
     flushing = false;
