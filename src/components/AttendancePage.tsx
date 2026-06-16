@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
+import { ATTENDANCE_UPDATED_EVENT, getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import AttendanceCard from "./AttendanceCard";
 import AttendanceCalendarView from "./AttendanceCalendarView";
@@ -39,7 +39,7 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; updated_at?: string }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
@@ -57,7 +57,7 @@ export default function AttendancePage() {
       setWorkers(w);
       const map: typeof attendance = {};
       a.forEach((r: any) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance, updated_at: r.updated_at };
+        map[r.worker_id] = { status: r.status, advance: r.advance, created_at: r.created_at, updated_at: r.updated_at };
       });
       setAttendance(map);
       setSelections({});
@@ -110,6 +110,7 @@ export default function AttendancePage() {
 
     setSavingAll(true);
     let ok = 0, fail = 0;
+    const savedAt = new Date().toISOString();
     for (const e of entries) {
       try {
         const siteOverride = siteOverrides[e.worker.id];
@@ -122,9 +123,24 @@ export default function AttendancePage() {
           site_name: (siteOverride && siteOverride.trim()) || e.worker.site_name,
           notes: gps ? `GPS:${gps.lat},${gps.lng}` : null,
         });
+        setAttendance((prev) => ({
+          ...prev,
+          [e.worker.id]: {
+            status: e.status,
+            advance: e.advance,
+            created_at: prev[e.worker.id]?.created_at || savedAt,
+            updated_at: savedAt,
+          },
+        }));
+        setSelections((prev) => {
+          const next = { ...prev };
+          delete next[e.worker.id];
+          return next;
+        });
         ok++;
-      } catch {
+      } catch (err: any) {
         fail++;
+        toast({ title: `${e.worker.name} सेव नहीं हुआ`, description: err?.message, variant: "destructive" });
       }
     }
     setSavingAll(false);
@@ -193,6 +209,11 @@ export default function AttendancePage() {
   };
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, loadData);
+    return () => window.removeEventListener(ATTENDANCE_UPDATED_EVENT, loadData);
+  }, [loadData]);
 
   const changeDate = (dir: number) => {
     setDate((d) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n; });
@@ -399,6 +420,7 @@ export default function AttendancePage() {
                     date={formatDate(date)}
                     currentStatus={attendance[w.id]?.status}
                     currentAdvance={attendance[w.id]?.advance}
+                    currentCreatedAt={attendance[w.id]?.created_at}
                     currentUpdatedAt={attendance[w.id]?.updated_at}
                     mode={mode}
                     onMarked={loadData}

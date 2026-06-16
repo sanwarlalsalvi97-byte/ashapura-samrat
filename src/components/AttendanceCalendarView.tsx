@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
+import { ATTENDANCE_UPDATED_EVENT } from "@/lib/supabase-helpers";
 
 const HINDI_MONTHS = ["जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
 const WEEK = ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"];
@@ -20,8 +21,7 @@ export default function AttendanceCalendarView() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = ymd(new Date());
 
-  useEffect(() => {
-    (async () => {
+  const loadStats = async () => {
       setLoading(true);
       const start = ymd(new Date(year, month, 1));
       const end = ymd(new Date(year, month + 1, 0));
@@ -40,7 +40,15 @@ export default function AttendanceCalendarView() {
       });
       setStats(map);
       setLoading(false);
-    })();
+  };
+
+  useEffect(() => {
+    loadStats();
+  }, [year, month]);
+
+  useEffect(() => {
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, loadStats);
+    return () => window.removeEventListener(ATTENDANCE_UPDATED_EVENT, loadStats);
   }, [year, month]);
 
   const cells = useMemo(() => {

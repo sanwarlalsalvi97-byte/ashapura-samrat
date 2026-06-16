@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
+import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
 import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ interface Props {
   date: string;
   currentStatus?: AttendanceStatus;
   currentAdvance?: number;
+  currentCreatedAt?: string;
   currentUpdatedAt?: string;
   mode?: "manual" | "gps";
   onMarked: () => void;
@@ -38,7 +39,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
@@ -93,6 +94,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
 
   const pill = sel ? PILL[sel] : null;
   const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
+  const wasEdited = !!currentCreatedAt && !!currentUpdatedAt && Math.abs(new Date(currentUpdatedAt).getTime() - new Date(currentCreatedAt).getTime()) > 1000;
   const updatedLabel = currentUpdatedAt
     ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
     : null;
@@ -111,16 +113,16 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
         <button onClick={() => setExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
           <div className="font-semibold text-sm truncate flex items-center gap-1.5">
             {worker.name}
-            {isEdited && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">एडिटेड</span>
+            {(isEdited || wasEdited) && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">Edited</span>
             )}
           </div>
           <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
             {worker.role}
             {site && <span>• 📍 {site}</span>}
             {gps && <span className="text-emerald-600">• GPS ✓</span>}
-            {updatedLabel && !isEdited && (
-              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{updatedLabel}</span>
+            {updatedLabel && (
+              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />Last Updated: {updatedLabel}</span>
             )}
           </div>
         </button>
@@ -143,11 +145,13 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
         </button>
         <button
           onClick={cycle}
-          className={`w-14 h-9 rounded-lg text-white text-sm font-bold grid place-items-center shadow active:scale-95 transition ${
+          className={`w-16 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-1 shadow active:scale-95 transition ${
             pill ? pill.bg : "bg-muted text-muted-foreground"
           }`}
-          aria-label="Toggle status"
+          aria-label="Edit Attendance"
+          title="Edit Attendance"
         >
+          {currentStatus && <Pencil className="w-3 h-3" />}
           {pill ? pill.label : "—"}
         </button>
         <button onClick={() => setExpanded((v) => !v)} className="text-muted-foreground">
@@ -184,14 +188,23 @@ export default function AttendanceCard({ worker, date, currentStatus, currentUpd
         )}
       </AnimatePresence>
 
-      <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} />
+      <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} onSaved={onMarked} />
     </motion.div>
   );
 }
 
-function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; onOpenChange: (v: boolean) => void; worker: Worker }) {
+type CalendarAttendance = {
+  status: AttendanceStatus;
+  advance: number;
+  site_name: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: boolean; onOpenChange: (v: boolean) => void; worker: Worker; onSaved: () => void }) {
   const [cursor, setCursor] = useState(() => new Date());
-  const [rows, setRows] = useState<Record<string, AttendanceStatus>>({});
+  const [rows, setRows] = useState<Record<string, CalendarAttendance>>({});
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [savingDay, setSavingDay] = useState<string | null>(null);
@@ -208,12 +221,12 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
     const end = new Date(year, month + 1, 0).toISOString().slice(0, 10);
     const { data } = await supabase
       .from("attendance")
-      .select("date,status")
+      .select("date,status,advance,site_name,notes,created_at,updated_at")
       .eq("worker_id", worker.id)
       .gte("date", start)
       .lte("date", end);
-    const map: Record<string, AttendanceStatus> = {};
-    (data || []).forEach((r: any) => { map[r.date] = r.status; });
+    const map: Record<string, CalendarAttendance> = {};
+    (data || []).forEach((r: any) => { map[r.date] = r; });
     setRows(map);
     setLoading(false);
   };
@@ -226,21 +239,31 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
       return;
     }
     const cur = rows[iso];
-    const idx = cur ? ORDER.indexOf(cur) : -1;
+    const idx = cur ? ORDER.indexOf(cur.status) : -1;
     const next = ORDER[(idx + 1) % ORDER.length];
-    if (!window.confirm(`${iso} — ${cur ? `${cur} → ${next}` : `सेट करें: ${next}`}?`)) return;
+    if (!window.confirm(`${iso} — ${cur ? `${cur.status} → ${next}` : `सेट करें: ${next}`}?`)) return;
     setSavingDay(iso);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("not signed in");
-      const { error } = await supabase
-        .from("attendance")
-        .upsert(
-          { worker_id: worker.id, date: iso, status: next, user_id: user.id },
-          { onConflict: "worker_id,date" }
-        );
-      if (error) throw error;
-      setRows((r) => ({ ...r, [iso]: next }));
+      const saved = await markAttendance({
+        worker_id: worker.id,
+        date: iso,
+        status: next,
+        advance: cur?.advance || 0,
+        site_name: cur?.site_name ?? worker.site_name,
+        notes: cur?.notes ?? null,
+      });
+      setRows((r) => ({
+        ...r,
+        [iso]: {
+          status: next,
+          advance: saved.advance ?? cur?.advance ?? 0,
+          site_name: saved.site_name ?? cur?.site_name ?? worker.site_name,
+          notes: saved.notes ?? cur?.notes ?? null,
+          created_at: saved.created_at ?? cur?.created_at,
+          updated_at: saved.updated_at ?? new Date().toISOString(),
+        },
+      }));
+      onSaved();
       toast({ title: `✅ ${iso} — ${next}` });
     } catch (e: any) {
       toast({ title: "सेव नहीं हुआ", description: e.message, variant: "destructive" });
@@ -257,10 +280,10 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
   }
 
   const totals = Object.values(rows).reduce(
-    (acc, s) => {
-      if (s === "Present") acc.P++;
-      else if (s === "Absent") acc.A++;
-      else if (s === "Half-Day") acc.H++;
+    (acc, row) => {
+      if (row.status === "Present") acc.P++;
+      else if (row.status === "Absent") acc.A++;
+      else if (row.status === "Half-Day") acc.H++;
       return acc;
     },
     { P: 0, A: 0, H: 0 }
@@ -297,7 +320,7 @@ function WorkerCalendarDialog({ open, onOpenChange, worker }: { open: boolean; o
             {cells.map((c, i) => {
               if (!c) return <div key={i} className="aspect-square" />;
               const s = rows[c.iso];
-              const p = s ? PILL[s] : null;
+              const p = s ? PILL[s.status] : null;
               const disabled = !editMode || c.iso > todayIso;
               const isSaving = savingDay === c.iso;
               return (
