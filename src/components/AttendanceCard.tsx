@@ -43,24 +43,40 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
+  const [sites, setSites] = useState<Site[]>(() => listSites());
   const [gps, setGps] = useState<{ lat: number; lng: number } | undefined>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
+  useEffect(() => {
+    const refresh = () => setSites(listSites());
+    window.addEventListener("sites-updated", refresh);
+    return () => window.removeEventListener("sites-updated", refresh);
+  }, []);
 
-  const cycle = () => {
-    const cur = sel;
-    const idx = cur ? ORDER.indexOf(cur) : -1;
+  const cycleStatus = () => {
+    const idx = sel ? ORDER.indexOf(sel) : -1;
     const next = ORDER[(idx + 1) % ORDER.length];
     setSel(next);
     onSelectionChange?.(worker.id, next);
   };
 
   const updateSite = (v: string) => {
-    setSite(v);
-    onSiteChange?.(worker.id, v);
-    if (v.trim()) addSite(v);
+    if (v === "__add__") {
+      const name = window.prompt("नई साइट का नाम लिखें:")?.trim();
+      if (!name) return;
+      const created = createSite({ name });
+      if (!created) {
+        toast({ title: "यह साइट पहले से है या नाम गलत है", variant: "destructive" });
+        return;
+      }
+      setSites(listSites());
+      v = created.name;
+    }
+    const val = v === "__none__" ? "" : v;
+    setSite(val);
+    onSiteChange?.(worker.id, val);
   };
 
   const captureGps = () => {
