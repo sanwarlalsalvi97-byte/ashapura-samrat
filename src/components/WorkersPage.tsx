@@ -51,6 +51,17 @@ export default function WorkersPage() {
   }, []);
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
+    if (newSite === "__add__") {
+      const name = window.prompt("नई साइट का नाम लिखें:")?.trim();
+      if (!name) return;
+      const created = createSite({ name });
+      if (!created) {
+        toast({ title: "यह साइट पहले से है या नाम गलत है", variant: "destructive" });
+        return;
+      }
+      setSites(listSites());
+      newSite = created.name;
+    }
     const site_name = newSite === "__none__" ? null : newSite;
     // Optimistic update
     setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, site_name } : x)));
