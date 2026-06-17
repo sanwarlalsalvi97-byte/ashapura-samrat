@@ -95,6 +95,9 @@ export default function HomePage({ onNavigate }: Props) {
     });
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
 
     // Live updates: refetch cashbook on any change
     const channel = supabase
@@ -104,6 +107,9 @@ export default function HomePage({ onNavigate }: Props) {
 
     return () => {
       window.removeEventListener("sites-updated", refresh);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
       supabase.removeChannel(channel);
     };
   }, []);
