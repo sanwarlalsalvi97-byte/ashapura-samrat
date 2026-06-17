@@ -133,21 +133,21 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
     setExporting(true);
     try {
       const now = new Date();
-      const workers = await getWorkers();
+      await getWorkers();
       const report = await getMonthlyReport(now.getFullYear(), now.getMonth() + 1);
 
-      let csv = "Worker Name,Role,Daily Rate,Date,Status,Advance,Site,Notes\n";
-      report.forEach((r: any) => {
-        csv += `"${r.workers?.name || ""}","${r.workers?.role || ""}",${r.workers?.daily_rate || 0},"${r.date}","${r.status}",${r.advance},"${r.site_name || ""}","${r.notes || ""}"\n`;
-      });
-
-      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `hajiri-report-${now.getFullYear()}-${now.getMonth() + 1}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const headers = ["Worker Name", "Role", "Daily Rate", "Date", "Status", "Advance", "Site", "Notes"];
+      const rows = report.map((r: any) => [
+        r.workers?.name || "",
+        r.workers?.role || "",
+        r.workers?.daily_rate || 0,
+        r.date,
+        r.status,
+        r.advance,
+        r.site_name || "",
+        r.notes || "",
+      ]);
+      exportCSV(`hajiri-report-${now.getFullYear()}-${now.getMonth() + 1}.csv`, headers, rows);
       toast({ title: isHindi ? "✅ डेटा डाउनलोड हो गया!" : "✅ Data exported!" });
     } catch (err: any) {
       toast({ title: isHindi ? "गलती" : "Error", description: err.message, variant: "destructive" });
@@ -155,6 +155,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
       setExporting(false);
     }
   };
+
 
   const scanDuplicates = async () => {
     setDedupeScanning(true);
