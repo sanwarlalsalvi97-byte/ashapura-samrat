@@ -17,8 +17,31 @@ function uid() {
   return `site_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+let version = 0;
+const listeners = new Set<() => void>();
+
+export function subscribeSites(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+export function getSitesVersion() {
+  return version;
+}
+
 function emit() {
+  version++;
+  listeners.forEach((cb) => { try { cb(); } catch {} });
   try { window.dispatchEvent(new Event("sites-updated")); } catch {}
+}
+
+// Cross-tab sync: when another tab writes, bump version + notify subscribers.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY || e.key === LEGACY_KEY) {
+      version++;
+      listeners.forEach((cb) => { try { cb(); } catch {} });
+    }
+  });
 }
 
 function read(): Site[] {

@@ -21,7 +21,8 @@ import {
   Building2,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
-import { listSites, type Site } from "@/lib/sites";
+import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
+import { useSyncExternalStore } from "react";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -71,6 +72,12 @@ export default function HomePage({ onNavigate }: Props) {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
   const [sites, setSites] = useState<Site[]>(() => listSites());
+  // Live-subscribe: re-read sites instantly on any add/edit/delete (same tab or other tabs).
+  useSyncExternalStore(
+    (cb) => subscribeSites(() => { setSites(listSites()); cb(); }),
+    getSitesVersion,
+    getSitesVersion,
+  );
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
   const [locationFilter, setLocationFilter] = useState<string>("__all__");
 
