@@ -429,38 +429,6 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         </CardContent>
       </Card>
 
-      {/* Grouping for exports */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            {t("शीट में ठेकेदार/साइट का आधार", "Sheet grouping field")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              variant={groupingMode === "site" ? "default" : "outline"}
-              onClick={() => { setGroupingModeState("site"); setGroupingMode("site"); toast({ title: t("✅ साइट के नाम से grouping", "✅ Grouped by site name") }); }}
-            >
-              {t("साइट का नाम", "Site name")}
-            </Button>
-            <Button
-              size="sm"
-              variant={groupingMode === "contractor" ? "default" : "outline"}
-              onClick={() => { setGroupingModeState("contractor"); setGroupingMode("contractor"); toast({ title: t("✅ ठेकेदार के नाम से grouping", "✅ Grouped by contractor") }); }}
-            >
-              {t("ठेकेदार", "Contractor")}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {groupingMode === "site"
-              ? t("एक्सपोर्ट में मजदूर की साइट के नाम से group होगा।", "Workers grouped by site name in exports.")
-              : t("एक्सपोर्ट में Contractors टैब से जुड़े ठेकेदार के नाम से group होगा (मिलान न मिले तो साइट के नाम से)।", "Workers grouped by contractor from Contractors tab (falls back to site name).")}
-          </p>
-        </CardContent>
-      </Card>
 
       {/* Developer / Test: simulate offline */}
       <Card>
