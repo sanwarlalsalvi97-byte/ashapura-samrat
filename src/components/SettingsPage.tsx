@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
+import { exportCSV } from "@/lib/export-utils";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
 import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
