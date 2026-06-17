@@ -21,7 +21,8 @@ import {
   Building2,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
-import { listSites, type Site } from "@/lib/sites";
+import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
+import { useSyncExternalStore } from "react";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
