@@ -71,9 +71,13 @@ export default function HomePage({ onNavigate }: Props) {
   const [allCash, setAllCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("Admin");
-  // Live-subscribed sites: re-renders instantly on any add/edit/delete (same tab or other tabs).
-  useSyncExternalStore(subscribeSites, getSitesVersion, getSitesVersion);
   const [sites, setSites] = useState<Site[]>(() => listSites());
+  // Live-subscribe: re-read sites instantly on any add/edit/delete (same tab or other tabs).
+  useSyncExternalStore(
+    (cb) => subscribeSites(() => { setSites(listSites()); cb(); }),
+    getSitesVersion,
+    getSitesVersion,
+  );
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
   const [locationFilter, setLocationFilter] = useState<string>("__all__");
 
