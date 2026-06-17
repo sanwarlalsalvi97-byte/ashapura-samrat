@@ -166,12 +166,13 @@ export default function HomePage({ onNavigate }: Props) {
     const includedSites = sitesInLocation
       ? sites.filter((s) => sitesInLocation.has(s.name))
       : sites;
+    const knownSet = new Set(includedSites.map((s) => s.name));
     includedSites.forEach((s) => map.set(s.name, 0));
     allCash
       .filter((x) => x.type === "expense")
-      .filter((x) => !sitesInLocation || sitesInLocation.has(x.site_name || ""))
       .forEach((x) => {
-        const key = (x.site_name || "").trim() || "अन्य";
+        const key = (x.site_name || "").trim();
+        if (!key || !knownSet.has(key)) return;
         map.set(key, (map.get(key) || 0) + (x.amount || 0));
       });
     const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
