@@ -146,7 +146,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function loadStats() {
     try {
-      const [w, a, c, r] = await Promise.all([
+      const [w, a, c, r, ct] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,site_name"),
@@ -155,9 +155,11 @@ export default function HomePage({ onNavigate }: Props) {
           .select("id,type,amount,category,date,notes")
           .order("date", { ascending: false })
           .limit(3),
+        supabase.from("contractors").select("status"),
       ]);
       const att = a.data || [];
       const cb = (c.data || []) as CashRow[];
+      const cts = (ct.data || []) as { status: string }[];
       setAllCash(cb);
       setStats({
         workers: w.count || 0,
@@ -166,6 +168,8 @@ export default function HomePage({ onNavigate }: Props) {
         half: att.filter((x) => x.status === "Half-Day").length,
         income: cb.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0),
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
+        contractors: cts.length,
+        activeContractors: cts.filter((x) => x.status === "चालू").length,
       });
       setRecent((r.data || []) as Tx[]);
     } finally {
