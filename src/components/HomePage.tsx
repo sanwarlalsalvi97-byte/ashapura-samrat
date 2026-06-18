@@ -218,307 +218,97 @@ export default function HomePage({ onNavigate }: Props) {
   ];
 
   return (
-    <div className="space-y-5 animate-fade-in pb-6">
-      {/* Hero header */}
-      <div className="relative overflow-hidden rounded-3xl p-5 text-white shadow-xl"
-           style={{ background: "linear-gradient(135deg, hsl(220 90% 55%) 0%, hsl(260 70% 55%) 45%, hsl(25 90% 55%) 100%)" }}>
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -bottom-12 -left-8 w-44 h-44 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex items-start justify-between">
-          <div>
-            <div className="text-xs opacity-90">{greeting(today.getHours())}</div>
-            <div className="text-xl font-bold capitalize">Namaste, {name} 👋</div>
-            <div className="mt-3 inline-flex items-center gap-2 bg-white/15 backdrop-blur rounded-full px-3 py-1 text-xs">
-              <Sparkles className="w-3.5 h-3.5" />
-              तिथि: {tithiStr}
-            </div>
-          </div>
-          <button className="relative w-10 h-10 rounded-full bg-white/15 backdrop-blur grid place-items-center hover:bg-white/25 transition">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-400 ring-2 ring-white/30" />
-          </button>
-        </div>
-        <div className="relative mt-4 flex items-end justify-between">
-          <div>
-            <div className="text-3xl font-extrabold leading-none">{today.getDate()} {HINDI_MONTHS[today.getMonth()]}</div>
-            <div className="text-xs opacity-90 mt-1">{dayStr} · {today.getFullYear()}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider opacity-80">Balance</div>
-            <div className="text-2xl font-bold">₹{balance.toLocaleString("hi-IN")}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Site & Location filter dropdowns — apply to balance / income / expense / site-wise card live */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
-            <Building2 className="w-4 h-4 text-primary" />
-            साइट
-          </div>
-          <Select value={siteFilter} onValueChange={setSiteFilter}>
-            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
-              <SelectValue placeholder="सभी साइट" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">सभी साइट</SelectItem>
-              {sites.map((s) => (
-                <SelectItem key={s.id} value={s.name}>
-                  {s.name}{s.location ? ` · ${s.location}` : ""}
-                </SelectItem>
-              ))}
-              {sites.length === 0 && (
-                <SelectItem value="__none__" disabled>कोई साइट नहीं</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          <button
-            onClick={() => onNavigate("sites")}
-            className="text-xs font-medium text-primary px-2 py-1.5 rounded-lg hover:bg-primary/10"
-          >
-            प्रबंधन
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0 w-14">
-            <Sparkles className="w-4 h-4 text-primary" />
-            लोकेशन
-          </div>
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="h-9 rounded-xl bg-card flex-1">
-              <SelectValue placeholder="सभी लोकेशन" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">सभी लोकेशन</SelectItem>
-              {locations.map((l) => (
-                <SelectItem key={l} value={l}>{l}</SelectItem>
-              ))}
-              {locations.length === 0 && (
-                <SelectItem value="__no_loc__" disabled>कोई लोकेशन नहीं</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-
-
-      {/* Horizontal scroll summary */}
-      <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
-        <div className="flex gap-3 w-max">
-          {summaryCards.map((c) => {
-            const Icon = c.icon;
-            return (
-              <div
-                key={c.label}
-                className={`min-w-[140px] rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br ${c.from} ${c.to} transition-transform hover:scale-[1.03]`}
-              >
-                <div className="w-9 h-9 rounded-xl bg-white/20 grid place-items-center mb-3">
-                  <Icon className="w-5 h-5" />
-                </div>
-                <div className="text-xl font-bold leading-tight">{c.value}</div>
-                <div className="text-[11px] opacity-90 mt-0.5">{c.label}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-bold">शॉर्टकट</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <QuickAction icon={CalendarCheck} label="हाजिरी" sub="Mark Attendance" tone="primary" onClick={() => onNavigate("attendance")} />
-          <QuickAction icon={Wallet} label="हिसाब जोड़ें" sub="Add Cash Entry" tone="accent" onClick={() => onNavigate("cashbook")} />
-          <QuickAction icon={Calculator} label="कैलकुलेटर" sub="Open Calculator" tone="warning" onClick={() => onNavigate("bricks")} />
-          <QuickAction icon={HardHat} label="ठेकेदार" sub="Contractor" tone="violet" onClick={() => onNavigate("contractors")} />
-        </div>
-      </div>
-
-      {/* Attendance donut */}
-      <Card className="rounded-2xl overflow-hidden border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold">Attendance Overview</h2>
-            <button onClick={() => onNavigate("attendance")} className="text-xs text-primary font-medium flex items-center gap-0.5">
-              View <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative w-[120px] h-[120px] shrink-0">
-              <svg viewBox="0 0 100 100" className="-rotate-90 w-full h-full">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
-                {totalAtt > 0 && (
-                  <>
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(145 60% 45%)" strokeWidth="10"
-                            strokeDasharray={`${pLen} ${C}`} strokeDashoffset="0" strokeLinecap="round" />
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(0 75% 55%)" strokeWidth="10"
-                            strokeDasharray={`${aLen} ${C}`} strokeDashoffset={`${-pLen}`} strokeLinecap="round" />
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(40 95% 55%)" strokeWidth="10"
-                            strokeDasharray={`${hLen} ${C}`} strokeDashoffset={`${-(pLen + aLen)}`} strokeLinecap="round" />
-                  </>
-                )}
-              </svg>
-              <div className="absolute inset-0 grid place-items-center text-center">
-                <div>
-                  <div className="text-2xl font-extrabold">{totalAtt || stats.workers}</div>
-                  <div className="text-[10px] text-muted-foreground -mt-0.5">Total</div>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2 text-sm">
-              <LegendRow color="hsl(145 60% 45%)" label="Present" value={stats.present} pct={pPct} />
-              <LegendRow color="hsl(0 75% 55%)" label="Absent" value={stats.absent} pct={aPct} />
-              <LegendRow color="hsl(40 95% 55%)" label="Half Day" value={stats.half} pct={hPct} />
-            </div>
+    <div className="space-y-4 animate-fade-in pb-6 font-[Poppins,sans-serif]">
+      {/* Date card */}
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardContent className="p-5 text-center">
+          <div className="text-xs font-semibold text-muted-foreground tracking-wide">आज की तारीख</div>
+          <div className="text-5xl font-extrabold text-primary leading-none mt-2">{today.getDate()}</div>
+          <div className="text-sm font-semibold mt-1">{HINDI_MONTHS[today.getMonth()]} {today.getFullYear()}</div>
+          <div className="mt-3 inline-flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1 text-xs">
+            <span className="text-muted-foreground">वार</span>
+            <span className="font-semibold">{HINDI_DAYS[today.getDay()]}</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Cashbook preview */}
+      {/* Top 3 actions */}
+      <div className="grid grid-cols-3 gap-2">
+        <ActionChip emoji="📅" label="हाजिरी लगाएं" onClick={() => onNavigate("attendance")} />
+        <ActionChip emoji="💰" label="हिसाब लिखें" onClick={() => onNavigate("cashbook")} />
+        <ActionChip emoji="🧮" label="केलकुलेटर" onClick={() => onNavigate("bricks")} />
+      </div>
+
+      {/* Two info cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="rounded-2xl border-border/60">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground font-semibold">कुल मजदूर</div>
+            <div className="text-3xl font-extrabold text-primary mt-1">{stats.workers}</div>
+            <div className="text-[11px] text-accent font-semibold mt-1">सक्रिय</div>
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-border/60">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground font-semibold">आज हाजिर</div>
+            <div className="text-3xl font-extrabold text-accent mt-1">{stats.present}</div>
+            <div className="text-[11px] text-muted-foreground font-semibold mt-1">{stats.half} हाफ-डे</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Attendance stats row */}
       <Card className="rounded-2xl border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold">हाल के लेन-देन</h2>
-            <button onClick={() => onNavigate("cashbook")} className="text-xs text-primary font-medium flex items-center gap-0.5">
-              View All <ArrowRight className="w-3 h-3" />
-            </button>
+        <CardContent className="p-4 grid grid-cols-3 divide-x divide-border/60 text-center">
+          <div>
+            <div className="text-2xl font-extrabold text-accent">{stats.present}</div>
+            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाजिर</div>
           </div>
-          {recent.length === 0 ? (
-            <div className="text-center text-xs text-muted-foreground py-6">कोई एंट्री नहीं</div>
-          ) : (
-            <ul className="divide-y divide-border/60">
-              {recent.map((t) => (
-                <li key={t.id} className="flex items-center gap-3 py-2.5">
-                  <div className={`w-10 h-10 rounded-xl grid place-items-center ${
-                    t.type === "income" ? "bg-emerald-500/15 text-emerald-600" : "bg-rose-500/15 text-rose-600"
-                  }`}>
-                    {t.type === "income" ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{t.notes || (t.type === "income" ? "आय" : "खर्च")}</div>
-                    <div className="text-[11px] text-muted-foreground capitalize">{t.category} · {t.date}</div>
-                  </div>
-                  <div className={`text-sm font-bold ${t.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>
-                    {t.type === "income" ? "+" : "−"}₹{t.amount.toLocaleString("hi-IN")}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div>
+            <div className="text-2xl font-extrabold text-warning">{stats.half}</div>
+            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाफ-डे</div>
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-destructive">{Math.max(0, stats.workers - stats.present - stats.half)}</div>
+            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">गैरहाजिर</div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Site-wise expense card (live) */}
-      <Card className="rounded-2xl border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 grid place-items-center text-primary">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <h2 className="text-sm font-bold">साइट-वाइज खर्च</h2>
-            </div>
-            <div className="text-sm font-extrabold text-primary">
-              ₹{sitewise.total.toLocaleString("hi-IN")}
-            </div>
-          </div>
-
-          {sitewise.rows.length === 0 ? (
-            <div className="text-center text-xs text-muted-foreground py-6">कोई साइट नहीं — पहले साइट जोड़ें</div>
-          ) : (
-            <>
-              <div className="relative h-40 mt-1 mb-3 pl-10 pr-1">
-                <div className="absolute inset-y-0 left-10 right-1 flex flex-col justify-between pointer-events-none">
-                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
-                    <div key={f} className="border-t border-dashed border-border/70" />
-                  ))}
-                </div>
-                <div className="absolute inset-y-0 left-0 w-10 flex flex-col justify-between text-[10px] text-muted-foreground text-right pr-1">
-                  {[1, 0.8, 0.5, 0.3, 0].map((f) => (
-                    <span key={f}>₹{shortInr(sitewise.max * f)}</span>
-                  ))}
-                </div>
-                <div className="absolute inset-y-0 left-10 right-1 flex items-end justify-around gap-2">
-                  {sitewise.rows.slice(0, 6).map((r) => {
-                    const h = sitewise.max > 0 ? (r.amount / sitewise.max) * 100 : 0;
-                    return (
-                      <div key={r.name} className="flex-1 flex flex-col items-center justify-end h-full">
-                        <div
-                          className="w-full max-w-[42px] rounded-t bg-primary transition-all"
-                          style={{ height: `${h}%`, minHeight: r.amount > 0 ? 4 : 0 }}
-                          title={`${r.name}: ₹${r.amount.toLocaleString("hi-IN")}`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="pl-10 pr-1 flex justify-around gap-2 mb-3">
-                {sitewise.rows.slice(0, 6).map((r) => (
-                  <div key={r.name} className="flex-1 text-center text-[10px] text-muted-foreground truncate">
-                    {r.name.length > 8 ? r.name.slice(0, 8) + "…" : r.name}
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-3">
-                {sitewise.rows.map((r) => {
-                  const pct = sitewise.total > 0 ? (r.amount / sitewise.total) * 100 : 0;
-                  return (
-                    <div key={r.name}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-semibold truncate pr-2">{r.name}</span>
-                        <span className="tabular-nums">
-                          ₹{r.amount.toLocaleString("hi-IN")}{" "}
-                          <span className="text-muted-foreground text-xs">({pct.toFixed(0)}%)</span>
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-
-
-      {/* Calculator shortcuts */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-bold">Calculator Shortcuts</h2>
-        </div>
-        <div className="-mx-4 px-4 overflow-x-auto no-scrollbar">
-          <div className="flex gap-3 w-max">
-            <CalcShortcut icon={Layers} label="Brick" sub="ईंट गणना" color="from-orange-500 to-red-500" onClick={() => onNavigate("bricks")} />
-            <CalcShortcut icon={HardHat} label="Roof / RCC" sub="छत गणना" color="from-slate-600 to-slate-800" onClick={() => onNavigate("roof")} />
-            <CalcShortcut icon={Calculator} label="Cement" sub="सीमेंट" color="from-blue-500 to-indigo-600" onClick={() => onNavigate("bricks")} />
-            <CalcShortcut icon={Users} label="Workers" sub="मजदूर" color="from-emerald-500 to-teal-600" onClick={() => onNavigate("workers")} />
-          </div>
-        </div>
+      {/* Quick links grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <LinkTile emoji="📈" label="मासिक हिसाब" onClick={() => onNavigate("report")} />
+        <LinkTile emoji="👷" label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} />
+        <LinkTile emoji="🧮" label="ईंट केलकुलेटर" onClick={() => onNavigate("bricks")} />
+        <LinkTile emoji="📄" label="ठेका प्रबंधन" onClick={() => onNavigate("contractors")} />
       </div>
-
-      {/* Floating quick add */}
-      <button
-        onClick={() => onNavigate("cashbook")}
-        aria-label="Quick add"
-        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full grid place-items-center text-white shadow-2xl active:scale-95 transition-transform"
-        style={{ background: "linear-gradient(135deg, hsl(25 90% 55%), hsl(0 80% 55%))" }}
-      >
-        <Plus className="w-7 h-7" />
-      </button>
 
       {loading && <div className="text-center text-xs text-muted-foreground">लोड हो रहा है...</div>}
     </div>
+  );
+}
+
+function ActionChip({ emoji, label, onClick }: { emoji: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-2xl bg-card border border-border/60 p-3 flex flex-col items-center gap-1 shadow-sm active:scale-[0.97] transition"
+    >
+      <span className="text-2xl leading-none">{emoji}</span>
+      <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{label}</span>
+    </button>
+  );
+}
+
+function LinkTile({ emoji, label, onClick }: { emoji: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-2xl bg-card border border-border/60 p-4 flex items-center gap-3 shadow-sm active:scale-[0.98] transition text-left"
+    >
+      <span className="text-2xl">{emoji}</span>
+      <span className="text-sm font-semibold">{label}</span>
+    </button>
   );
 }
 
