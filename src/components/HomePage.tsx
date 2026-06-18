@@ -66,7 +66,7 @@ type Tx = {
 };
 
 export default function HomePage({ onNavigate }: Props) {
-  const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0 });
+  const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0, contractors: 0, activeContractors: 0 });
   const [recent, setRecent] = useState<Tx[]>([]);
   const [allCash, setAllCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
