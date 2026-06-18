@@ -279,6 +279,71 @@ export default function HomePage({ onNavigate }: Props) {
         </CardContent>
       </Card>
 
+      {/* Site-wise expense chart → मासिक हिसाब */}
+      <button
+        onClick={() => onNavigate("report")}
+        className="w-full text-left"
+        aria-label="साइट-वाइज खर्च — मासिक हिसाब खोलें"
+      >
+        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🏗️</span>
+                <span className="text-sm font-bold">साइट-वाइज खर्च</span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-primary font-semibold">
+                मासिक हिसाब <ArrowRight className="w-3 h-3" />
+              </div>
+            </div>
+            {sitewise.rows.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-3">कोई साइट नहीं — सेटिंग्स से जोड़ें</div>
+            ) : (
+              <div className="space-y-2">
+                {sitewise.rows.slice(0, 4).map((r) => (
+                  <div key={r.name}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="font-semibold truncate pr-2">{r.name}</span>
+                      <span className="tabular-nums text-muted-foreground">₹{shortInr(r.amount)}</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                        style={{ width: `${(r.amount / sitewise.max) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between text-[11px] pt-2 border-t border-border/60">
+                  <span className="text-muted-foreground">कुल खर्च</span>
+                  <span className="font-bold tabular-nums">₹{sitewise.total.toLocaleString("hi-IN")}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </button>
+
+      {/* Contractor summary → ठेका प्रबंधन */}
+      <button
+        onClick={() => onNavigate("contractors")}
+        className="w-full text-left"
+        aria-label="ठेका प्रबंधन खोलें"
+      >
+        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 grid place-items-center text-white text-xl">📄</div>
+            <div className="flex-1">
+              <div className="text-sm font-bold">ठेका प्रबंधन</div>
+              <div className="text-[11px] text-muted-foreground">
+                {stats.contractors} कुल · <span className="text-accent font-semibold">{stats.activeContractors} चालू</span>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </button>
+
       {/* Quick links grid */}
       <div className="grid grid-cols-2 gap-3">
         <LinkTile emoji="📈" label="मासिक हिसाब" onClick={() => onNavigate("report")} />
