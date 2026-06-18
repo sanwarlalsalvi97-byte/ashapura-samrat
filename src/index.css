@@ -19,18 +19,18 @@
     --secondary: 140 30% 90%;
     --secondary-foreground: 145 40% 15%;
 
-    --muted: 35 20% 92%;
-    --muted-foreground: 25 10% 45%;
+    --muted: 140 20% 92%;
+    --muted-foreground: 145 12% 40%;
 
-    --accent: 145 45% 42%;
+    --accent: 140 70% 35%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 87%;
-    --input: 30 20% 87%;
-    --ring: 25 85% 50%;
+    --border: 140 20% 85%;
+    --input: 140 20% 85%;
+    --ring: 140 80% 26%;
 
     --radius: 0.75rem;
 
