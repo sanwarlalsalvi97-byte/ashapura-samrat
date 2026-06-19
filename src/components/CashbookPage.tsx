@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Plus, TrendingUp, TrendingDown, Wallet, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, Trash2, Pencil } from "lucide-react";
 
 type Entry = {
   id: string;
@@ -41,6 +41,26 @@ export default function CashbookPage() {
   const [site, setSite] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<Entry | null>(null);
+
+  async function saveEdit() {
+    if (!editing) return;
+    const { error } = await supabase
+      .from("cashbook")
+      .update({
+        type: editing.type,
+        category: editing.category,
+        amount: editing.amount,
+        date: editing.date,
+        site_name: editing.site_name,
+        notes: editing.notes,
+      })
+      .eq("id", editing.id);
+    if (error) { toast({ title: "गलती", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "अपडेट हो गया" });
+    setEditing(null);
+    load();
+  }
 
   useEffect(() => {
     load();
@@ -223,13 +243,66 @@ export default function CashbookPage() {
               <div className={`font-bold ${e.type === "income" ? "text-accent" : "text-destructive"}`}>
                 {e.type === "income" ? "+" : "−"}₹{e.amount.toLocaleString("hi-IN")}
               </div>
-              <Button size="icon" variant="ghost" onClick={() => remove(e.id)}>
+              <Button size="icon" variant="ghost" onClick={() => setEditing(e)} aria-label="एडिट">
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => remove(e.id)} aria-label="हटाएं">
                 <Trash2 className="w-4 h-4 text-destructive" />
               </Button>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>एंट्री एडिट करें</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">प्रकार</Label>
+                  <Select value={editing.type} onValueChange={(v) => setEditing({ ...editing, type: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">आय</SelectItem>
+                      <SelectItem value="expense">खर्च</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">श्रेणी</Label>
+                  <Select value={editing.category} onValueChange={(v) => setEditing({ ...editing, category: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(CAT_LABEL).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">राशि (₹)</Label>
+                <Input type="number" value={editing.amount} onChange={(e) => setEditing({ ...editing, amount: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <Label className="text-xs">तारीख</Label>
+                <Input type="date" value={editing.date} onChange={(e) => setEditing({ ...editing, date: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">साइट</Label>
+                <Input value={editing.site_name || ""} onChange={(e) => setEditing({ ...editing, site_name: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">नोट्स</Label>
+                <Input value={editing.notes || ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
+              </div>
+              <Button onClick={saveEdit} className="w-full">अपडेट करें</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
