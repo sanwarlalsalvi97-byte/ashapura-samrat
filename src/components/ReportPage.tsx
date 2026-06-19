@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
 import {
@@ -44,6 +45,25 @@ export default function ReportPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [summary, setSummary] = useState<WorkerSummary[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("__all__");
+  const [siteAtt, setSiteAtt] = useState<any[]>([]);
+  const [siteCash, setSiteCash] = useState<{ amount: number; site_name: string | null; type: string }[]>([]);
+  const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
+
+  const loadSiteData = useCallback(async () => {
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    const [a, c, w] = await Promise.all([
+      supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
+      supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
+      getWorkers().catch(() => [] as Worker[]),
+    ]);
+    setSiteAtt((a.data as any[]) || []);
+    setSiteCash((c.data as any[]) || []);
+    setAllWorkers(w);
+  }, [year, month]);
+
+  useEffect(() => { loadSiteData(); }, [loadSiteData]);
 
   const loadReport = useCallback(async () => {
     try {
