@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { ATTENDANCE_UPDATED_EVENT } from "@/lib/supabase-helpers";
+import { approxTithi } from "./HomePage";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const HINDI_MONTHS = ["जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
 const WEEK = ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"];
@@ -14,6 +16,7 @@ export default function AttendanceCalendarView() {
   const [cursor, setCursor] = useState(() => new Date());
   const [stats, setStats] = useState<Record<string, DayStat>>({});
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<{ iso: string; day: number } | null>(null);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -102,24 +105,55 @@ export default function AttendanceCalendarView() {
             const s = stats[c.iso];
             const badge = dominantBadge(s);
             const isToday = c.iso === today;
+            const t = approxTithi(new Date(c.iso));
             return (
-              <div
+              <button
                 key={i}
-                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs ${
-                  isToday ? "bg-primary/10 ring-1 ring-primary/40" : "bg-muted/30"
+                onClick={() => setSelected({ iso: c.iso, day: c.day })}
+                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs active:scale-95 transition ${
+                  isToday ? "bg-primary/10 ring-1 ring-primary/40" : "bg-muted/30 hover:bg-muted/60"
                 }`}
               >
-                <div className={`leading-none ${isToday ? "text-primary font-bold" : "text-foreground"}`}>{c.day}</div>
-                {badge && (
-                  <span className={`mt-0.5 w-5 h-5 rounded-full text-white text-[9px] font-bold grid place-items-center ${badge.bg}`}>
+                <div className={`leading-none text-[11px] ${isToday ? "text-primary font-bold" : "text-foreground"}`}>{c.day}</div>
+                {badge ? (
+                  <span className={`mt-0.5 w-4 h-4 rounded-full text-white text-[8px] font-bold grid place-items-center ${badge.bg}`}>
                     {badge.label}
                   </span>
+                ) : (
+                  <span className="mt-0.5 h-4" />
                 )}
-              </div>
+                <span className="text-[7px] leading-none text-muted-foreground truncate max-w-full px-0.5">{t.name.split("/")[0]}</span>
+              </button>
             );
           })}
         </div>
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>
+              {selected ? `${selected.day} ${HINDI_MONTHS[month]} ${year}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {selected && (() => {
+            const s = stats[selected.iso] || { P: 0, A: 0, H: 0 };
+            const t = approxTithi(new Date(selected.iso));
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-semibold">
+                  {t.full}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-emerald-500/10 rounded-lg p-2"><div className="text-xl font-bold text-emerald-600">{s.P}</div><div className="text-[10px] text-muted-foreground">हाजिर</div></div>
+                  <div className="bg-amber-500/10 rounded-lg p-2"><div className="text-xl font-bold text-amber-600">{s.H}</div><div className="text-[10px] text-muted-foreground">हाफ-डे</div></div>
+                  <div className="bg-rose-500/10 rounded-lg p-2"><div className="text-xl font-bold text-rose-600">{s.A}</div><div className="text-[10px] text-muted-foreground">गैरहाजिर</div></div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center justify-around text-[11px] text-muted-foreground px-2">
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />प्रेजेंट</span>

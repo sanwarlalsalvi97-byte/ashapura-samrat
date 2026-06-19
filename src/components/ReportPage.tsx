@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
 import {
@@ -44,6 +45,25 @@ export default function ReportPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [summary, setSummary] = useState<WorkerSummary[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("__all__");
+  const [siteAtt, setSiteAtt] = useState<any[]>([]);
+  const [siteCash, setSiteCash] = useState<{ amount: number; site_name: string | null; type: string }[]>([]);
+  const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
+
+  const loadSiteData = useCallback(async () => {
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    const [a, c, w] = await Promise.all([
+      supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
+      supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
+      getWorkers().catch(() => [] as Worker[]),
+    ]);
+    setSiteAtt((a.data as any[]) || []);
+    setSiteCash((c.data as any[]) || []);
+    setAllWorkers(w);
+  }, [year, month]);
+
+  useEffect(() => { loadSiteData(); }, [loadSiteData]);
 
   const loadReport = useCallback(async () => {
     try {
@@ -203,6 +223,18 @@ export default function ReportPage() {
         </Button>
       </div>
 
+      {/* === साइट-वाइज मासिक रिपोर्ट === */}
+      <SiteWiseReport
+        att={siteAtt}
+        cash={siteCash}
+        workers={allWorkers}
+        monthLabel={`${monthNames[month - 1]} ${year}`}
+        siteFilter={siteFilter}
+        onSiteFilterChange={setSiteFilter}
+      />
+
+
+
       {summary.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">कोई रिकॉर्ड नहीं</p>
@@ -325,3 +357,145 @@ export default function ReportPage() {
     </div>
   );
 }
+
+function SiteWiseReport({
+  att, cash, workers, monthLabel, siteFilter, onSiteFilterChange,
+}: {
+  att: any[];
+  cash: { amount: number; site_name: string | null; type: string }[];
+  workers: Worker[];
+  monthLabel: string;
+  siteFilter: string;
+  onSiteFilterChange: (v: string) => void;
+}) {
+  const sites = useMemo(() => {
+    const set = new Set<string>();
+    att.forEach((r) => { if (r.site_name) set.add(r.site_name); });
+    cash.forEach((r) => { if (r.site_name) set.add(r.site_name); });
+    workers.forEach((w) => { if (w.site_name) set.add(w.site_name); });
+    return Array.from(set).sort();
+  }, [att, cash, workers]);
+
+  const data = useMemo(() => {
+    const list = siteFilter === "__all__" ? sites : sites.filter((s) => s === siteFilter);
+    return list.map((siteName) => {
+      const aRows = att.filter((r) => (r.site_name || "") === siteName);
+      const cRows = cash.filter((r) => (r.site_name || "") === siteName);
+      const workerSet = new Set<string>();
+      aRows.forEach((r) => workerSet.add(r.worker_id));
+      workers.filter((w) => w.site_name === siteName).forEach((w) => workerSet.add(w.id));
+      const present = aRows.filter((r) => r.status === "Present").length;
+      const half = aRows.filter((r) => r.status === "Half-Day").length;
+      const absent = aRows.filter((r) => r.status === "Absent").length;
+      const totalAdvance = aRows.reduce((s, r) => s + (r.advance || 0), 0);
+      const earning = aRows.reduce((s, r) => {
+        const rate = r.workers?.daily_rate || 0;
+        if (r.status === "Present") return s + rate;
+        if (r.status === "Half-Day") return s + rate / 2;
+        return s;
+      }, 0);
+      const expense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      return {
+        siteName,
+        workers: workerSet.size,
+        attendance: present + half + absent,
+        present, half, absent,
+        payment: earning,
+        expense,
+        advance: totalAdvance,
+      };
+    });
+  }, [att, cash, workers, sites, siteFilter]);
+
+  const totals = useMemo(() => ({
+    workers: data.reduce((s, x) => s + x.workers, 0),
+    attendance: data.reduce((s, x) => s + x.attendance, 0),
+    expense: data.reduce((s, x) => s + x.expense + x.payment, 0),
+  }), [data]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-bold flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-primary" /> साइट-वाइज रिपोर्ट
+        </h2>
+        <select
+          value={siteFilter}
+          onChange={(e) => onSiteFilterChange(e.target.value)}
+          className="bg-background border border-input rounded-md px-2 py-1.5 text-xs font-semibold"
+        >
+          <option value="__all__">सभी साइट</option>
+          {sites.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Card><CardContent className="p-3 text-center">
+          <Users className="w-4 h-4 mx-auto text-primary mb-1" />
+          <div className="text-lg font-bold tabular-nums">{totals.workers}</div>
+          <div className="text-[10px] text-muted-foreground">कुल मजदूर</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <Wallet className="w-4 h-4 mx-auto text-accent mb-1" />
+          <div className="text-lg font-bold tabular-nums">{totals.attendance}</div>
+          <div className="text-[10px] text-muted-foreground">कुल हाजिरी</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <TrendingDown className="w-4 h-4 mx-auto text-destructive mb-1" />
+          <div className="text-lg font-bold tabular-nums">₹{totals.expense.toLocaleString("hi-IN")}</div>
+          <div className="text-[10px] text-muted-foreground">कुल खर्च</div>
+        </CardContent></Card>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground text-sm">कोई साइट डेटा नहीं — {monthLabel}</div>
+      ) : (
+        <div className="space-y-3">
+          {data.map((s) => (
+            <Card key={s.siteName} className="border-border/60">
+              <CardHeader className="pb-2 p-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary" />
+                  साइट: {s.siteName}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 space-y-2 text-xs">
+                <Row label="कुल मजदूर" value={s.workers} />
+                <Row label="कुल हाजिरी" value={`${s.attendance} दिन`} />
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-success/10 rounded-lg p-2">
+                    <div className="text-success font-bold">{s.present}</div>
+                    <div className="text-[10px] text-muted-foreground">हाजिर</div>
+                  </div>
+                  <div className="bg-warning/10 rounded-lg p-2">
+                    <div className="text-warning font-bold">{s.half}</div>
+                    <div className="text-[10px] text-muted-foreground">हाफ-डे</div>
+                  </div>
+                  <div className="bg-destructive/10 rounded-lg p-2">
+                    <div className="text-destructive font-bold">{s.absent}</div>
+                    <div className="text-[10px] text-muted-foreground">गैरहाजिर</div>
+                  </div>
+                </div>
+                <div className="border-t border-border/60 pt-2 space-y-1">
+                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.payment.toLocaleString("hi-IN")}`} bold />
+                  <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
+                  <Row label="अन्य खर्च" value={`₹${s.expense.toLocaleString("hi-IN")}`} tone="text-destructive" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, bold, tone }: { label: string; value: string | number; bold?: boolean; tone?: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`tabular-nums ${bold ? "font-bold" : "font-medium"} ${tone || ""}`}>{value}</span>
+    </div>
+  );
+}
+
