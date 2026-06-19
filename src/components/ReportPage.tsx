@@ -223,6 +223,18 @@ export default function ReportPage() {
         </Button>
       </div>
 
+      {/* === साइट-वाइज मासिक रिपोर्ट === */}
+      <SiteWiseReport
+        att={siteAtt}
+        cash={siteCash}
+        workers={allWorkers}
+        monthLabel={`${monthNames[month - 1]} ${year}`}
+        siteFilter={siteFilter}
+        onSiteFilterChange={setSiteFilter}
+      />
+
+
+
       {summary.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">कोई रिकॉर्ड नहीं</p>
