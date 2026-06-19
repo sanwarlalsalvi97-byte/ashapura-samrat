@@ -16,7 +16,7 @@ import SubscriptionPage from "@/components/SubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
-import { HardHat } from "lucide-react";
+import { HardHat, Bell, UserCircle2, MapPin, Plus } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 
@@ -24,6 +24,7 @@ export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("home");
+  const [gpsOn, setGpsOn] = useState<boolean | null>(null);
   useAttendanceAlarm();
   useOfflineSync();
 
@@ -35,6 +36,18 @@ export default function Index() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);
+
+  // GPS status check
+  useEffect(() => {
+    if (!navigator.geolocation) { setGpsOn(false); return; }
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      () => { if (!cancelled) setGpsOn(true); },
+      () => { if (!cancelled) setGpsOn(false); },
+      { timeout: 5000, maximumAge: 60000 }
+    );
+    return () => { cancelled = true; };
+  }, [session]);
 
   if (loading) {
     return (
@@ -48,13 +61,44 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-lg mx-auto flex items-center px-4 py-3">
-          <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-border">
+        <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <img src={logoUrl} alt="Ashapura Samrat लोगो" width={32} height={32} className="w-8 h-8 object-contain drop-shadow-sm" />
-            <h1 className="text-lg font-bold tracking-tight">Ashapura Samrat</h1>
+          </div>
+          <h1 className="text-base font-bold tracking-tight truncate">Ashapura Samrat</h1>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                gpsOn ? "bg-accent/15 text-accent" : "bg-destructive/15 text-destructive"
+              }`}
+              title={gpsOn ? "GPS चालू" : "GPS बंद"}
+            >
+              <MapPin className="w-3 h-3" />
+              {gpsOn ? "ON" : "OFF"}
+            </span>
+            <button
+              onClick={() => alert("कोई नई सूचना नहीं")}
+              className="w-9 h-9 rounded-full grid place-items-center hover:bg-muted active:scale-95 transition"
+              aria-label="सूचनाएं"
+            >
+              <Bell className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setTab("settings")}
+              className="w-9 h-9 rounded-full grid place-items-center hover:bg-muted active:scale-95 transition"
+              aria-label="प्रोफाइल"
+            >
+              <UserCircle2 className="w-6 h-6 text-primary" />
+            </button>
           </div>
         </div>
+        {gpsOn === false && (
+          <div className="bg-destructive/10 text-destructive text-[10px] text-center py-1 px-3 font-semibold">
+            <MapPin className="w-3 h-3 inline mr-1" />
+            GPS बंद है — Location ON करें
+          </div>
+        )}
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-4">
@@ -71,6 +115,18 @@ export default function Index() {
         {tab === "sites" && <SitesPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
+
+      {/* FAB — only on home */}
+      {tab === "home" && (
+        <button
+          onClick={() => setTab("workers")}
+          className="fixed bottom-20 right-4 z-40 h-14 px-5 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center gap-2 font-semibold active:scale-95 transition animate-fade-in"
+          aria-label="मजदूर जोड़ें"
+        >
+          <Plus className="w-5 h-5" />
+          <span className="text-sm">मजदूर जोड़ें</span>
+        </button>
+      )}
 
       <BottomNav active={tab} onNavigate={setTab} />
     </div>

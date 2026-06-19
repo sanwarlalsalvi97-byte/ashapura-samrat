@@ -1,24 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Users,
   CalendarCheck,
   TrendingUp,
   TrendingDown,
   Wallet,
-  Plus,
   Calculator,
-  HardHat,
-  Bell,
-  Layers,
-  Sparkles,
   ArrowRight,
-  ArrowUpRight,
-  ArrowDownRight,
   Building2,
+  FileBarChart,
+  ClipboardList,
+  UserPlus,
+  Briefcase,
+  Sparkles,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
@@ -29,6 +25,7 @@ interface Props {
 }
 
 type CashRow = { type: "income" | "expense"; amount: number; site_name: string | null };
+type AdvRow = { id: string; date: string; advance: number; worker_id: string; workers?: { name: string } | null };
 
 function shortInr(n: number): string {
   if (n >= 100000) return `${(n / 100000).toFixed(n >= 1000000 ? 0 : 1)}L`;
@@ -37,79 +34,53 @@ function shortInr(n: number): string {
 }
 
 const HINDI_DAYS = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
-const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const HINDI_MONTHS = ["जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
 const TITHI = ["प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी", "पंचमी", "षष्ठी", "सप्तमी", "अष्टमी", "नवमी", "दशमी", "एकादशी", "द्वादशी", "त्रयोदशी", "चतुर्दशी", "पूर्णिमा/अमावस्या"];
 
-function approxTithi(d: Date): string {
+export function approxTithi(d: Date): { paksha: string; name: string; full: string } {
   const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0)).getTime();
   const days = (d.getTime() - ref) / 86400000;
   const phase = ((days % 29.53) + 29.53) % 29.53;
   const paksha = phase < 14.765 ? "शुक्ल" : "कृष्ण";
   const idx = Math.floor((phase % 14.765) / (14.765 / 15));
-  return `${paksha} ${TITHI[Math.min(idx, 14)]}`;
+  const name = TITHI[Math.min(idx, 14)];
+  return { paksha, name, full: `${paksha} ${name}` };
 }
-
-function greeting(h: number): string {
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
-}
-
-type Tx = {
-  id: string;
-  type: "income" | "expense";
-  amount: number;
-  category: string;
-  date: string;
-  notes: string | null;
-};
 
 export default function HomePage({ onNavigate }: Props) {
-  const [stats, setStats] = useState({ workers: 0, present: 0, absent: 0, half: 0, income: 0, expense: 0, contractors: 0, activeContractors: 0 });
-  const [recent, setRecent] = useState<Tx[]>([]);
+  const [stats, setStats] = useState({
+    workers: 0, present: 0, absent: 0, half: 0,
+    income: 0, expense: 0,
+    contractors: 0, activeContractors: 0,
+    totalAdvance: 0, advanceCount: 0, lastAdvanceDate: "" as string,
+  });
+  const [recentAdv, setRecentAdv] = useState<AdvRow[]>([]);
   const [allCash, setAllCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("Admin");
+
   const [sites, setSites] = useState<Site[]>(() => listSites());
-  // Live-subscribe: re-read sites instantly on any add/edit/delete (same tab or other tabs).
   useSyncExternalStore(
     (cb) => subscribeSites(() => { setSites(listSites()); cb(); }),
     getSitesVersion,
     getSitesVersion,
   );
-  const [siteFilter, setSiteFilter] = useState<string>("__all__");
-  const [locationFilter, setLocationFilter] = useState<string>("__all__");
 
   const today = new Date();
-  const dateStr = `${today.getDate()} ${HINDI_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
-  const dayStr = `${HINDI_DAYS[today.getDay()]} · ${EN_DAYS[today.getDay()]}`;
-  const tithiStr = approxTithi(today);
+  const tithi = approxTithi(today);
   const todayISO = today.toISOString().slice(0, 10);
-
-  // Unique locations from sites
-  const locations = useMemo(() => {
-    const set = new Set<string>();
-    sites.forEach((s) => { const l = (s.location || "").trim(); if (l) set.add(l); });
-    return Array.from(set).sort();
-  }, [sites]);
 
   useEffect(() => {
     loadStats();
-    supabase.auth.getUser().then(({ data }) => {
-      const e = data.user?.email;
-      if (e) setName(e.split("@")[0]);
-    });
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
 
-    // Live updates: refetch cashbook on any change
-    const channel = supabase
-      .channel("home-cashbook")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, () => loadStats())
+    const ch = supabase
+      .channel("home-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, loadStats)
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, loadStats)
       .subscribe();
 
     return () => {
@@ -117,50 +88,30 @@ export default function HomePage({ onNavigate }: Props) {
       window.removeEventListener("storage", refresh);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ch);
     };
   }, []);
 
-  // Set of site names matching current location filter
-  const sitesInLocation = useMemo(() => {
-    if (locationFilter === "__all__") return null;
-    return new Set(
-      sites.filter((s) => (s.location || "").trim() === locationFilter).map((s) => s.name)
-    );
-  }, [locationFilter, sites]);
-
-  // Recompute totals when filters change
-  useEffect(() => {
-    const filtered = allCash.filter((x) => {
-      if (siteFilter !== "__all__" && (x.site_name || "") !== siteFilter) return false;
-      if (sitesInLocation && !sitesInLocation.has(x.site_name || "")) return false;
-      return true;
-    });
-    setStats((s) => ({
-      ...s,
-      income: filtered.filter((x) => x.type === "income").reduce((sum, x) => sum + (x.amount || 0), 0),
-      expense: filtered.filter((x) => x.type === "expense").reduce((sum, x) => sum + (x.amount || 0), 0),
-    }));
-  }, [siteFilter, sitesInLocation, allCash]);
-
-
   async function loadStats() {
     try {
-      const [w, a, c, r, ct] = await Promise.all([
+      const [w, a, c, ct, adv] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,site_name"),
-        supabase
-          .from("cashbook")
-          .select("id,type,amount,category,date,notes")
-          .order("date", { ascending: false })
-          .limit(3),
         supabase.from("contractors").select("status"),
+        supabase
+          .from("attendance")
+          .select("id,date,advance,worker_id, workers(name)")
+          .gt("advance", 0)
+          .order("date", { ascending: false })
+          .limit(5),
       ]);
       const att = a.data || [];
       const cb = (c.data || []) as CashRow[];
       const cts = (ct.data || []) as { status: string }[];
+      const advs = (adv.data || []) as AdvRow[];
       setAllCash(cb);
+      setRecentAdv(advs);
       setStats({
         workers: w.count || 0,
         present: att.filter((x) => x.status === "Present").length,
@@ -170,130 +121,145 @@ export default function HomePage({ onNavigate }: Props) {
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
         contractors: cts.length,
         activeContractors: cts.filter((x) => x.status === "चालू").length,
+        totalAdvance: advs.reduce((s, x) => s + (x.advance || 0), 0),
+        advanceCount: advs.length,
+        lastAdvanceDate: advs[0]?.date || "",
       });
-      setRecent((r.data || []) as Tx[]);
     } finally {
       setLoading(false);
     }
   }
 
-  // Per-site expense breakdown (respects location filter; always shows all known sites)
   const sitewise = useMemo(() => {
     const map = new Map<string, number>();
-    const includedSites = sitesInLocation
-      ? sites.filter((s) => sitesInLocation.has(s.name))
-      : sites;
-    const knownSet = new Set(includedSites.map((s) => s.name));
-    includedSites.forEach((s) => map.set(s.name, 0));
+    const known = new Set(sites.map((s) => s.name));
+    sites.forEach((s) => map.set(s.name, 0));
     allCash
       .filter((x) => x.type === "expense")
       .forEach((x) => {
-        const key = (x.site_name || "").trim();
-        if (!key || !knownSet.has(key)) return;
-        map.set(key, (map.get(key) || 0) + (x.amount || 0));
+        const k = (x.site_name || "").trim();
+        if (!k || !known.has(k)) return;
+        map.set(k, (map.get(k) || 0) + (x.amount || 0));
       });
     const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
     rows.sort((a, b) => b.amount - a.amount);
     const total = rows.reduce((s, r) => s + r.amount, 0);
     const max = Math.max(1, ...rows.map((r) => r.amount));
     return { rows, total, max };
-  }, [allCash, sites, sitesInLocation]);
+  }, [allCash, sites]);
 
-
-
-  const balance = stats.income - stats.expense;
-  const totalAtt = stats.present + stats.absent + stats.half;
-  const pct = (n: number) => (totalAtt > 0 ? (n / totalAtt) * 100 : 0);
-  const pPct = pct(stats.present);
-  const aPct = pct(stats.absent);
-  const hPct = pct(stats.half);
-
-  // donut math (circumference = 2πr; r=42 -> ~263.89)
-  const C = 2 * Math.PI * 42;
-  const pLen = (pPct / 100) * C;
-  const aLen = (aPct / 100) * C;
-  const hLen = (hPct / 100) * C;
-
-  const summaryCards = [
-    { label: "कुल मजदूर", value: stats.workers, icon: Users, from: "from-blue-500", to: "to-blue-600" },
-    { label: "आज हाजिरी", value: `${stats.present}/${stats.workers}`, icon: CalendarCheck, from: "from-emerald-500", to: "to-emerald-600" },
-    { label: "कुल आय", value: `₹${stats.income.toLocaleString("hi-IN")}`, icon: TrendingUp, from: "from-amber-500", to: "to-orange-500" },
-    { label: "कुल खर्च", value: `₹${stats.expense.toLocaleString("hi-IN")}`, icon: TrendingDown, from: "from-rose-500", to: "to-red-600" },
-  ];
+  const absentToday = Math.max(0, stats.workers - stats.present - stats.half);
 
   return (
-    <div className="space-y-4 animate-fade-in pb-6 font-[Poppins,sans-serif]">
-      {/* Date card */}
-      <Card className="rounded-2xl border-border/60 shadow-sm">
-        <CardContent className="p-5 text-center">
+    <div className="space-y-4 animate-fade-in pb-24 font-[Poppins,sans-serif]">
+      {/* Date + Tithi card */}
+      <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
+        <CardContent className="p-5 text-center bg-gradient-to-br from-primary/5 to-accent/5">
           <div className="text-xs font-semibold text-muted-foreground tracking-wide">आज की तारीख</div>
           <div className="text-5xl font-extrabold text-primary leading-none mt-2">{today.getDate()}</div>
           <div className="text-sm font-semibold mt-1">{HINDI_MONTHS[today.getMonth()]} {today.getFullYear()}</div>
-          <div className="mt-3 inline-flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1 text-xs">
-            <span className="text-muted-foreground">वार</span>
-            <span className="font-semibold">{HINDI_DAYS[today.getDay()]}</span>
+          <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 bg-muted/60 rounded-full px-3 py-1 text-xs">
+              <span className="text-muted-foreground">वार</span>
+              <span className="font-semibold">{HINDI_DAYS[today.getDay()]}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
+              <Sparkles className="w-3 h-3" />
+              {tithi.full}
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {/* Top 3 actions */}
       <div className="grid grid-cols-3 gap-2">
-        <ActionChip emoji="📅" label="हाजिरी लगाएं" onClick={() => onNavigate("attendance")} />
-        <ActionChip emoji="💰" label="हिसाब लिखें" onClick={() => onNavigate("cashbook")} />
-        <ActionChip emoji="🧮" label="केलकुलेटर" onClick={() => onNavigate("bricks")} />
+        <ActionChip icon={CalendarCheck} label="हाजिरी लगाएं" tone="emerald" onClick={() => onNavigate("attendance")} />
+        <ActionChip icon={Wallet} label="हिसाब लिखें" tone="amber" onClick={() => onNavigate("cashbook")} />
+        <ActionChip icon={Calculator} label="केलकुलेटर" tone="violet" onClick={() => onNavigate("bricks")} />
       </div>
 
-      {/* Two info cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="rounded-2xl border-border/60">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground font-semibold">कुल मजदूर</div>
-            <div className="text-3xl font-extrabold text-primary mt-1">{stats.workers}</div>
-            <div className="text-[11px] text-accent font-semibold mt-1">सक्रिय</div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border-border/60">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground font-semibold">आज हाजिर</div>
-            <div className="text-3xl font-extrabold text-accent mt-1">{stats.present}</div>
-            <div className="text-[11px] text-muted-foreground font-semibold mt-1">{stats.half} हाफ-डे</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Attendance stats row */}
+      {/* Attendance stats */}
       <Card className="rounded-2xl border-border/60">
-        <CardContent className="p-4 grid grid-cols-3 divide-x divide-border/60 text-center">
-          <div>
-            <div className="text-2xl font-extrabold text-accent">{stats.present}</div>
-            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाजिर</div>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold">आज की हाजिरी</span>
+            </div>
+            <span className="text-[11px] text-muted-foreground">{stats.workers} कुल मजदूर</span>
           </div>
-          <div>
-            <div className="text-2xl font-extrabold text-warning">{stats.half}</div>
-            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाफ-डे</div>
-          </div>
-          <div>
-            <div className="text-2xl font-extrabold text-destructive">{Math.max(0, stats.workers - stats.present - stats.half)}</div>
-            <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">गैरहाजिर</div>
+          <div className="grid grid-cols-3 divide-x divide-border/60 text-center">
+            <div>
+              <div className="text-2xl font-extrabold text-accent">{stats.present}</div>
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाजिर</div>
+            </div>
+            <div>
+              <div className="text-2xl font-extrabold text-warning">{stats.half}</div>
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाफ-डे</div>
+            </div>
+            <div>
+              <div className="text-2xl font-extrabold text-destructive">{absentToday}</div>
+              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">गैरहाजिर</div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Site-wise expense chart → मासिक हिसाब */}
-      <button
-        onClick={() => onNavigate("report")}
-        className="w-full text-left"
-        aria-label="साइट-वाइज खर्च — मासिक हिसाब खोलें"
-      >
-        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition">
+      {/* Advance summary */}
+      <button onClick={() => onNavigate("advance")} className="w-full text-left">
+        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🏗️</span>
+                <Wallet className="w-4 h-4 text-primary" />
+                <span className="text-sm font-bold">एडवांस सारांश</span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center mb-3">
+              <div className="bg-primary/10 rounded-xl p-2">
+                <div className="text-base font-extrabold text-primary tabular-nums">₹{shortInr(stats.totalAdvance)}</div>
+                <div className="text-[10px] text-muted-foreground">कुल एडवांस</div>
+              </div>
+              <div className="bg-muted/60 rounded-xl p-2">
+                <div className="text-base font-extrabold tabular-nums">{stats.advanceCount}</div>
+                <div className="text-[10px] text-muted-foreground">बार लिया</div>
+              </div>
+              <div className="bg-muted/60 rounded-xl p-2">
+                <div className="text-[11px] font-bold tabular-nums leading-tight">{stats.lastAdvanceDate || "—"}</div>
+                <div className="text-[10px] text-muted-foreground">आख़िरी</div>
+              </div>
+            </div>
+            {recentAdv.length === 0 ? (
+              <div className="text-[11px] text-muted-foreground text-center py-2">कोई एडवांस नहीं</div>
+            ) : (
+              <ul className="space-y-1.5">
+                {recentAdv.slice(0, 4).map((r) => (
+                  <li key={r.id} className="flex items-center justify-between text-xs">
+                    <span className="truncate pr-2">
+                      <span className="font-semibold">{r.workers?.name || "—"}</span>
+                      <span className="text-muted-foreground"> · {r.date}</span>
+                    </span>
+                    <span className="font-bold text-primary tabular-nums">₹{r.advance.toLocaleString("hi-IN")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </button>
+
+      {/* Site-wise expense → मासिक रिपोर्ट */}
+      <button onClick={() => onNavigate("report")} className="w-full text-left">
+        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary" />
                 <span className="text-sm font-bold">साइट-वाइज खर्च</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-primary font-semibold">
-                मासिक हिसाब <ArrowRight className="w-3 h-3" />
+                मासिक रिपोर्ट <ArrowRight className="w-3 h-3" />
               </div>
             </div>
             {sitewise.rows.length === 0 ? (
@@ -324,15 +290,19 @@ export default function HomePage({ onNavigate }: Props) {
         </Card>
       </button>
 
-      {/* Contractor summary → ठेका प्रबंधन */}
-      <button
-        onClick={() => onNavigate("contractors")}
-        className="w-full text-left"
-        aria-label="ठेका प्रबंधन खोलें"
-      >
-        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition">
+      {/* Income / Expense quick */}
+      <div className="grid grid-cols-2 gap-3">
+        <MiniStat icon={TrendingUp} label="कुल आय" value={`₹${shortInr(stats.income)}`} tone="text-accent" />
+        <MiniStat icon={TrendingDown} label="कुल खर्च" value={`₹${shortInr(stats.expense)}`} tone="text-destructive" />
+      </div>
+
+      {/* Contractor card */}
+      <button onClick={() => onNavigate("contractors")} className="w-full text-left">
+        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 grid place-items-center text-white text-xl">📄</div>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 grid place-items-center text-white">
+              <Briefcase className="w-5 h-5" />
+            </div>
             <div className="flex-1">
               <div className="text-sm font-bold">ठेका प्रबंधन</div>
               <div className="text-[11px] text-muted-foreground">
@@ -344,12 +314,12 @@ export default function HomePage({ onNavigate }: Props) {
         </Card>
       </button>
 
-      {/* Quick links grid */}
+      {/* Quick links */}
       <div className="grid grid-cols-2 gap-3">
-        <LinkTile emoji="📈" label="मासिक हिसाब" onClick={() => onNavigate("report")} />
-        <LinkTile emoji="👷" label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} />
-        <LinkTile emoji="🧮" label="ईंट केलकुलेटर" onClick={() => onNavigate("bricks")} />
-        <LinkTile emoji="📄" label="ठेका प्रबंधन" onClick={() => onNavigate("contractors")} />
+        <LinkTile icon={FileBarChart} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} />
+        <LinkTile icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} />
+        <LinkTile icon={Calculator} label="ईंट केलकुलेटर" onClick={() => onNavigate("bricks")} />
+        <LinkTile icon={ClipboardList} label="ठेका प्रबंधन" onClick={() => onNavigate("contractors")} />
       </div>
 
       {loading && <div className="text-center text-xs text-muted-foreground">लोड हो रहा है...</div>}
@@ -357,78 +327,49 @@ export default function HomePage({ onNavigate }: Props) {
   );
 }
 
-function ActionChip({ emoji, label, onClick }: { emoji: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-2xl bg-card border border-border/60 p-3 flex flex-col items-center gap-1 shadow-sm active:scale-[0.97] transition"
-    >
-      <span className="text-2xl leading-none">{emoji}</span>
-      <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{label}</span>
-    </button>
-  );
-}
-
-function LinkTile({ emoji, label, onClick }: { emoji: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-2xl bg-card border border-border/60 p-4 flex items-center gap-3 shadow-sm active:scale-[0.98] transition text-left"
-    >
-      <span className="text-2xl">{emoji}</span>
-      <span className="text-sm font-semibold">{label}</span>
-    </button>
-  );
-}
-
-function LegendRow({ color, label, value, pct }: { color: string; label: string; value: number; pct: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-      <span className="text-xs text-muted-foreground flex-1">{label}</span>
-      <span className="text-xs font-semibold tabular-nums">{value}</span>
-      <span className="text-[10px] text-muted-foreground tabular-nums w-10 text-right">{pct.toFixed(0)}%</span>
-    </div>
-  );
-}
-
-function QuickAction({
-  icon: Icon, label, sub, tone, onClick,
-}: {
-  icon: any; label: string; sub: string; tone: "primary" | "accent" | "warning" | "violet"; onClick: () => void;
-}) {
+function ActionChip({ icon: Icon, label, tone, onClick }: { icon: any; label: string; tone: "emerald" | "amber" | "violet"; onClick: () => void }) {
   const map: Record<string, string> = {
-    primary: "from-blue-500 to-indigo-600",
-    accent: "from-emerald-500 to-teal-600",
-    warning: "from-amber-500 to-orange-600",
+    emerald: "from-emerald-500 to-emerald-600",
+    amber: "from-amber-500 to-orange-500",
     violet: "from-violet-500 to-purple-600",
   };
   return (
     <button
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl p-4 text-left text-white shadow-md bg-gradient-to-br ${map[tone]} active:scale-[0.98] transition`}
+      className="rounded-2xl bg-card border border-border/60 p-3 flex flex-col items-center gap-1.5 shadow-sm active:scale-[0.96] transition"
     >
-      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 blur-xl" />
-      <Icon className="w-6 h-6 mb-3 opacity-95" />
-      <div className="text-sm font-bold">{label}</div>
-      <div className="text-[11px] opacity-90">{sub}</div>
+      <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${map[tone]} grid place-items-center text-white shadow-sm`}>
+        <Icon className="w-4 h-4" />
+      </span>
+      <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{label}</span>
     </button>
   );
 }
 
-function CalcShortcut({
-  icon: Icon, label, sub, color, onClick,
-}: { icon: any; label: string; sub: string; color: string; onClick: () => void }) {
+function LinkTile({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`min-w-[120px] rounded-2xl p-4 text-left text-white shadow-md bg-gradient-to-br ${color} active:scale-[0.98] transition`}
+      className="rounded-2xl bg-card border border-border/60 p-4 flex items-center gap-3 shadow-sm active:scale-[0.96] transition text-left"
     >
-      <div className="w-9 h-9 rounded-xl bg-white/20 grid place-items-center mb-2">
+      <span className="w-9 h-9 rounded-xl bg-primary/10 grid place-items-center text-primary">
         <Icon className="w-5 h-5" />
-      </div>
-      <div className="text-sm font-bold">{label}</div>
-      <div className="text-[11px] opacity-90">{sub}</div>
+      </span>
+      <span className="text-sm font-semibold">{label}</span>
     </button>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: string }) {
+  return (
+    <Card className="rounded-2xl border-border/60">
+      <CardContent className="p-3 flex items-center gap-2">
+        <Icon className={`w-4 h-4 ${tone}`} />
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] text-muted-foreground font-semibold">{label}</div>
+          <div className={`text-base font-extrabold tabular-nums ${tone}`}>{value}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
