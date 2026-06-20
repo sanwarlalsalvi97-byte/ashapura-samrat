@@ -19,6 +19,9 @@ export type Database = {
           advance: number
           created_at: string
           date: string
+          gps_lat: number | null
+          gps_lng: number | null
+          gps_status: string | null
           id: string
           notes: string | null
           site_name: string | null
@@ -31,6 +34,9 @@ export type Database = {
           advance?: number
           created_at?: string
           date?: string
+          gps_lat?: number | null
+          gps_lng?: number | null
+          gps_status?: string | null
           id?: string
           notes?: string | null
           site_name?: string | null
@@ -43,6 +49,9 @@ export type Database = {
           advance?: number
           created_at?: string
           date?: string
+          gps_lat?: number | null
+          gps_lng?: number | null
+          gps_status?: string | null
           id?: string
           notes?: string | null
           site_name?: string | null

@@ -115,14 +115,18 @@ export default function AttendancePage() {
       try {
         const siteOverride = siteOverrides[e.worker.id];
         const gps = gpsMap[e.worker.id];
+        const gpsStatus = mode === "gps" ? (gps ? "ON" : "OFF") : (gps ? "ON" : "OFF");
         await markAttendance({
           worker_id: e.worker.id,
           date: formatDate(date),
           status: e.status,
           advance: e.advance,
           site_name: (siteOverride && siteOverride.trim()) || e.worker.site_name,
-          notes: gps ? `GPS:${gps.lat},${gps.lng}` : null,
-        });
+          notes: null,
+          gps_status: gpsStatus,
+          gps_lat: gps?.lat ?? null,
+          gps_lng: gps?.lng ?? null,
+        } as any);
         setAttendance((prev) => ({
           ...prev,
           [e.worker.id]: {
