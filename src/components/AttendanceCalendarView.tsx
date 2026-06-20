@@ -158,3 +158,201 @@ export default function AttendanceCalendarView() {
     </div>
   );
 }
+
+const STATUSES: AttendanceStatus[] = ["Present", "Half-Day", "Absent"];
+const STATUS_PILL: Record<AttendanceStatus, { label: string; bg: string; ring: string }> = {
+  Present: { label: "P", bg: "bg-emerald-500", ring: "ring-emerald-500" },
+  "Half-Day": { label: "HD", bg: "bg-amber-500", ring: "ring-amber-500" },
+  Absent: { label: "A", bg: "bg-rose-500", ring: "ring-rose-500" },
+};
+
+type DayRow = {
+  worker: Worker;
+  status?: AttendanceStatus;
+  site_name: string;
+  gps_status?: string | null;
+  gps_lat?: number | null;
+  gps_lng?: number | null;
+};
+
+function DayDetails({ iso, onChanged }: { iso: string; onChanged: () => void }) {
+  const [rows, setRows] = useState<DayRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const tithi = approxTithi(new Date(iso));
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const isFuture = iso > todayIso;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [workers, attRes] = await Promise.all([
+        getWorkers(),
+        supabase.from("attendance").select("*").eq("date", iso),
+      ]);
+      const map = new Map<string, any>();
+      (attRes.data || []).forEach((r: any) => map.set(r.worker_id, r));
+      setRows(
+        workers.map((w) => {
+          const a = map.get(w.id);
+          return {
+            worker: w,
+            status: a?.status,
+            site_name: a?.site_name ?? w.site_name ?? "",
+            gps_status: a?.gps_status ?? null,
+            gps_lat: a?.gps_lat ?? null,
+            gps_lng: a?.gps_lng ?? null,
+          };
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-line */ }, [iso]);
+
+  const updateLocal = (workerId: string, patch: Partial<DayRow>) => {
+    setRows((prev) => prev.map((r) => (r.worker.id === workerId ? { ...r, ...patch } : r)));
+  };
+
+  const saveRow = async (row: DayRow, nextStatus: AttendanceStatus) => {
+    if (isFuture) {
+      toast({ title: "भविष्य की तारीख edit नहीं हो सकती", variant: "destructive" });
+      return;
+    }
+    setSavingId(row.worker.id);
+    try {
+      await markAttendance({
+        worker_id: row.worker.id,
+        date: iso,
+        status: nextStatus,
+        advance: 0,
+        site_name: row.site_name?.trim() || row.worker.site_name,
+        notes: null,
+        gps_status: row.gps_status ?? "OFF",
+        gps_lat: row.gps_lat ?? null,
+        gps_lng: row.gps_lng ?? null,
+      } as any);
+      updateLocal(row.worker.id, { status: nextStatus });
+      onChanged();
+      toast({ title: `✅ ${row.worker.name} — ${nextStatus}` });
+    } catch (e: any) {
+      toast({ title: "सेव नहीं हुआ", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const captureGps = (row: DayRow) => {
+    if (!("geolocation" in navigator)) {
+      updateLocal(row.worker.id, { gps_status: "OFF" });
+      toast({ title: "GPS नहीं मिला", variant: "destructive" });
+      return;
+    }
+    setSavingId(row.worker.id);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = +pos.coords.latitude.toFixed(5);
+        const lng = +pos.coords.longitude.toFixed(5);
+        updateLocal(row.worker.id, { gps_status: "ON", gps_lat: lat, gps_lng: lng });
+        setSavingId(null);
+        toast({ title: `📍 GPS सेव (${lat}, ${lng})` });
+      },
+      () => {
+        updateLocal(row.worker.id, { gps_status: "OFF" });
+        setSavingId(null);
+        toast({ title: "GPS OFF — लोकेशन नहीं मिली", variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const totals = rows.reduce(
+    (a, r) => {
+      if (r.status === "Present") a.P++;
+      else if (r.status === "Half-Day") a.H++;
+      else if (r.status === "Absent") a.A++;
+      return a;
+    },
+    { P: 0, H: 0, A: 0 }
+  );
+
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-semibold">
+        {tithi.full}
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-emerald-500/10 rounded-lg p-2"><div className="text-xl font-bold text-emerald-600">{totals.P}</div><div className="text-[10px] text-muted-foreground">हाजिर</div></div>
+        <div className="bg-amber-500/10 rounded-lg p-2"><div className="text-xl font-bold text-amber-600">{totals.H}</div><div className="text-[10px] text-muted-foreground">हाफ-डे</div></div>
+        <div className="bg-rose-500/10 rounded-lg p-2"><div className="text-xl font-bold text-rose-600">{totals.A}</div><div className="text-[10px] text-muted-foreground">गैरहाजिर</div></div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-6 text-muted-foreground text-xs">लोड हो रहा है...</div>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground text-xs">कोई मजदूर नहीं</div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.worker.id} className="rounded-xl border border-border/60 bg-card p-2.5 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold truncate">{row.worker.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{row.worker.role}</div>
+                </div>
+                {savingId === row.worker.id && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                {STATUSES.map((s) => {
+                  const p = STATUS_PILL[s];
+                  const active = row.status === s;
+                  return (
+                    <button
+                      key={s}
+                      disabled={isFuture || savingId === row.worker.id}
+                      onClick={() => saveRow(row, s)}
+                      className={`py-1.5 rounded-lg text-xs font-bold text-white transition active:scale-95 ${p.bg} ${active ? `ring-2 ring-offset-1 ${p.ring}` : "opacity-60"}`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input
+                  value={row.site_name}
+                  onChange={(e) => updateLocal(row.worker.id, { site_name: e.target.value })}
+                  onBlur={() => { if (row.status) saveRow(row, row.status); }}
+                  placeholder="साइट का नाम"
+                  className="h-8 text-xs flex-1"
+                />
+                <button
+                  onClick={() => captureGps(row)}
+                  disabled={savingId === row.worker.id}
+                  className={`h-8 px-2 rounded-lg text-[11px] font-semibold flex items-center gap-1 ${
+                    row.gps_status === "ON"
+                      ? "bg-emerald-500/15 text-emerald-600"
+                      : row.gps_status === "OFF"
+                        ? "bg-rose-500/15 text-rose-600"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                  title={row.gps_lat && row.gps_lng ? `${row.gps_lat}, ${row.gps_lng}` : "GPS स्थिति"}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  {row.gps_status || "—"}
+                </button>
+              </div>
+              {row.gps_lat != null && row.gps_lng != null && (
+                <div className="text-[10px] text-muted-foreground">📍 {row.gps_lat}, {row.gps_lng}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
