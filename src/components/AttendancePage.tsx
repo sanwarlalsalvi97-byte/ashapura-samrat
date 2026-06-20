@@ -98,7 +98,21 @@ export default function AttendancePage() {
       .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number; wasEdit: boolean }[];
 
     if (entries.length === 0) {
-      toast({ title: "कोई नई हाजिरी नहीं चुनी", variant: "destructive" });
+      toast({ title: "कोई नई हाजिरी नहीं चुनी", description: "पहले P / HD / A में से कोई एक चुनें", variant: "destructive" });
+      return;
+    }
+
+    // Validate: every selected entry must have a site
+    const missingSite = entries.filter((e) => {
+      const s = (siteOverrides[e.worker.id] ?? e.worker.site_name ?? "").trim();
+      return !s;
+    });
+    if (missingSite.length > 0) {
+      toast({
+        title: `${missingSite.length} मजदूर की साइट नहीं चुनी`,
+        description: missingSite.map((e) => e.worker.name).join(", "),
+        variant: "destructive",
+      });
       return;
     }
 
