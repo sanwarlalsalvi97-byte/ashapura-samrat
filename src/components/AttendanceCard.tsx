@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, ChevronDown, ChevronUp, Loader2, Pencil, Clock } from "lucide-react";
+import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listSites, createSite, type Site } from "@/lib/sites";
 import {
@@ -26,6 +25,40 @@ interface Props {
 }
 
 const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
+
+const STATUS_OPTIONS: { value: AttendanceStatus; label: string; full: string; activeBg: string; activeText: string; ring: string; idleBg: string; idleText: string }[] = [
+  {
+    value: "Present",
+    label: "P",
+    full: "हाजिर",
+    activeBg: "bg-emerald-500",
+    activeText: "text-white",
+    ring: "ring-emerald-500/40",
+    idleBg: "bg-emerald-500/10",
+    idleText: "text-emerald-700 dark:text-emerald-400",
+  },
+  {
+    value: "Half-Day",
+    label: "HD",
+    full: "आधा दिन",
+    activeBg: "bg-amber-500",
+    activeText: "text-white",
+    ring: "ring-amber-500/40",
+    idleBg: "bg-amber-500/10",
+    idleText: "text-amber-700 dark:text-amber-400",
+  },
+  {
+    value: "Absent",
+    label: "A",
+    full: "गैरहाजिर",
+    activeBg: "bg-rose-500",
+    activeText: "text-white",
+    ring: "ring-rose-500/40",
+    idleBg: "bg-rose-500/10",
+    idleText: "text-rose-700 dark:text-rose-400",
+  },
+];
+
 const PILL: Record<string, { label: string; bg: string }> = {
   Present: { label: "P", bg: "bg-emerald-500" },
   Absent: { label: "A", bg: "bg-rose-500" },
@@ -41,25 +74,28 @@ function initials(name: string) {
 
 export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
-  const [expanded, setExpanded] = useState(false);
   const [site, setSite] = useState(worker.site_name || "");
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [gps, setGps] = useState<{ lat: number; lng: number } | undefined>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  const [siteError, setSiteError] = useState(false);
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
+  useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
 
-  const cycleStatus = () => {
-    const idx = sel ? ORDER.indexOf(sel) : -1;
-    const next = ORDER[(idx + 1) % ORDER.length];
+  const pickStatus = (status: AttendanceStatus) => {
+    // Toggle off if same status tapped
+    const next = sel === status ? undefined : status;
     setSel(next);
     onSelectionChange?.(worker.id, next);
+    if (next && !site) setSiteError(true);
+    else setSiteError(false);
   };
 
   const updateSite = (v: string) => {
@@ -77,6 +113,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     const val = v === "__none__" ? "" : v;
     setSite(val);
     onSiteChange?.(worker.id, val);
+    if (val) setSiteError(false);
   };
 
   const captureGps = () => {
@@ -91,13 +128,12 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         setGps(g);
         onGpsChange?.(worker.id, g);
         setGpsLoading(false);
-        // In GPS mode, auto-mark Present on successful capture
         if (mode === "gps") {
           setSel("Present");
           onSelectionChange?.(worker.id, "Present");
           toast({ title: `✅ ${worker.name} — हाजिर (GPS लॉक)` });
         } else {
-          toast({ title: `📍 GPS सेव हुआ (${g.lat}, ${g.lng})` });
+          toast({ title: `📍 GPS सेव हुआ` });
         }
       },
       (err) => {
@@ -108,7 +144,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     );
   };
 
-  const pill = sel ? PILL[sel] : null;
   const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
   const wasEdited = !!currentCreatedAt && !!currentUpdatedAt && Math.abs(new Date(currentUpdatedAt).getTime() - new Date(currentCreatedAt).getTime()) > 1000;
   const updatedLabel = currentUpdatedAt
@@ -122,97 +157,97 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       transition={{ duration: 0.2 }}
       className={`rounded-2xl bg-card border ${isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-200 to-orange-400 dark:from-orange-700 dark:to-orange-900 grid place-items-center text-white text-sm font-bold shrink-0">
+      {/* Header: avatar + name + actions */}
+      <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/30 to-primary/70 grid place-items-center text-primary-foreground text-base font-bold shrink-0 shadow-sm">
           {initials(worker.name)}
         </div>
-        <button onClick={() => setExpanded((v) => !v)} className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-[15px] truncate flex items-center gap-1.5">
             {worker.name}
             {(isEdited || wasEdited) && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">Edited</span>
             )}
           </div>
-          <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-            {worker.role}
-            {site && <span>• 📍 {site}</span>}
-            {gps && <span className="text-emerald-600">• GPS ✓</span>}
-            {updatedLabel && (
-              <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />Last Updated: {updatedLabel}</span>
-            )}
+          <div className="text-xs text-muted-foreground truncate">
+            {worker.role} <span className="mx-1 opacity-50">•</span>
+            <span className="font-semibold text-foreground">₹{worker.daily_rate.toLocaleString()}</span>/दिन
           </div>
-        </button>
+          {updatedLabel && (
+            <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5" /> {updatedLabel}
+            </div>
+          )}
+        </div>
         {mode === "gps" && (
           <button
-            onClick={(e) => { e.stopPropagation(); captureGps(); }}
+            onClick={captureGps}
             disabled={gpsLoading}
-            className={`w-9 h-9 grid place-items-center rounded-lg ${gps ? "bg-emerald-500/15 text-emerald-600" : "bg-primary/10 text-primary"} hover:bg-primary/20 disabled:opacity-60`}
+            className={`w-9 h-9 grid place-items-center rounded-lg active:scale-95 transition ${gps ? "bg-emerald-500/15 text-emerald-600" : "bg-primary/10 text-primary"} hover:bg-primary/20 disabled:opacity-60`}
             title="GPS से हाजिर करें"
           >
             {gpsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
           </button>
         )}
         <button
-          onClick={(e) => { e.stopPropagation(); setCalOpen(true); }}
-          className="w-9 h-9 grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
+          onClick={() => setCalOpen(true)}
+          className="w-9 h-9 grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 active:scale-95 transition"
           title="इस मजदूर का कैलेंडर"
         >
           <CalendarDays className="w-4 h-4" />
         </button>
-        <button
-          onClick={cycleStatus}
-          className={`w-16 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center gap-1 shadow active:scale-95 transition ${
-            pill ? pill.bg : "bg-muted text-muted-foreground"
-          }`}
-          aria-label="Edit Attendance"
-          title="Edit Attendance"
-        >
-          {currentStatus && <Pencil className="w-3 h-3" />}
-          {pill ? pill.label : "—"}
-        </button>
-        <button onClick={() => setExpanded((v) => !v)} className="text-muted-foreground">
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
       </div>
 
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="px-3 pb-3 space-y-2 border-t border-border/60"
-          >
-            <div className="pt-2">
-              <label className="text-[11px] text-muted-foreground">साइट का नाम</label>
-              <Select value={site || "__none__"} onValueChange={updateSite}>
-                <SelectTrigger className="h-9 text-sm bg-background border-primary/40">
-                  <SelectValue placeholder="साइट चुनें" />
-                </SelectTrigger>
-                <SelectContent className="z-[100] bg-popover">
-                  <SelectItem value="__none__">— कोई नहीं —</SelectItem>
-                  {sites.map((s) => (
-                    <SelectItem key={s.id} value={s.name}>
-                      {s.name}{s.location ? ` · ${s.location}` : ""}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__add__" className="text-primary font-medium">
-                    ➕ नई साइट जोड़ें
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <button
-              onClick={captureGps}
-              disabled={gpsLoading}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 disabled:opacity-60"
+      {/* Attendance pill buttons row */}
+      <div className="px-4 pb-2 grid grid-cols-3 gap-2">
+        {STATUS_OPTIONS.map((opt) => {
+          const active = sel === opt.value;
+          return (
+            <motion.button
+              key={opt.value}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => pickStatus(opt.value)}
+              className={`relative h-11 rounded-full font-bold text-sm flex items-center justify-center gap-1.5 transition-all duration-200 ${
+                active
+                  ? `${opt.activeBg} ${opt.activeText} shadow-md ring-2 ${opt.ring}`
+                  : `${opt.idleBg} ${opt.idleText} hover:brightness-95`
+              }`}
+              aria-pressed={active}
             >
-              {gpsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-              {gps ? `GPS लॉक: ${gps.lat}, ${gps.lng}` : "GPS लोकेशन लें"}
-            </button>
-          </motion.div>
+              <span className={`grid place-items-center rounded-full text-[11px] font-extrabold w-6 h-6 ${active ? "bg-white/25" : "bg-white/70 dark:bg-black/20"}`}>
+                {opt.label}
+              </span>
+              <span className="text-[12px]">{opt.full}</span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Site dropdown */}
+      <div className="px-4 pb-3 pt-1">
+        <label className="text-[11px] text-muted-foreground font-medium">साइट चुनें</label>
+        <Select value={site || "__none__"} onValueChange={updateSite}>
+          <SelectTrigger className={`h-10 mt-1 text-sm rounded-xl bg-background ${siteError ? "border-rose-500 ring-1 ring-rose-500/40" : "border-primary/30"}`}>
+            <SelectValue placeholder="साइट चुनें" />
+          </SelectTrigger>
+          <SelectContent className="z-[100] bg-popover">
+            <SelectItem value="__none__">— कोई नहीं —</SelectItem>
+            {sites.map((s) => (
+              <SelectItem key={s.id} value={s.name}>
+                {s.name}{s.location ? ` · ${s.location}` : ""}
+              </SelectItem>
+            ))}
+            <SelectItem value="__add__" className="text-primary font-medium">
+              ➕ नई साइट जोड़ें
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        {siteError && (
+          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> कृपया साइट चुनें
+          </p>
         )}
-      </AnimatePresence>
+      </div>
 
       <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} onSaved={onMarked} />
     </motion.div>
