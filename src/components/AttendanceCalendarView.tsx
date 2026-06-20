@@ -132,28 +132,18 @@ export default function AttendanceCalendarView() {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <DialogContent className="max-w-xs">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selected ? `${selected.day} ${HINDI_MONTHS[month]} ${year}` : ""}
             </DialogTitle>
           </DialogHeader>
-          {selected && (() => {
-            const s = stats[selected.iso] || { P: 0, A: 0, H: 0 };
-            const t = approxTithi(new Date(selected.iso));
-            return (
-              <div className="space-y-3 text-sm">
-                <div className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-semibold">
-                  {t.full}
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-emerald-500/10 rounded-lg p-2"><div className="text-xl font-bold text-emerald-600">{s.P}</div><div className="text-[10px] text-muted-foreground">हाजिर</div></div>
-                  <div className="bg-amber-500/10 rounded-lg p-2"><div className="text-xl font-bold text-amber-600">{s.H}</div><div className="text-[10px] text-muted-foreground">हाफ-डे</div></div>
-                  <div className="bg-rose-500/10 rounded-lg p-2"><div className="text-xl font-bold text-rose-600">{s.A}</div><div className="text-[10px] text-muted-foreground">गैरहाजिर</div></div>
-                </div>
-              </div>
-            );
-          })()}
+          {selected && (
+            <DayDetails
+              iso={selected.iso}
+              onChanged={loadStats}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
