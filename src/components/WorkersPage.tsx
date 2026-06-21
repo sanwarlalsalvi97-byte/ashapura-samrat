@@ -8,7 +8,7 @@ import UpiPayDialog from "./UpiPayDialog";
 import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
-import { listSites, type Site, mergeSitesFrom, createSite } from "@/lib/sites";
+import { listSites, type Site, createSite } from "@/lib/sites";
 
 import {
   AlertDialog,
