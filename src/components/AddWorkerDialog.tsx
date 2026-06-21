@@ -7,7 +7,7 @@ import { addWorker, type WorkerRole } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { UserPlus } from "lucide-react";
 import SiteNameInput from "./SiteNameInput";
-import { addSite } from "@/lib/sites";
+// sites are managed exclusively in the Sites page
 
 interface Props {
   onAdded: () => void;
@@ -28,7 +28,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      if (siteName.trim()) addSite(siteName);
+      // Site must already exist in Sites page; we never auto-create.
       await addWorker({
         name: name.trim(),
         role,

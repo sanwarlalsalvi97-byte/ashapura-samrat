@@ -1,6 +1,6 @@
-import { useEffect, useId, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { addSite, getSites } from "@/lib/sites";
+import { useEffect, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listSites, type Site } from "@/lib/sites";
 
 interface Props {
   value: string;
@@ -10,17 +10,15 @@ interface Props {
 }
 
 /**
- * Site-name input with a dropdown of previously-used sites (HTML <datalist>).
- * - User can pick an existing site from the dropdown, OR type a new one.
- * - On blur, a new typed site is saved so it appears in future dropdowns
- *   without overwriting earlier entries.
+ * Site selector — STRICT mode.
+ * Only allows picking from sites manually added in the "Sites" page.
+ * Never creates new sites and never accepts free text.
  */
-export default function SiteNameInput({ value, onChange, placeholder = "साइट का नाम चुनें या लिखें", className }: Props) {
-  const listId = useId();
-  const [sites, setSites] = useState<string[]>(() => getSites());
+export default function SiteNameInput({ value, onChange, placeholder = "साइट चुनें", className }: Props) {
+  const [sites, setSites] = useState<Site[]>(() => listSites());
 
   useEffect(() => {
-    const refresh = () => setSites(getSites());
+    const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -30,21 +28,26 @@ export default function SiteNameInput({ value, onChange, placeholder = "सा�
   }, []);
 
   return (
-    <>
-      <Input
-        list={listId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => { if (value.trim()) addSite(value); }}
-        placeholder={placeholder}
-        className={className}
-        autoComplete="off"
-      />
-      <datalist id={listId}>
+    <Select
+      value={value || "__none__"}
+      onValueChange={(v) => onChange(v === "__none__" ? "" : v)}
+    >
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="z-[100] bg-popover">
+        <SelectItem value="__none__">— कोई नहीं —</SelectItem>
         {sites.map((s) => (
-          <option key={s} value={s} />
+          <SelectItem key={s.id} value={s.name}>
+            {s.name}{s.location ? ` — ${s.location}` : ""}
+          </SelectItem>
         ))}
-      </datalist>
-    </>
+        {sites.length === 0 && (
+          <div className="px-2 py-3 text-xs text-muted-foreground">
+            पहले "साइट" पेज में नई साइट जोड़ें
+          </div>
+        )}
+      </SelectContent>
+    </Select>
   );
 }

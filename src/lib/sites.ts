@@ -50,7 +50,40 @@ function read(): Site[] {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.filter((s) => s && s.id && s.name) : [];
+      if (!Array.isArray(arr)) return [];
+      // One-time cleanup: split "Site · Owner" → name="Site", location="Owner"
+      let dirty = false;
+      const cleaned: Site[] = arr
+        .filter((s) => s && s.id && s.name)
+        .map((s: Site) => {
+          if (typeof s.name === "string" && s.name.includes(" · ")) {
+            const [n, ...rest] = s.name.split(" · ");
+            dirty = true;
+            return {
+              ...s,
+              name: n.trim(),
+              location: (s.location && s.location.trim()) || rest.join(" · ").trim(),
+            };
+          }
+          if (typeof s.name === "string" && s.name !== s.name.trim()) {
+            dirty = true;
+            return { ...s, name: s.name.trim() };
+          }
+          return s;
+        });
+      // De-duplicate by case-insensitive name (keep first occurrence).
+      const seen = new Set<string>();
+      const dedup: Site[] = [];
+      for (const s of cleaned) {
+        const key = s.name.toLowerCase();
+        if (seen.has(key)) { dirty = true; continue; }
+        seen.add(key);
+        dedup.push(s);
+      }
+      if (dirty) {
+        try { localStorage.setItem(KEY, JSON.stringify(dedup)); } catch {}
+      }
+      return dedup;
     }
     // Migrate from legacy string list.
     const legacy = localStorage.getItem(LEGACY_KEY);
@@ -58,14 +91,22 @@ function read(): Site[] {
       const names = JSON.parse(legacy) as string[];
       if (Array.isArray(names) && names.length) {
         const now = new Date().toISOString();
-        const sites: Site[] = names.filter(Boolean).map((n, i) => ({
-          id: uid(),
-          name: n,
-          location: "",
-          isActive: i === 0,
-          createdAt: now,
-          updatedAt: now,
-        }));
+        const seen = new Set<string>();
+        const sites: Site[] = [];
+        names.filter(Boolean).forEach((raw, i) => {
+          const [n, ...rest] = String(raw).split(" · ");
+          const name = n.trim();
+          if (!name || seen.has(name.toLowerCase())) return;
+          seen.add(name.toLowerCase());
+          sites.push({
+            id: uid(),
+            name,
+            location: rest.join(" · ").trim(),
+            isActive: sites.length === 0,
+            createdAt: now,
+            updatedAt: now,
+          });
+        });
         localStorage.setItem(KEY, JSON.stringify(sites));
         return sites;
       }

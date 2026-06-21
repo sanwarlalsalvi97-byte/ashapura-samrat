@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
+import { listSites } from "@/lib/sites";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
@@ -369,12 +370,9 @@ function SiteWiseReport({
   onSiteFilterChange: (v: string) => void;
 }) {
   const sites = useMemo(() => {
-    const set = new Set<string>();
-    att.forEach((r) => { if (r.site_name) set.add(r.site_name); });
-    cash.forEach((r) => { if (r.site_name) set.add(r.site_name); });
-    workers.forEach((w) => { if (w.site_name) set.add(w.site_name); });
-    return Array.from(set).sort();
-  }, [att, cash, workers]);
+    // Only show sites the user has manually added in the "Sites" page.
+    return listSites().map((s) => s.name).sort();
+  }, []);
 
   const data = useMemo(() => {
     const list = siteFilter === "__all__" ? sites : sites.filter((s) => s === siteFilter);

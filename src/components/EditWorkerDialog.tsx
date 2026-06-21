@@ -7,7 +7,7 @@ import { updateWorker, type Worker, type WorkerRole } from "@/lib/supabase-helpe
 import { toast } from "@/hooks/use-toast";
 import { Pencil } from "lucide-react";
 import SiteNameInput from "./SiteNameInput";
-import { addSite } from "@/lib/sites";
+// sites are managed exclusively in the Sites page
 
 interface Props {
   worker: Worker;
@@ -29,7 +29,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      if (siteName.trim()) addSite(siteName);
+      // Site must already exist in Sites page; we never auto-create.
       await updateWorker(worker.id, {
         name: name.trim(),
         role,

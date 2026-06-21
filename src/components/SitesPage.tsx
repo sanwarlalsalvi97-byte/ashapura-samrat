@@ -230,11 +230,11 @@ export default function SitesPage() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">पता / लोकेशन</Label>
+              <Label className="text-xs text-muted-foreground">मालिक का नाम (Owner)</Label>
               <Input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="जैसे: सेक्टर 12, अहमदाबाद"
+                placeholder="जैसे: अंबालाल गुर्जर"
                 className="mt-1"
               />
             </div>
