@@ -29,7 +29,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      if (siteName.trim()) addSite(siteName);
+      // Site must already exist in Sites page; we never auto-create.
       await updateWorker(worker.id, {
         name: name.trim(),
         role,
