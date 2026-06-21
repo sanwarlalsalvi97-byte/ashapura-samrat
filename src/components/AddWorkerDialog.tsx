@@ -28,7 +28,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      if (siteName.trim()) addSite(siteName);
+      // Site must already exist in Sites page; we never auto-create.
       await addWorker({
         name: name.trim(),
         role,
