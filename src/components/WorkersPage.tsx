@@ -38,7 +38,7 @@ export default function WorkersPage() {
     try {
       const ws = await getWorkers();
       setWorkers(ws);
-      mergeSitesFrom(ws.map((w) => w.site_name));
+      // Sites are managed only via Sites page; never auto-derived from workers.
       setSites(listSites());
     } catch {}
   };
