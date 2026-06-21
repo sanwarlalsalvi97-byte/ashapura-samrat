@@ -7,7 +7,7 @@ import { addWorker, type WorkerRole } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { UserPlus } from "lucide-react";
 import SiteNameInput from "./SiteNameInput";
-import { addSite } from "@/lib/sites";
+// sites are managed exclusively in the Sites page
 
 interface Props {
   onAdded: () => void;
