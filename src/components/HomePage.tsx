@@ -94,7 +94,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function loadStats() {
     try {
-      const [w, a, c, ct, adv] = await Promise.all([
+      const [w, a, c, ct, advRecent, advAll] = await Promise.all([
         supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("attendance").select("status").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,site_name"),
@@ -105,11 +105,17 @@ export default function HomePage({ onNavigate }: Props) {
           .gt("advance", 0)
           .order("date", { ascending: false })
           .limit(5),
+        supabase
+          .from("attendance")
+          .select("advance,date")
+          .gt("advance", 0)
+          .order("date", { ascending: false }),
       ]);
       const att = a.data || [];
       const cb = (c.data || []) as CashRow[];
       const cts = (ct.data || []) as { status: string }[];
-      const advs = (adv.data || []) as AdvRow[];
+      const advs = (advRecent.data || []) as AdvRow[];
+      const advAllRows = (advAll.data || []) as { advance: number; date: string }[];
       setAllCash(cb);
       setRecentAdv(advs);
       setStats({
@@ -121,9 +127,9 @@ export default function HomePage({ onNavigate }: Props) {
         expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
         contractors: cts.length,
         activeContractors: cts.filter((x) => x.status === "चालू").length,
-        totalAdvance: advs.reduce((s, x) => s + (x.advance || 0), 0),
-        advanceCount: advs.length,
-        lastAdvanceDate: advs[0]?.date || "",
+        totalAdvance: advAllRows.reduce((s, x) => s + (x.advance || 0), 0),
+        advanceCount: advAllRows.length,
+        lastAdvanceDate: advAllRows[0]?.date || "",
       });
     } finally {
       setLoading(false);
