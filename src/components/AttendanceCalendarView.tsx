@@ -53,7 +53,14 @@ export default function AttendanceCalendarView() {
 
   useEffect(() => {
     window.addEventListener(ATTENDANCE_UPDATED_EVENT, loadStats);
-    return () => window.removeEventListener(ATTENDANCE_UPDATED_EVENT, loadStats);
+    const ch = supabase
+      .channel("attendance-cal-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, loadStats)
+      .subscribe();
+    return () => {
+      window.removeEventListener(ATTENDANCE_UPDATED_EVENT, loadStats);
+      supabase.removeChannel(ch);
+    };
   }, [year, month]);
 
   const cells = useMemo(() => {

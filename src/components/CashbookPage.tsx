@@ -64,6 +64,11 @@ export default function CashbookPage() {
 
   useEffect(() => {
     load();
+    const ch = supabase
+      .channel("cashbook-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   async function load() {
