@@ -272,7 +272,7 @@ export default function HomePage({ onNavigate }: Props) {
               <div className="text-xs text-muted-foreground text-center py-3">कोई साइट नहीं — सेटिंग्स से जोड़ें</div>
             ) : (
               <div className="space-y-2">
-                {sitewise.rows.slice(0, 4).map((r) => (
+                {sitewise.rows.map((r) => (
                   <div key={r.name}>
                     <div className="flex justify-between text-[11px] mb-1">
                       <span className="font-semibold truncate pr-2">{r.name}</span>
