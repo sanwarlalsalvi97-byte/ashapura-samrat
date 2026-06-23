@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, CalendarIcon, MapPin, Loader2 } from "lucide-react";
 import { ATTENDANCE_UPDATED_EVENT, getWorkers, markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
-import { approxTithi } from "./HomePage";
+import { approxTithi } from "@/lib/tithi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
