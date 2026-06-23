@@ -33,7 +33,12 @@ export default function Index() {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === "SIGNED_OUT" || !s) {
+        setTab("home");
+      }
+    });
     return () => subscription.unsubscribe();
   }, []);
 
