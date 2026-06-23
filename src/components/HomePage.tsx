@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Users,
   CalendarCheck,
   TrendingUp,
   TrendingDown,
   Wallet,
-  Calculator,
   ArrowRight,
   Building2,
   FileBarChart,
-  ClipboardList,
   UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  ClipboardList,
   Briefcase,
-  Sparkles,
+  Clock,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
@@ -24,38 +25,40 @@ interface Props {
   onNavigate: (tab: TabId) => void;
 }
 
-type CashRow = { type: "income" | "expense"; amount: number; site_name: string | null };
-type AdvRow = { id: string; date: string; advance: number; worker_id: string; workers?: { name: string } | null };
+type CashRow = { type: "income" | "expense"; amount: number; date: string };
+type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
+type WorkerRow = { id: string; daily_rate: number | null };
+
+const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
 function shortInr(n: number): string {
+  if (n >= 10000000) return `${(n / 10000000).toFixed(1)}Cr`;
   if (n >= 100000) return `${(n / 100000).toFixed(n >= 1000000 ? 0 : 1)}L`;
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
   return `${Math.round(n)}`;
 }
 
-const HINDI_DAYS = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
-const HINDI_MONTHS = ["जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
-const TITHI = ["प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी", "पंचमी", "षष्ठी", "सप्तमी", "अष्टमी", "नवमी", "दशमी", "एकादशी", "द्वादशी", "त्रयोदशी", "चतुर्दशी", "पूर्णिमा/अमावस्या"];
-
-export function approxTithi(d: Date): { paksha: string; name: string; full: string } {
-  const ref = new Date(Date.UTC(2000, 0, 6, 18, 14, 0)).getTime();
-  const days = (d.getTime() - ref) / 86400000;
-  const phase = ((days % 29.53) + 29.53) % 29.53;
-  const paksha = phase < 14.765 ? "शुक्ल" : "कृष्ण";
-  const idx = Math.floor((phase % 14.765) / (14.765 / 15));
-  const name = TITHI[Math.min(idx, 14)];
-  return { paksha, name, full: `${paksha} ${name}` };
+function monthBounds(year: number, month: number) {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { startISO: iso(start), endISO: iso(end) };
 }
 
 export default function HomePage({ onNavigate }: Props) {
-  const [stats, setStats] = useState({
-    workers: 0, present: 0, absent: 0, half: 0,
-    income: 0, expense: 0,
-    contractors: 0, activeContractors: 0,
-    totalAdvance: 0, advanceCount: 0, lastAdvanceDate: "" as string,
-  });
-  const [recentAdv, setRecentAdv] = useState<AdvRow[]>([]);
-  const [allCash, setAllCash] = useState<CashRow[]>([]);
+  const today = new Date();
+  const todayISO = today.toISOString().slice(0, 10);
+
+  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const { startISO, endISO } = useMemo(
+    () => monthBounds(cursor.getFullYear(), cursor.getMonth()),
+    [cursor],
+  );
+
+  const [workersList, setWorkersList] = useState<WorkerRow[]>([]);
+  const [monthAtt, setMonthAtt] = useState<AttRow[]>([]);
+  const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
+  const [monthCash, setMonthCash] = useState<CashRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -65,317 +68,284 @@ export default function HomePage({ onNavigate }: Props) {
     getSitesVersion,
   );
 
-  const today = new Date();
-  const tithi = approxTithi(today);
-  const todayISO = today.toISOString().slice(0, 10);
-
   useEffect(() => {
-    loadStats();
+    load();
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
-    window.addEventListener("storage", refresh);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-
     const ch = supabase
       .channel("home-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, loadStats)
-      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, loadStats)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "workers" }, load)
       .subscribe();
-
     return () => {
       window.removeEventListener("sites-updated", refresh);
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
       supabase.removeChannel(ch);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startISO, endISO]);
 
-  async function loadStats() {
+  async function load() {
     try {
-      const [w, a, c, ct, advRecent, advAll] = await Promise.all([
-        supabase.from("workers").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("attendance").select("status").eq("date", todayISO),
-        supabase.from("cashbook").select("type,amount,site_name"),
-        supabase.from("contractors").select("status"),
-        supabase
-          .from("attendance")
-          .select("id,date,advance,worker_id, workers(name)")
-          .gt("advance", 0)
-          .order("date", { ascending: false })
-          .limit(5),
-        supabase
-          .from("attendance")
-          .select("advance,date")
-          .gt("advance", 0)
-          .order("date", { ascending: false }),
+      const [w, mAtt, tAtt, cash] = await Promise.all([
+        supabase.from("workers").select("id,daily_rate").eq("is_active", true),
+        supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
+        supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
+        supabase.from("cashbook").select("type,amount,date").gte("date", startISO).lte("date", endISO),
       ]);
-      const att = a.data || [];
-      const cb = (c.data || []) as CashRow[];
-      const cts = (ct.data || []) as { status: string }[];
-      const advs = (advRecent.data || []) as AdvRow[];
-      const advAllRows = (advAll.data || []) as { advance: number; date: string }[];
-      setAllCash(cb);
-      setRecentAdv(advs);
-      setStats({
-        workers: w.count || 0,
-        present: att.filter((x) => x.status === "Present").length,
-        absent: att.filter((x) => x.status === "Absent").length,
-        half: att.filter((x) => x.status === "Half-Day").length,
-        income: cb.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0),
-        expense: cb.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0),
-        contractors: cts.length,
-        activeContractors: cts.filter((x) => x.status === "चालू").length,
-        totalAdvance: advAllRows.reduce((s, x) => s + (x.advance || 0), 0),
-        advanceCount: advAllRows.length,
-        lastAdvanceDate: advAllRows[0]?.date || "",
-      });
+      setWorkersList((w.data || []) as WorkerRow[]);
+      setMonthAtt((mAtt.data || []) as AttRow[]);
+      setTodayAtt((tAtt.data || []) as AttRow[]);
+      setMonthCash((cash.data || []) as CashRow[]);
     } finally {
       setLoading(false);
     }
   }
 
+  // Summary numbers
+  const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
+  const expense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const balance = income - expense;
+
+  const presentToday = todayAtt.filter((x) => x.status === "Present").length;
+  const halfToday = todayAtt.filter((x) => x.status === "Half-Day").length;
+  const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
+
+  // Site-wise wages from attendance ONLY
   const sitewise = useMemo(() => {
-    const map = new Map<string, number>();
+    const wageOf = new Map<string, number>();
+    workersList.forEach((w) => wageOf.set(w.id, w.daily_rate || 0));
     const known = new Set(sites.map((s) => s.name));
+    const map = new Map<string, number>();
     sites.forEach((s) => map.set(s.name, 0));
-    allCash
-      .filter((x) => x.type === "expense")
-      .forEach((x) => {
-        const k = (x.site_name || "").trim();
-        if (!k || !known.has(k)) return;
-        map.set(k, (map.get(k) || 0) + (x.amount || 0));
-      });
+    monthAtt.forEach((row) => {
+      const site = (row.site_name || "").trim();
+      if (!site || !known.has(site)) return;
+      const wage = wageOf.get(row.worker_id) || 0;
+      const w = row.status === "Present" ? 1 : row.status === "Half-Day" ? 0.5 : 0;
+      if (w > 0) map.set(site, (map.get(site) || 0) + wage * w);
+    });
     const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
     rows.sort((a, b) => b.amount - a.amount);
     const total = rows.reduce((s, r) => s + r.amount, 0);
     const max = Math.max(1, ...rows.map((r) => r.amount));
     return { rows, total, max };
-  }, [allCash, sites]);
+  }, [monthAtt, workersList, sites]);
 
-  const absentToday = Math.max(0, stats.workers - stats.present - stats.half);
+  const goPrevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  const goNextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
 
   return (
-    <div className="space-y-4 animate-fade-in pb-24 font-[Poppins,sans-serif]">
-      {/* Date + Tithi card */}
-      <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden">
-        <CardContent className="p-5 text-center bg-gradient-to-br from-primary/5 to-accent/5">
-          <div className="text-xs font-semibold text-muted-foreground tracking-wide">आज की तारीख</div>
-          <div className="text-5xl font-extrabold text-primary leading-none mt-2">{today.getDate()}</div>
-          <div className="text-sm font-semibold mt-1">{HINDI_MONTHS[today.getMonth()]} {today.getFullYear()}</div>
-          <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 bg-muted/60 rounded-full px-3 py-1 text-xs">
-              <span className="text-muted-foreground">वार</span>
-              <span className="font-semibold">{HINDI_DAYS[today.getDay()]}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-semibold shadow-sm">
-              <Sparkles className="w-3 h-3" />
-              {tithi.full}
-            </span>
+    <div className="space-y-5 animate-fade-in pb-24">
+      {/* Month selector */}
+      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-3 py-2.5 shadow-sm">
+        <button
+          onClick={goPrevMonth}
+          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
+          aria-label="पिछला महीना"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="text-center">
+          <div className="text-[11px] text-muted-foreground font-semibold">महीना</div>
+          <div className="text-base font-extrabold tracking-tight">
+            {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Top 3 actions */}
-      <div className="grid grid-cols-3 gap-2">
-        <ActionChip icon={CalendarCheck} label="हाजिरी लगाएं" tone="emerald" onClick={() => onNavigate("attendance")} />
-        <ActionChip icon={Wallet} label="हिसाब लिखें" tone="amber" onClick={() => onNavigate("cashbook")} />
-        <ActionChip icon={Calculator} label="केलकुलेटर" tone="violet" onClick={() => onNavigate("bricks")} />
+        </div>
+        <button
+          onClick={goNextMonth}
+          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
+          aria-label="अगला महीना"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Attendance stats */}
-      <Card className="rounded-2xl border-border/60">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-bold">आज की हाजिरी</span>
-            </div>
-            <span className="text-[11px] text-muted-foreground">{stats.workers} कुल मजदूर</span>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border/60 text-center">
-            <div>
-              <div className="text-2xl font-extrabold text-accent">{stats.present}</div>
-              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाजिर</div>
-            </div>
-            <div>
-              <div className="text-2xl font-extrabold text-warning">{stats.half}</div>
-              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">हाफ-डे</div>
-            </div>
-            <div>
-              <div className="text-2xl font-extrabold text-destructive">{absentToday}</div>
-              <div className="text-[11px] text-muted-foreground font-semibold mt-0.5">गैरहाजिर</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 4 Summary Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryCard
+          tone="green"
+          icon={TrendingUp}
+          label="कुल आय"
+          value={`₹${shortInr(income)}`}
+        />
+        <SummaryCard
+          tone="red"
+          icon={TrendingDown}
+          label="कुल खर्च"
+          value={`₹${shortInr(expense)}`}
+        />
+        <SummaryCard
+          tone="blue"
+          icon={Wallet}
+          label="कुल बैलेंस"
+          value={`₹${shortInr(balance)}`}
+        />
+        <SummaryCard
+          tone="orange"
+          icon={Users}
+          label="कुल मजदूर"
+          value={String(workersList.length)}
+        />
+      </div>
 
-      {/* Advance summary */}
-      <button onClick={() => onNavigate("advance")} className="w-full text-left">
-        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">एडवांस सारांश</span>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center mb-3">
-              <div className="bg-primary/10 rounded-xl p-2">
-                <div className="text-base font-extrabold text-primary tabular-nums">₹{shortInr(stats.totalAdvance)}</div>
-                <div className="text-[10px] text-muted-foreground">कुल एडवांस</div>
-              </div>
-              <div className="bg-muted/60 rounded-xl p-2">
-                <div className="text-base font-extrabold tabular-nums">{stats.advanceCount}</div>
-                <div className="text-[10px] text-muted-foreground">बार लिया</div>
-              </div>
-              <div className="bg-muted/60 rounded-xl p-2">
-                <div className="text-[11px] font-bold tabular-nums leading-tight">{stats.lastAdvanceDate || "—"}</div>
-                <div className="text-[10px] text-muted-foreground">आख़िरी</div>
-              </div>
-            </div>
-            {recentAdv.length === 0 ? (
-              <div className="text-[11px] text-muted-foreground text-center py-2">कोई एडवांस नहीं</div>
-            ) : (
-              <ul className="space-y-1.5">
-                {recentAdv.slice(0, 4).map((r) => (
-                  <li key={r.id} className="flex items-center justify-between text-xs">
-                    <span className="truncate pr-2">
-                      <span className="font-semibold">{r.workers?.name || "—"}</span>
-                      <span className="text-muted-foreground"> · {r.date}</span>
-                    </span>
-                    <span className="font-bold text-primary tabular-nums">₹{r.advance.toLocaleString("hi-IN")}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </button>
+      {/* Site-wise मजदूरी खर्च (from attendance only) */}
+      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-extrabold">साइट-वाइज मजदूरी खर्च</h2>
+          </div>
+          <button
+            onClick={() => onNavigate("report")}
+            className="text-[11px] font-semibold text-primary flex items-center gap-1"
+          >
+            रिपोर्ट <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
 
-      {/* Site-wise expense → मासिक रिपोर्ट */}
-      <button onClick={() => onNavigate("report")} className="w-full text-left">
-        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">साइट-वाइज खर्च</span>
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-primary font-semibold">
-                मासिक रिपोर्ट <ArrowRight className="w-3 h-3" />
-              </div>
-            </div>
-            {sitewise.rows.length === 0 ? (
-              <div className="text-xs text-muted-foreground text-center py-3">कोई साइट नहीं — सेटिंग्स से जोड़ें</div>
-            ) : (
-              <div className="space-y-2">
-                {sitewise.rows.map((r) => (
-                  <div key={r.name}>
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="font-semibold truncate pr-2">{r.name}</span>
-                      <span className="tabular-nums text-muted-foreground">₹{shortInr(r.amount)}</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
-                        style={{ width: `${(r.amount / sitewise.max) * 100}%` }}
-                      />
+        {sitewise.rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-4">
+            कोई साइट नहीं — सेटिंग्स से जोड़ें
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sitewise.rows.map((r) => (
+              <div key={r.name}>
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-sm font-bold truncate">{r.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-medium">
+                      उपस्थित मजदूरी खर्च
                     </div>
                   </div>
-                ))}
-                <div className="flex justify-between text-[11px] pt-2 border-t border-border/60">
-                  <span className="text-muted-foreground">कुल खर्च</span>
-                  <span className="font-bold tabular-nums">₹{sitewise.total.toLocaleString("hi-IN")}</span>
+                  <div className="text-lg font-extrabold tabular-nums">
+                    ₹{r.amount.toLocaleString("hi-IN")}
+                  </div>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all"
+                    style={{ width: `${(r.amount / sitewise.max) * 100}%` }}
+                  />
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </button>
-
-      {/* Income / Expense quick */}
-      <div className="grid grid-cols-2 gap-3">
-        <MiniStat icon={TrendingUp} label="कुल आय" value={`₹${shortInr(stats.income)}`} tone="text-accent" />
-        <MiniStat icon={TrendingDown} label="कुल खर्च" value={`₹${shortInr(stats.expense)}`} tone="text-destructive" />
-      </div>
-
-      {/* Contractor card */}
-      <button onClick={() => onNavigate("contractors")} className="w-full text-left">
-        <Card className="rounded-2xl border-border/60 hover:border-primary/40 transition active:scale-[0.98]">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 grid place-items-center text-white">
-              <Briefcase className="w-5 h-5" />
+            ))}
+            <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-border/60">
+              <span className="text-xs font-bold text-muted-foreground">कुल मजदूरी खर्च</span>
+              <span className="text-lg font-extrabold tabular-nums text-primary">
+                ₹{sitewise.total.toLocaleString("hi-IN")}
+              </span>
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold">ठेका प्रबंधन</div>
-              <div className="text-[11px] text-muted-foreground">
-                {stats.contractors} कुल · <span className="text-accent font-semibold">{stats.activeContractors} चालू</span>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </button>
+          </div>
+        )}
+      </section>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-2 gap-3">
-        <LinkTile icon={FileBarChart} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} />
-        <LinkTile icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} />
-        <LinkTile icon={Calculator} label="ईंट केलकुलेटर" onClick={() => onNavigate("bricks")} />
-        <LinkTile icon={ClipboardList} label="ठेका प्रबंधन" onClick={() => onNavigate("contractors")} />
-      </div>
+      {/* Today's attendance */}
+      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-extrabold">आज की हाजिरी</h2>
+          </div>
+          <span className="text-[11px] text-muted-foreground">{workersList.length} कुल</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <AttStat tone="green" label="P" value={presentToday} />
+          <AttStat tone="red" label="A" value={absentToday} />
+          <AttStat tone="yellow" label="HD" value={halfToday} />
+          <AttStat tone="purple" label="OT" value={0} suffix="h" icon={Clock} />
+        </div>
+      </section>
 
-      {loading && <div className="text-center text-xs text-muted-foreground">लोड हो रहा है...</div>}
+      {/* Quick actions */}
+      <section>
+        <h2 className="text-sm font-extrabold mb-3 px-1">त्वरित कार्य</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <QuickAction icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} tone="orange" />
+          <QuickAction icon={CalendarCheck} label="हाजिरी दर्ज करें" onClick={() => onNavigate("attendance")} tone="green" />
+          <QuickAction icon={Plus} label="खर्च जोड़ें" onClick={() => onNavigate("cashbook")} tone="red" />
+          <QuickAction icon={FileBarChart} label="रिपोर्ट देखें" onClick={() => onNavigate("report")} tone="blue" />
+          <QuickAction icon={ClipboardList} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} tone="purple" />
+          <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="violet" />
+        </div>
+      </section>
+
+      {loading && (
+        <div className="text-center text-xs text-muted-foreground">लोड हो रहा है...</div>
+      )}
     </div>
   );
 }
 
-function ActionChip({ icon: Icon, label, tone, onClick }: { icon: any; label: string; tone: "emerald" | "amber" | "violet"; onClick: () => void }) {
-  const map: Record<string, string> = {
-    emerald: "from-emerald-500 to-emerald-600",
-    amber: "from-amber-500 to-orange-500",
-    violet: "from-violet-500 to-purple-600",
-  };
+/* ---------------- subcomponents ---------------- */
+
+type Tone = "green" | "red" | "blue" | "orange" | "yellow" | "purple" | "violet";
+
+const TONE_BG: Record<Tone, string> = {
+  green: "from-emerald-500 to-green-600",
+  red: "from-rose-500 to-red-600",
+  blue: "from-sky-500 to-blue-600",
+  orange: "from-amber-500 to-orange-600",
+  yellow: "from-yellow-400 to-amber-500",
+  purple: "from-fuchsia-500 to-purple-600",
+  violet: "from-violet-500 to-indigo-600",
+};
+
+const TONE_SOFT: Record<Tone, string> = {
+  green: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300",
+  red: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300",
+  blue: "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300",
+  orange: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300",
+  yellow: "bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-300",
+  purple: "bg-fuchsia-50 dark:bg-fuchsia-950/30 text-fuchsia-700 dark:text-fuchsia-300",
+  violet: "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300",
+};
+
+function SummaryCard({
+  tone, icon: Icon, label, value,
+}: { tone: Tone; icon: any; label: string; value: string }) {
   return (
-    <button
-      onClick={onClick}
-      className="rounded-2xl bg-card border border-border/60 p-3 flex flex-col items-center gap-1.5 shadow-sm active:scale-[0.96] transition"
-    >
-      <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${map[tone]} grid place-items-center text-white shadow-sm`}>
-        <Icon className="w-4 h-4" />
-      </span>
-      <span className="text-[11px] font-semibold text-foreground text-center leading-tight">{label}</span>
-    </button>
+    <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm`}>
+          <Icon className="w-5 h-5" />
+        </span>
+      </div>
+      <div className="text-xl font-extrabold tabular-nums tracking-tight leading-tight">{value}</div>
+      <div className="text-xs font-semibold text-muted-foreground mt-0.5">{label}</div>
+    </div>
   );
 }
 
-function LinkTile({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
+function AttStat({
+  tone, label, value, suffix, icon: Icon,
+}: { tone: Tone; label: string; value: number; suffix?: string; icon?: any }) {
+  return (
+    <div className={`rounded-2xl ${TONE_SOFT[tone]} p-3 text-center`}>
+      <div className="text-xl font-extrabold tabular-nums leading-none">
+        {String(value).padStart(2, "0")}{suffix || ""}
+      </div>
+      <div className="text-[11px] font-bold mt-1 flex items-center justify-center gap-1">
+        {Icon && <Icon className="w-3 h-3" />}
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function QuickAction({
+  icon: Icon, label, onClick, tone,
+}: { icon: any; label: string; onClick: () => void; tone: Tone }) {
   return (
     <button
       onClick={onClick}
       className="rounded-2xl bg-card border border-border/60 p-4 flex items-center gap-3 shadow-sm active:scale-[0.96] transition text-left"
     >
-      <span className="w-9 h-9 rounded-xl bg-primary/10 grid place-items-center text-primary">
+      <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm shrink-0`}>
         <Icon className="w-5 h-5" />
       </span>
-      <span className="text-sm font-semibold">{label}</span>
+      <span className="text-sm font-bold leading-tight">{label}</span>
     </button>
-  );
-}
-
-function MiniStat({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: string }) {
-  return (
-    <Card className="rounded-2xl border-border/60">
-      <CardContent className="p-3 flex items-center gap-2">
-        <Icon className={`w-4 h-4 ${tone}`} />
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] text-muted-foreground font-semibold">{label}</div>
-          <div className={`text-base font-extrabold tabular-nums ${tone}`}>{value}</div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
