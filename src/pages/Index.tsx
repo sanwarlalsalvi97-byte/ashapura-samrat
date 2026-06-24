@@ -16,7 +16,7 @@ import SubscriptionPage from "@/components/SubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
-import { HardHat, Bell, UserCircle2, MapPin, Plus } from "lucide-react";
+import { HardHat, Bell, UserCircle2, MapPin } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 
