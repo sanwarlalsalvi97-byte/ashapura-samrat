@@ -20,6 +20,7 @@ import {
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
+import TithiBadge from "./TithiBadge";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
