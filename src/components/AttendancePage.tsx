@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ATTENDANCE_UPDATED_EVENT, getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
-import AttendanceCard from "./AttendanceCard";
+import AttendanceCard, { type WorkerTimes } from "./AttendanceCard";
 import AttendanceCalendarView from "./AttendanceCalendarView";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
