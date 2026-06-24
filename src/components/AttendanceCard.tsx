@@ -302,6 +302,42 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         })}
       </div>
 
+      {/* IN / OUT time pickers */}
+      <div className="px-4 pb-2">
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" /> IN समय
+            </span>
+            <Input
+              type="time"
+              value={inT}
+              disabled={sel === "Absent"}
+              onChange={(e) => setInT(e.target.value)}
+              className="h-9 mt-1 text-sm rounded-lg"
+            />
+          </label>
+          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" /> OUT समय
+            </span>
+            <Input
+              type="time"
+              value={outT}
+              disabled={sel === "Absent"}
+              onChange={(e) => setOutT(e.target.value)}
+              className={`h-9 mt-1 text-sm rounded-lg ${timeError ? "border-rose-500 ring-1 ring-rose-500/40" : ""}`}
+            />
+          </label>
+        </div>
+        {timeError && (
+          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> {timeError}
+          </p>
+        )}
+      </div>
+
+
       {/* Site dropdown */}
       <div className="px-4 pb-3 pt-1">
         <label className="text-[11px] text-muted-foreground font-medium">साइट चुनें</label>
