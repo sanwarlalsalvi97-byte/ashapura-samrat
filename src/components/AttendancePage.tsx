@@ -40,10 +40,11 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string; in_time?: string | null; out_time?: string | null; total_hours?: number; overtime_hours?: number }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
+  const [timesMap, setTimesMap] = useState<Record<string, WorkerTimes>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -58,10 +59,20 @@ export default function AttendancePage() {
       setWorkers(w);
       const map: typeof attendance = {};
       a.forEach((r: any) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance, created_at: r.created_at, updated_at: r.updated_at };
+        map[r.worker_id] = {
+          status: r.status,
+          advance: r.advance,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          in_time: r.in_time ?? null,
+          out_time: r.out_time ?? null,
+          total_hours: Number(r.total_hours) || 0,
+          overtime_hours: Number(r.overtime_hours) || 0,
+        };
       });
       setAttendance(map);
       setSelections({});
+      setTimesMap({});
     } catch {}
   }, [date]);
 
@@ -84,6 +95,10 @@ export default function AttendancePage() {
       if (gps) n[workerId] = gps; else delete n[workerId];
       return n;
     });
+  }, []);
+
+  const handleTimesChange = useCallback((workerId: string, times: WorkerTimes) => {
+    setTimesMap((p) => ({ ...p, [workerId]: times }));
   }, []);
 
   const saveAll = async () => {
