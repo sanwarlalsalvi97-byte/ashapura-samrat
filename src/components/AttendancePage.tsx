@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import TithiBadge from "./TithiBadge";
 
 const STATUS_LABEL: Record<string, string> = {
   Present: "हाजिर",
@@ -321,11 +322,12 @@ export default function AttendancePage() {
         </Button>
         <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" className="gap-2">
+            <Button variant="ghost" className="gap-2 h-auto py-1.5">
               <CalendarIcon className="w-4 h-4" />
               <div className="text-center">
                 <p className="font-semibold text-sm">{formatDisplayDate(date)}</p>
                 <p className="text-xs text-muted-foreground">{formatDate(date)}</p>
+                <TithiBadge date={date} compact className="mt-1" />
               </div>
             </Button>
           </PopoverTrigger>
