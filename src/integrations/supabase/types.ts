@@ -23,9 +23,13 @@ export type Database = {
           gps_lng: number | null
           gps_status: string | null
           id: string
+          in_time: string | null
           notes: string | null
+          out_time: string | null
+          overtime_hours: number | null
           site_name: string | null
           status: Database["public"]["Enums"]["attendance_status"]
+          total_hours: number | null
           updated_at: string
           user_id: string
           worker_id: string
@@ -38,9 +42,13 @@ export type Database = {
           gps_lng?: number | null
           gps_status?: string | null
           id?: string
+          in_time?: string | null
           notes?: string | null
+          out_time?: string | null
+          overtime_hours?: number | null
           site_name?: string | null
           status?: Database["public"]["Enums"]["attendance_status"]
+          total_hours?: number | null
           updated_at?: string
           user_id: string
           worker_id: string
@@ -53,9 +61,13 @@ export type Database = {
           gps_lng?: number | null
           gps_status?: string | null
           id?: string
+          in_time?: string | null
           notes?: string | null
+          out_time?: string | null
+          overtime_hours?: number | null
           site_name?: string | null
           status?: Database["public"]["Enums"]["attendance_status"]
+          total_hours?: number | null
           updated_at?: string
           user_id?: string
           worker_id?: string
