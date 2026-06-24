@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import TithiBadge from "./TithiBadge";
 
 const STATUS_LABEL: Record<string, string> = {
   Present: "हाजिर",
