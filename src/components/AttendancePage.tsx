@@ -493,11 +493,16 @@ export default function AttendancePage() {
                     currentAdvance={attendance[w.id]?.advance}
                     currentCreatedAt={attendance[w.id]?.created_at}
                     currentUpdatedAt={attendance[w.id]?.updated_at}
+                    currentInTime={attendance[w.id]?.in_time}
+                    currentOutTime={attendance[w.id]?.out_time}
+                    currentTotalHours={attendance[w.id]?.total_hours}
+                    currentOvertimeHours={attendance[w.id]?.overtime_hours}
                     mode={mode}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
                     onSiteChange={handleSiteChange}
                     onGpsChange={handleGpsChange}
+                    onTimesChange={handleTimesChange}
                   />
                 ))}
               </div>
