@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ATTENDANCE_UPDATED_EVENT, getWorkers, getAttendanceByDate, markAttendance, getContractors, type Worker, type AttendanceStatus, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
-import AttendanceCard from "./AttendanceCard";
+import AttendanceCard, { type WorkerTimes } from "./AttendanceCard";
 import AttendanceCalendarView from "./AttendanceCalendarView";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,10 +40,11 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string; in_time?: string | null; out_time?: string | null; total_hours?: number; overtime_hours?: number }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
+  const [timesMap, setTimesMap] = useState<Record<string, WorkerTimes>>({});
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -58,10 +59,20 @@ export default function AttendancePage() {
       setWorkers(w);
       const map: typeof attendance = {};
       a.forEach((r: any) => {
-        map[r.worker_id] = { status: r.status, advance: r.advance, created_at: r.created_at, updated_at: r.updated_at };
+        map[r.worker_id] = {
+          status: r.status,
+          advance: r.advance,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          in_time: r.in_time ?? null,
+          out_time: r.out_time ?? null,
+          total_hours: Number(r.total_hours) || 0,
+          overtime_hours: Number(r.overtime_hours) || 0,
+        };
       });
       setAttendance(map);
       setSelections({});
+      setTimesMap({});
     } catch {}
   }, [date]);
 
@@ -86,17 +97,31 @@ export default function AttendancePage() {
     });
   }, []);
 
+  const handleTimesChange = useCallback((workerId: string, times: WorkerTimes) => {
+    setTimesMap((p) => ({ ...p, [workerId]: times }));
+  }, []);
+
   const saveAll = async () => {
     const entries = workers
       .map((w) => {
-        const sel = selections[w.id];
+        const sel = selections[w.id] ?? attendance[w.id]?.status;
         if (!sel) return null;
         const existing = attendance[w.id];
-        // Skip if selection equals existing status (no change)
-        if (existing && existing.status === sel) return null;
-        return { worker: w, status: sel, advance: existing?.advance || 0, wasEdit: !!existing };
+        const t = timesMap[w.id];
+        const existingTimes = existing
+          ? { in_time: existing.in_time ?? null, out_time: existing.out_time ?? null }
+          : { in_time: null, out_time: null };
+        const newTimes = t
+          ? { in_time: t.in_time, out_time: t.out_time }
+          : existingTimes;
+        const statusSame = existing && existing.status === sel;
+        const timesSame =
+          (existingTimes.in_time || null) === (newTimes.in_time || null) &&
+          (existingTimes.out_time || null) === (newTimes.out_time || null);
+        if (statusSame && timesSame) return null;
+        return { worker: w, status: sel, advance: existing?.advance || 0, wasEdit: !!existing, times: t };
       })
-      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number; wasEdit: boolean }[];
+      .filter(Boolean) as { worker: Worker; status: AttendanceStatus; advance: number; wasEdit: boolean; times?: WorkerTimes }[];
 
     if (entries.length === 0) {
       toast({ title: "कोई नई हाजिरी नहीं चुनी", description: "पहले P / HD / A में से कोई एक चुनें", variant: "destructive" });
@@ -117,6 +142,22 @@ export default function AttendancePage() {
       return;
     }
 
+    // Validate: P / HD must have valid IN+OUT with OUT>IN
+    const badTimes = entries.filter((e) => {
+      if (e.status === "Absent") return false;
+      const t = e.times;
+      if (!t || !t.in_time || !t.out_time) return true;
+      return t.total_hours <= 0;
+    });
+    if (badTimes.length > 0) {
+      toast({
+        title: `${badTimes.length} मजदूर का समय अधूरा / गलत है`,
+        description: badTimes.map((e) => e.worker.name).join(", "),
+        variant: "destructive",
+      });
+      return;
+    }
+
     const edits = entries.filter((e) => e.wasEdit).length;
     const news = entries.length - edits;
     const msg = `${entries.length} एंट्री सेव होगी${edits > 0 ? ` (${news} नई, ${edits} अपडेट)` : ""}। क्या आप पक्का सेव करना चाहते हैं?`;
@@ -131,6 +172,8 @@ export default function AttendancePage() {
         const siteOverride = siteOverrides[e.worker.id];
         const gps = gpsMap[e.worker.id];
         const gpsStatus = mode === "gps" ? (gps ? "ON" : "OFF") : (gps ? "ON" : "OFF");
+        const t = e.times;
+        const isAbsent = e.status === "Absent";
         await markAttendance({
           worker_id: e.worker.id,
           date: formatDate(date),
@@ -141,6 +184,10 @@ export default function AttendancePage() {
           gps_status: gpsStatus,
           gps_lat: gps?.lat ?? null,
           gps_lng: gps?.lng ?? null,
+          in_time: isAbsent ? null : (t?.in_time ?? null),
+          out_time: isAbsent ? null : (t?.out_time ?? null),
+          total_hours: isAbsent ? 0 : (t?.total_hours ?? 0),
+          overtime_hours: isAbsent ? 0 : (t?.overtime_hours ?? 0),
         } as any);
         setAttendance((prev) => ({
           ...prev,
@@ -149,6 +196,10 @@ export default function AttendancePage() {
             advance: e.advance,
             created_at: prev[e.worker.id]?.created_at || savedAt,
             updated_at: savedAt,
+            in_time: isAbsent ? null : (t?.in_time ?? null),
+            out_time: isAbsent ? null : (t?.out_time ?? null),
+            total_hours: isAbsent ? 0 : (t?.total_hours ?? 0),
+            overtime_hours: isAbsent ? 0 : (t?.overtime_hours ?? 0),
           },
         }));
         setSelections((prev) => {
@@ -442,11 +493,16 @@ export default function AttendancePage() {
                     currentAdvance={attendance[w.id]?.advance}
                     currentCreatedAt={attendance[w.id]?.created_at}
                     currentUpdatedAt={attendance[w.id]?.updated_at}
+                    currentInTime={attendance[w.id]?.in_time}
+                    currentOutTime={attendance[w.id]?.out_time}
+                    currentTotalHours={attendance[w.id]?.total_hours}
+                    currentOvertimeHours={attendance[w.id]?.overtime_hours}
                     mode={mode}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
                     onSiteChange={handleSiteChange}
                     onGpsChange={handleGpsChange}
+                    onTimesChange={handleTimesChange}
                   />
                 ))}
               </div>
@@ -476,7 +532,7 @@ export default function AttendancePage() {
                     className="w-full shadow-lg"
                     size="lg"
                     onClick={saveAll}
-                    disabled={savingAll || Object.keys(selections).length === 0}
+                    disabled={savingAll || (Object.keys(selections).length === 0 && Object.keys(timesMap).length === 0)}
                   >
                     <Check className="w-5 h-5" />
                     {savingAll

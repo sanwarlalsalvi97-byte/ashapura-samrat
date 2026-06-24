@@ -1,14 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle } from "lucide-react";
+import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle, Timer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { listSites, createSite, type Site } from "@/lib/sites";
+import { getWorkTime } from "@/lib/work-time";
+import { calcHours, splitOT, fmt12, fmtHours, HALF_DAY_HOURS } from "@/lib/work-hours";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+
+export type WorkerTimes = {
+  in_time: string | null;
+  out_time: string | null;
+  total_hours: number;
+  overtime_hours: number;
+};
 
 interface Props {
   worker: Worker;
@@ -17,11 +27,16 @@ interface Props {
   currentAdvance?: number;
   currentCreatedAt?: string;
   currentUpdatedAt?: string;
+  currentInTime?: string | null;
+  currentOutTime?: string | null;
+  currentTotalHours?: number;
+  currentOvertimeHours?: number;
   mode?: "manual" | "gps";
   onMarked: () => void;
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
   onSiteChange?: (workerId: string, site: string) => void;
   onGpsChange?: (workerId: string, gps: { lat: number; lng: number } | undefined) => void;
+  onTimesChange?: (workerId: string, times: WorkerTimes) => void;
 }
 
 const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
@@ -72,7 +87,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, currentInTime, currentOutTime, currentTotalHours, currentOvertimeHours, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange, onTimesChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [site, setSite] = useState(worker.site_name || "");
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -80,14 +95,42 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [siteError, setSiteError] = useState(false);
+  const workDefaults = useMemo(() => getWorkTime(), []);
+  const [inT, setInT] = useState<string>(currentInTime?.slice(0, 5) || "");
+  const [outT, setOutT] = useState<string>(currentOutTime?.slice(0, 5) || "");
+  const [timeError, setTimeError] = useState<string>("");
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
   useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
+  useEffect(() => { setInT(currentInTime?.slice(0, 5) || ""); }, [currentInTime, date]);
+  useEffect(() => { setOutT(currentOutTime?.slice(0, 5) || ""); }, [currentOutTime, date]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
+
+  // Whenever times or status change, recompute & emit
+  useEffect(() => {
+    if (sel === "Absent") {
+      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0 });
+      setTimeError("");
+      return;
+    }
+    const total = calcHours(inT, outT);
+    const { overtime } = splitOT(total);
+    if (sel && inT && outT && total === 0) {
+      setTimeError("OUT समय IN से बाद होना चाहिए");
+    } else {
+      setTimeError("");
+    }
+    onTimesChange?.(worker.id, {
+      in_time: inT || null,
+      out_time: outT || null,
+      total_hours: total,
+      overtime_hours: overtime,
+    });
+  }, [sel, inT, outT, worker.id]);
 
   const pickStatus = (status: AttendanceStatus) => {
     // Toggle off if same status tapped
@@ -96,6 +139,25 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     onSelectionChange?.(worker.id, next);
     if (next && !site) setSiteError(true);
     else setSiteError(false);
+
+    // Auto-fill times based on status
+    if (next === "Present") {
+      if (!inT) setInT(workDefaults.checkIn);
+      if (!outT) setOutT(workDefaults.checkOut);
+    } else if (next === "Half-Day") {
+      const startMin = (() => {
+        const [h, m] = (workDefaults.checkIn || "08:00").split(":").map(Number);
+        return h * 60 + m;
+      })();
+      const endMin = startMin + HALF_DAY_HOURS * 60;
+      const eh = Math.floor(endMin / 60) % 24;
+      const em = endMin % 60;
+      if (!inT) setInT(workDefaults.checkIn);
+      if (!outT) setOutT(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+    } else if (next === "Absent") {
+      setInT("");
+      setOutT("");
+    }
   };
 
   const updateSite = (v: string) => {
@@ -150,6 +212,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
     : null;
 
+  const liveTotal = sel === "Absent" ? 0 : calcHours(inT, outT);
+  const liveOT = splitOT(liveTotal).overtime;
+  const showTimes = sel !== "Absent";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -173,6 +239,19 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
             {worker.role} <span className="mx-1 opacity-50">•</span>
             <span className="font-semibold text-foreground">₹{worker.daily_rate.toLocaleString()}</span>/दिन
           </div>
+          {liveTotal > 0 && showTimes && (
+            <div className="mt-0.5 text-[11px] flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 text-foreground/80 font-medium">
+                <Clock className="w-3 h-3" />
+                {fmt12(inT)} – {fmt12(outT)} ({fmtHours(liveTotal)})
+              </span>
+              {liveOT > 0 && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-bold">
+                  <Timer className="w-2.5 h-2.5" /> OT {fmtHours(liveOT)}
+                </span>
+              )}
+            </div>
+          )}
           {updatedLabel && (
             <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" /> {updatedLabel}
@@ -222,6 +301,42 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           );
         })}
       </div>
+
+      {/* IN / OUT time pickers */}
+      <div className="px-4 pb-2">
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" /> IN समय
+            </span>
+            <Input
+              type="time"
+              value={inT}
+              disabled={sel === "Absent"}
+              onChange={(e) => setInT(e.target.value)}
+              className="h-9 mt-1 text-sm rounded-lg"
+            />
+          </label>
+          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" /> OUT समय
+            </span>
+            <Input
+              type="time"
+              value={outT}
+              disabled={sel === "Absent"}
+              onChange={(e) => setOutT(e.target.value)}
+              className={`h-9 mt-1 text-sm rounded-lg ${timeError ? "border-rose-500 ring-1 ring-rose-500/40" : ""}`}
+            />
+          </label>
+        </div>
+        {timeError && (
+          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> {timeError}
+          </p>
+        )}
+      </div>
+
 
       {/* Site dropdown */}
       <div className="px-4 pb-3 pt-1">
