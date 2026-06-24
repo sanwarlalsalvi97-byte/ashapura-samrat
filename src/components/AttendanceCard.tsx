@@ -1,14 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle } from "lucide-react";
+import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle, Timer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { listSites, createSite, type Site } from "@/lib/sites";
+import { getWorkTime } from "@/lib/work-time";
+import { calcHours, splitOT, fmt12, fmtHours, HALF_DAY_HOURS } from "@/lib/work-hours";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+
+export type WorkerTimes = {
+  in_time: string | null;
+  out_time: string | null;
+  total_hours: number;
+  overtime_hours: number;
+};
 
 interface Props {
   worker: Worker;
@@ -17,11 +27,16 @@ interface Props {
   currentAdvance?: number;
   currentCreatedAt?: string;
   currentUpdatedAt?: string;
+  currentInTime?: string | null;
+  currentOutTime?: string | null;
+  currentTotalHours?: number;
+  currentOvertimeHours?: number;
   mode?: "manual" | "gps";
   onMarked: () => void;
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
   onSiteChange?: (workerId: string, site: string) => void;
   onGpsChange?: (workerId: string, gps: { lat: number; lng: number } | undefined) => void;
+  onTimesChange?: (workerId: string, times: WorkerTimes) => void;
 }
 
 const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
