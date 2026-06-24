@@ -162,6 +162,18 @@ export default function HomePage({ onNavigate }: Props) {
         </button>
       </div>
 
+      {/* Today's Tithi */}
+      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-4 py-3 shadow-sm">
+        <div className="min-w-0">
+          <div className="text-[11px] text-muted-foreground font-semibold">आज की तिथि</div>
+          <div className="text-sm font-extrabold">
+            {today.toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "long" })}
+          </div>
+        </div>
+        <TithiBadge date={today} />
+      </div>
+
+
       {/* 4 Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
         <SummaryCard
