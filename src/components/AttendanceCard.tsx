@@ -212,6 +212,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
     : null;
 
+  const liveTotal = sel === "Absent" ? 0 : calcHours(inT, outT);
+  const liveOT = splitOT(liveTotal).overtime;
+  const showTimes = sel !== "Absent";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
