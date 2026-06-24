@@ -104,7 +104,7 @@ export default function AttendancePage() {
   const saveAll = async () => {
     const entries = workers
       .map((w) => {
-        const sel = selections[w.id];
+        const sel = selections[w.id] ?? attendance[w.id]?.status;
         if (!sel) return null;
         const existing = attendance[w.id];
         const t = timesMap[w.id];
