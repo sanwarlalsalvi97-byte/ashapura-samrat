@@ -532,7 +532,7 @@ export default function AttendancePage() {
                     className="w-full shadow-lg"
                     size="lg"
                     onClick={saveAll}
-                    disabled={savingAll || Object.keys(selections).length === 0}
+                    disabled={savingAll || (Object.keys(selections).length === 0 && Object.keys(timesMap).length === 0)}
                   >
                     <Check className="w-5 h-5" />
                     {savingAll
