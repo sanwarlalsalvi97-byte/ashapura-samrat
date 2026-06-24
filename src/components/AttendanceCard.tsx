@@ -87,7 +87,7 @@ function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange }: Props) {
+export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, currentInTime, currentOutTime, currentTotalHours, currentOvertimeHours, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange, onTimesChange }: Props) {
   const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
   const [site, setSite] = useState(worker.site_name || "");
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -95,14 +95,42 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [siteError, setSiteError] = useState(false);
+  const workDefaults = useMemo(() => getWorkTime(), []);
+  const [inT, setInT] = useState<string>(currentInTime?.slice(0, 5) || "");
+  const [outT, setOutT] = useState<string>(currentOutTime?.slice(0, 5) || "");
+  const [timeError, setTimeError] = useState<string>("");
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
   useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
+  useEffect(() => { setInT(currentInTime?.slice(0, 5) || ""); }, [currentInTime, date]);
+  useEffect(() => { setOutT(currentOutTime?.slice(0, 5) || ""); }, [currentOutTime, date]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
+
+  // Whenever times or status change, recompute & emit
+  useEffect(() => {
+    if (sel === "Absent") {
+      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0 });
+      setTimeError("");
+      return;
+    }
+    const total = calcHours(inT, outT);
+    const { overtime } = splitOT(total);
+    if (sel && inT && outT && total === 0) {
+      setTimeError("OUT समय IN से बाद होना चाहिए");
+    } else {
+      setTimeError("");
+    }
+    onTimesChange?.(worker.id, {
+      in_time: inT || null,
+      out_time: outT || null,
+      total_hours: total,
+      overtime_hours: overtime,
+    });
+  }, [sel, inT, outT, worker.id]);
 
   const pickStatus = (status: AttendanceStatus) => {
     // Toggle off if same status tapped
@@ -111,6 +139,25 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     onSelectionChange?.(worker.id, next);
     if (next && !site) setSiteError(true);
     else setSiteError(false);
+
+    // Auto-fill times based on status
+    if (next === "Present") {
+      if (!inT) setInT(workDefaults.checkIn);
+      if (!outT) setOutT(workDefaults.checkOut);
+    } else if (next === "Half-Day") {
+      const startMin = (() => {
+        const [h, m] = (workDefaults.checkIn || "08:00").split(":").map(Number);
+        return h * 60 + m;
+      })();
+      const endMin = startMin + HALF_DAY_HOURS * 60;
+      const eh = Math.floor(endMin / 60) % 24;
+      const em = endMin % 60;
+      if (!inT) setInT(workDefaults.checkIn);
+      if (!outT) setOutT(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+    } else if (next === "Absent") {
+      setInT("");
+      setOutT("");
+    }
   };
 
   const updateSite = (v: string) => {
