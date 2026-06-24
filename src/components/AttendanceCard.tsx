@@ -239,6 +239,19 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
             {worker.role} <span className="mx-1 opacity-50">•</span>
             <span className="font-semibold text-foreground">₹{worker.daily_rate.toLocaleString()}</span>/दिन
           </div>
+          {liveTotal > 0 && showTimes && (
+            <div className="mt-0.5 text-[11px] flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 text-foreground/80 font-medium">
+                <Clock className="w-3 h-3" />
+                {fmt12(inT)} – {fmt12(outT)} ({fmtHours(liveTotal)})
+              </span>
+              {liveOT > 0 && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-bold">
+                  <Timer className="w-2.5 h-2.5" /> OT {fmtHours(liveOT)}
+                </span>
+              )}
+            </div>
+          )}
           {updatedLabel && (
             <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" /> {updatedLabel}
