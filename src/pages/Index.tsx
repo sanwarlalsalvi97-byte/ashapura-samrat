@@ -121,17 +121,8 @@ export default function Index() {
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
-      {/* FAB — only on home */}
-      {tab === "home" && (
-        <button
-          onClick={() => setTab("workers")}
-          className="fixed bottom-20 right-4 z-40 h-14 px-5 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center gap-2 font-semibold active:scale-95 transition animate-fade-in"
-          aria-label="मजदूर जोड़ें"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="text-sm">मजदूर जोड़ें</span>
-        </button>
-      )}
+      {/* FAB removed — use Quick Actions / Workers page header instead */}
+
 
       <BottomNav active={tab} onNavigate={setTab} />
     </div>
