@@ -325,6 +325,11 @@ export default function AttendancePage() {
     };
   }, [workers, attendance, selections]);
 
+  const hasInvalidTimes = useMemo(
+    () => Object.values(timesMap).some((t) => t?.invalid),
+    [timesMap]
+  );
+
   return (
     <div className="space-y-4">
       {(!online || pending > 0) && (
