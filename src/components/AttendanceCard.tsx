@@ -129,7 +129,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       err = "IN और OUT समय भरें";
     }
     setTimeError(err);
-    const invalid = !!sel && sel !== "Absent" && (!inT || !outT || total <= 0);
+    const invalid = !!sel && (!inT || !outT || total <= 0);
     onTimesChange?.(worker.id, {
       in_time: inT || null,
       out_time: outT || null,
