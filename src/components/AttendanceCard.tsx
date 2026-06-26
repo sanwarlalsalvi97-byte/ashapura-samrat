@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { listSites, createSite, type Site } from "@/lib/sites";
 import { getWorkTime } from "@/lib/work-time";
-import { calcHours, splitOT, fmt12, fmtHours, HALF_DAY_HOURS } from "@/lib/work-hours";
+import { calcHours, splitOT, fmt12, fmtHours, timeToMinutes, HALF_DAY_HOURS, STANDARD_HOURS } from "@/lib/work-hours";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,6 +18,7 @@ export type WorkerTimes = {
   out_time: string | null;
   total_hours: number;
   overtime_hours: number;
+  invalid?: boolean;
 };
 
 interface Props {
@@ -113,24 +114,50 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   // Whenever times or status change, recompute & emit
   useEffect(() => {
     if (sel === "Absent") {
-      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0 });
+      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0, invalid: false });
       setTimeError("");
       return;
     }
     const total = calcHours(inT, outT);
     const { overtime } = splitOT(total);
-    if (sel && inT && outT && total === 0) {
-      setTimeError("OUT समय IN से बाद होना चाहिए");
-    } else {
-      setTimeError("");
+    const aMin = timeToMinutes(inT);
+    const bMin = timeToMinutes(outT);
+    let err = "";
+    if (sel && inT && outT && aMin != null && bMin != null && bMin <= aMin) {
+      err = "OUT समय IN के बाद होना चाहिए";
+    } else if (sel && (!inT || !outT)) {
+      err = "IN और OUT समय भरें";
     }
+    setTimeError(err);
+    const invalid = !!sel && (!inT || !outT || total <= 0);
     onTimesChange?.(worker.id, {
       in_time: inT || null,
       out_time: outT || null,
       total_hours: total,
       overtime_hours: overtime,
+      invalid,
     });
   }, [sel, inT, outT, worker.id]);
+
+  /** Suggested OUT time given current IN and selected status. */
+  const suggestion = useMemo(() => {
+    if (!sel || sel === "Absent") return null;
+    const startStr = inT || workDefaults.checkIn || "09:00";
+    const startMin = timeToMinutes(startStr);
+    if (startMin == null) return null;
+    const addH = sel === "Half-Day" ? HALF_DAY_HOURS : STANDARD_HOURS;
+    const endMin = startMin + addH * 60;
+    const eh = Math.floor(endMin / 60) % 24;
+    const em = endMin % 60;
+    const endStr = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+    return { inStr: startStr, outStr: endStr, hours: addH };
+  }, [sel, inT, workDefaults.checkIn]);
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setInT(suggestion.inStr);
+    setOutT(suggestion.outStr);
+  };
 
   const pickStatus = (status: AttendanceStatus) => {
     // Toggle off if same status tapped
@@ -331,11 +358,30 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           </label>
         </div>
         {timeError && (
-          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> {timeError}
-          </p>
+          <div className="mt-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1.5 space-y-1">
+            <p className="text-[11px] text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {timeError}
+            </p>
+            {suggestion && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  सुझाव: {fmt12(suggestion.inStr)} – {fmt12(suggestion.outStr)} ({fmtHours(suggestion.hours)})
+                </span>
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary text-primary-foreground active:scale-95 transition shrink-0"
+                >
+                  लागू करें
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+
+
 
 
       {/* Site dropdown */}
