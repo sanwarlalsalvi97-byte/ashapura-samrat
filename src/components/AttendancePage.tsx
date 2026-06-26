@@ -533,18 +533,29 @@ export default function AttendancePage() {
                       <div className="text-base font-extrabold leading-none">{totals.total}</div>
                     </div>
                   </div>
+                  {hasInvalidTimes && (
+                    <p className="text-[11px] text-rose-600 font-semibold text-center flex items-center justify-center gap-1">
+                      ⚠️ कुछ मजदूर का समय गलत है — पहले ठीक करें
+                    </p>
+                  )}
                   <Button
                     className="w-full shadow-lg"
                     size="lg"
                     onClick={saveAll}
-                    disabled={savingAll || (Object.keys(selections).length === 0 && Object.keys(timesMap).length === 0)}
+                    disabled={
+                      savingAll ||
+                      hasInvalidTimes ||
+                      (Object.keys(selections).length === 0 && Object.keys(timesMap).length === 0)
+                    }
                   >
                     <Check className="w-5 h-5" />
                     {savingAll
                       ? "सेव हो रहा है..."
-                      : Object.keys(selections).length > 0
-                        ? `हाजिरी सेव करें (${Object.keys(selections).length})`
-                        : "हाजिरी सेव करें"}
+                      : hasInvalidTimes
+                        ? "समय ठीक करें"
+                        : Object.keys(selections).length > 0
+                          ? `हाजिरी सेव करें (${Object.keys(selections).length})`
+                          : "हाजिरी सेव करें"}
                   </Button>
                 </div>
               </div>
