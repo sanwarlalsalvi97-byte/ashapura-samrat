@@ -18,6 +18,7 @@ export type WorkerTimes = {
   out_time: string | null;
   total_hours: number;
   overtime_hours: number;
+  invalid?: boolean;
 };
 
 interface Props {
