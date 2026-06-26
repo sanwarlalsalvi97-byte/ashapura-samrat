@@ -245,10 +245,11 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
 
   return (
     <motion.div
+      id={`attendance-card-${worker.id}`}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`rounded-2xl bg-card border ${isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
+      className={`scroll-mt-24 rounded-2xl bg-card border ${timeError ? "border-rose-500/60 ring-1 ring-rose-500/30" : isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
     >
       {/* Header: avatar + name + actions */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-2">
