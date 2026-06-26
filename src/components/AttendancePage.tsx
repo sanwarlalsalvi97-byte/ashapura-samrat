@@ -325,10 +325,24 @@ export default function AttendancePage() {
     };
   }, [workers, attendance, selections]);
 
-  const hasInvalidTimes = useMemo(
-    () => Object.values(timesMap).some((t) => t?.invalid),
-    [timesMap]
-  );
+  const invalidEntries = useMemo(() => {
+    const list: { id: string; name: string }[] = [];
+    for (const w of workers) {
+      if (timesMap[w.id]?.invalid) list.push({ id: w.id, name: w.name });
+    }
+    return list;
+  }, [timesMap, workers]);
+  const hasInvalidTimes = invalidEntries.length > 0;
+
+  const scrollToInvalid = (id: string) => {
+    const el = document.getElementById(`attendance-card-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-rose-500", "ring-offset-2");
+    setTimeout(() => {
+      el.classList.remove("ring-2", "ring-rose-500", "ring-offset-2");
+    }, 1800);
+  };
 
   return (
     <div className="space-y-4">
