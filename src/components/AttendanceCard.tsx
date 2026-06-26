@@ -358,11 +358,30 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
           </label>
         </div>
         {timeError && (
-          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> {timeError}
-          </p>
+          <div className="mt-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1.5 space-y-1">
+            <p className="text-[11px] text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {timeError}
+            </p>
+            {suggestion && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  सुझाव: {fmt12(suggestion.inStr)} – {fmt12(suggestion.outStr)} ({fmtHours(suggestion.hours)})
+                </span>
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary text-primary-foreground active:scale-95 transition shrink-0"
+                >
+                  लागू करें
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+
+
 
 
       {/* Site dropdown */}
