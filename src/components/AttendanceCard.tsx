@@ -114,24 +114,50 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   // Whenever times or status change, recompute & emit
   useEffect(() => {
     if (sel === "Absent") {
-      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0 });
+      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0, invalid: false });
       setTimeError("");
       return;
     }
     const total = calcHours(inT, outT);
     const { overtime } = splitOT(total);
-    if (sel && inT && outT && total === 0) {
-      setTimeError("OUT समय IN से बाद होना चाहिए");
-    } else {
-      setTimeError("");
+    const aMin = timeToMinutes(inT);
+    const bMin = timeToMinutes(outT);
+    let err = "";
+    if (sel && inT && outT && aMin != null && bMin != null && bMin <= aMin) {
+      err = "OUT समय IN के बाद होना चाहिए";
+    } else if (sel && (!inT || !outT)) {
+      err = sel === "Present" || sel === "Half-Day" ? "IN और OUT समय भरें" : "";
     }
+    setTimeError(err);
+    const invalid = !!sel && sel !== "Absent" && (!inT || !outT || total <= 0);
     onTimesChange?.(worker.id, {
       in_time: inT || null,
       out_time: outT || null,
       total_hours: total,
       overtime_hours: overtime,
+      invalid,
     });
   }, [sel, inT, outT, worker.id]);
+
+  /** Suggested OUT time given current IN and selected status. */
+  const suggestion = useMemo(() => {
+    if (!sel || sel === "Absent") return null;
+    const startStr = inT || workDefaults.checkIn || "09:00";
+    const startMin = timeToMinutes(startStr);
+    if (startMin == null) return null;
+    const addH = sel === "Half-Day" ? HALF_DAY_HOURS : STANDARD_HOURS;
+    const endMin = startMin + addH * 60;
+    const eh = Math.floor(endMin / 60) % 24;
+    const em = endMin % 60;
+    const endStr = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+    return { inStr: startStr, outStr: endStr, hours: addH };
+  }, [sel, inT, workDefaults.checkIn]);
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setInT(suggestion.inStr);
+    setOutT(suggestion.outStr);
+  };
 
   const pickStatus = (status: AttendanceStatus) => {
     // Toggle off if same status tapped
