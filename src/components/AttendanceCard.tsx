@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { listSites, createSite, type Site } from "@/lib/sites";
 import { getWorkTime } from "@/lib/work-time";
-import { calcHours, splitOT, fmt12, fmtHours, HALF_DAY_HOURS } from "@/lib/work-hours";
+import { calcHours, splitOT, fmt12, fmtHours, timeToMinutes, HALF_DAY_HOURS, STANDARD_HOURS } from "@/lib/work-hours";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
