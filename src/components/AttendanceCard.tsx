@@ -126,7 +126,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     if (sel && inT && outT && aMin != null && bMin != null && bMin <= aMin) {
       err = "OUT समय IN के बाद होना चाहिए";
     } else if (sel && (!inT || !outT)) {
-      err = sel === "Present" || sel === "Half-Day" ? "IN और OUT समय भरें" : "";
+      err = "IN और OUT समय भरें";
     }
     setTimeError(err);
     const invalid = !!sel && sel !== "Absent" && (!inT || !outT || total <= 0);
