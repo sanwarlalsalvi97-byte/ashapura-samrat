@@ -548,9 +548,28 @@ export default function AttendancePage() {
                     </div>
                   </div>
                   {hasInvalidTimes && (
-                    <p className="text-[11px] text-rose-600 font-semibold text-center flex items-center justify-center gap-1">
-                      ⚠️ कुछ मजदूर का समय गलत है — पहले ठीक करें
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => scrollToInvalid(invalidEntries[0].id)}
+                      className="w-full flex items-center justify-between gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-left active:scale-[0.99] transition"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-7 h-7 rounded-full bg-rose-500 text-white grid place-items-center text-xs font-extrabold shrink-0">
+                          {invalidEntries.length}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[12px] font-bold text-rose-700 dark:text-rose-300 leading-tight">
+                            {invalidEntries.length === 1
+                              ? "1 मजदूर का समय गलत है"
+                              : `${invalidEntries.length} मजदूरों का समय गलत है`}
+                          </div>
+                          <div className="text-[10px] text-rose-600/80 dark:text-rose-300/80 truncate">
+                            पहले: {invalidEntries[0].name} • टैप करके ठीक करें
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-rose-600 font-bold text-lg shrink-0">→</span>
+                    </button>
                   )}
                   <Button
                     className="w-full shadow-lg"
