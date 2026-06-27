@@ -281,6 +281,8 @@ export default function HomePage({ onNavigate }: Props) {
           <QuickAction icon={FileBarChart} label="रिपोर्ट देखें" onClick={() => onNavigate("report")} tone="blue" />
           <QuickAction icon={ClipboardList} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} tone="purple" />
           <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="violet" />
+          <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
+          <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
         </div>
       </section>
 
