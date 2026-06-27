@@ -62,6 +62,7 @@ export default function HomePage({ onNavigate }: Props) {
   const [monthAtt, setMonthAtt] = useState<AttRow[]>([]);
   const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
   const [monthCash, setMonthCash] = useState<CashRow[]>([]);
+  const [advances, setAdvances] = useState<AdvRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [sites, setSites] = useState<Site[]>(() => listSites());
