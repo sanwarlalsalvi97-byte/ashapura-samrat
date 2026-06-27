@@ -86,9 +86,13 @@
     @apply border-border;
   }
 
+  /* Base font-size is controlled at runtime by src/lib/font-size.ts
+     (inline style on <html>). The value below is only a fallback for
+     environments where JS hasn't run yet (SSR / first paint). */
   html {
-    font-size: 17px;
+    font-size: var(--app-base-font-size, 17px);
   }
+
 
   body {
     @apply bg-background text-foreground font-sans;
