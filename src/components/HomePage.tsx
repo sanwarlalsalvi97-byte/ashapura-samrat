@@ -29,7 +29,8 @@ interface Props {
 
 type CashRow = { type: "income" | "expense"; amount: number; date: string };
 type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
-type WorkerRow = { id: string; daily_rate: number | null };
+type WorkerRow = { id: string; name?: string | null; daily_rate: number | null };
+type AdvRow = { worker_id: string; date: string; advance: number; site_name: string | null; workers?: { name: string | null } | null };
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
