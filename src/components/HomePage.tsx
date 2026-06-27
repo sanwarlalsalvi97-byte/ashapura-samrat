@@ -91,20 +91,30 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function load() {
     try {
-      const [w, mAtt, tAtt, cash] = await Promise.all([
-        supabase.from("workers").select("id,daily_rate").eq("is_active", true),
+      const [w, mAtt, tAtt, cash, adv] = await Promise.all([
+        supabase.from("workers").select("id,name,daily_rate").eq("is_active", true),
         supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
         supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,date").gte("date", startISO).lte("date", endISO),
+        supabase
+          .from("attendance")
+          .select("worker_id,date,advance,site_name,workers(name)")
+          .gte("date", startISO).lte("date", endISO)
+          .gt("advance", 0)
+          .order("date", { ascending: false })
+          .limit(8),
       ]);
       setWorkersList((w.data || []) as WorkerRow[]);
       setMonthAtt((mAtt.data || []) as AttRow[]);
       setTodayAtt((tAtt.data || []) as AttRow[]);
       setMonthCash((cash.data || []) as CashRow[]);
+      setAdvances((adv.data || []) as any);
     } finally {
       setLoading(false);
     }
   }
+
+  const totalAdvance = advances.reduce((s, a) => s + (a.advance || 0), 0);
 
   // Summary numbers
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
