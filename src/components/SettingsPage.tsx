@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2 } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
+import { getFontSize, setFontSize as persistFontSize, type FontSize } from "@/lib/font-size";
 import type { TabId } from "./BottomNav";
 import {
   AlertDialog,
@@ -35,6 +36,7 @@ interface SettingsPageProps {
 
 export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [theme, setThemeState] = useState<Theme>(getTheme());
+  const [fontSize, setFontSizeState] = useState<FontSize>(getFontSize());
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -280,6 +282,45 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t("आपकी पसंद याद रखी जाएगी", "Your choice is remembered")}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Font size */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Type className="w-4 h-4" />
+            {t("अक्षर का आकार", "Font Size")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { id: "small" as FontSize, hi: "छोटा", en: "Small", cls: "text-xs" },
+              { id: "medium" as FontSize, hi: "मध्यम", en: "Medium", cls: "text-sm" },
+              { id: "large" as FontSize, hi: "बड़ा", en: "Large", cls: "text-base" },
+            ]).map(({ id, hi, en, cls }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setFontSizeState(id);
+                  persistFontSize(id);
+                  toast({ title: t(`अक्षर का आकार: ${hi}`, `Font size: ${en}`) });
+                }}
+                className={`py-2 px-2 rounded-lg border-2 font-semibold transition-all ${cls} ${
+                  fontSize === id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-foreground hover:bg-muted"
+                }`}
+              >
+                Aa
+                <div className="text-[10px] font-medium mt-0.5">{t(hi, en)}</div>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t("बदलाव तुरंत पूरे ऐप पर लागू होगा", "Change applies instantly across the app")}
           </p>
         </CardContent>
       </Card>
