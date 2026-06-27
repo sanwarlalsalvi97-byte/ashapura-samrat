@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2 } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
+import { getFontSize, setFontSize as persistFontSize, type FontSize } from "@/lib/font-size";
 import type { TabId } from "./BottomNav";
 import {
   AlertDialog,
@@ -35,6 +36,7 @@ interface SettingsPageProps {
 
 export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [theme, setThemeState] = useState<Theme>(getTheme());
+  const [fontSize, setFontSizeState] = useState<FontSize>(getFontSize());
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
