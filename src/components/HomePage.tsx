@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Briefcase,
   Clock,
+  HardHat,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
