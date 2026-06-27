@@ -29,7 +29,8 @@ interface Props {
 
 type CashRow = { type: "income" | "expense"; amount: number; date: string };
 type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
-type WorkerRow = { id: string; daily_rate: number | null };
+type WorkerRow = { id: string; name?: string | null; daily_rate: number | null };
+type AdvRow = { worker_id: string; date: string; advance: number; site_name: string | null; workers?: { name: string | null } | null };
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -61,6 +62,7 @@ export default function HomePage({ onNavigate }: Props) {
   const [monthAtt, setMonthAtt] = useState<AttRow[]>([]);
   const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
   const [monthCash, setMonthCash] = useState<CashRow[]>([]);
+  const [advances, setAdvances] = useState<AdvRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -89,20 +91,30 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function load() {
     try {
-      const [w, mAtt, tAtt, cash] = await Promise.all([
-        supabase.from("workers").select("id,daily_rate").eq("is_active", true),
+      const [w, mAtt, tAtt, cash, adv] = await Promise.all([
+        supabase.from("workers").select("id,name,daily_rate").eq("is_active", true),
         supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
         supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,date").gte("date", startISO).lte("date", endISO),
+        supabase
+          .from("attendance")
+          .select("worker_id,date,advance,site_name,workers(name)")
+          .gte("date", startISO).lte("date", endISO)
+          .gt("advance", 0)
+          .order("date", { ascending: false })
+          .limit(8),
       ]);
       setWorkersList((w.data || []) as WorkerRow[]);
       setMonthAtt((mAtt.data || []) as AttRow[]);
       setTodayAtt((tAtt.data || []) as AttRow[]);
       setMonthCash((cash.data || []) as CashRow[]);
+      setAdvances((adv.data || []) as any);
     } finally {
       setLoading(false);
     }
   }
+
+  const totalAdvance = advances.reduce((s, a) => s + (a.advance || 0), 0);
 
   // Summary numbers
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
@@ -270,6 +282,65 @@ export default function HomePage({ onNavigate }: Props) {
           <AttStat tone="yellow" label="HD" value={halfToday} />
           <AttStat tone="purple" label="OT" value={0} suffix="h" icon={Clock} />
         </div>
+      </section>
+
+      {/* एडवांस / Advance card */}
+      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-extrabold">एडवांस (इस महीने)</h2>
+          </div>
+          <button
+            onClick={() => onNavigate("advance")}
+            className="text-[11px] font-semibold text-primary flex items-center gap-1"
+          >
+            सभी <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="flex items-baseline justify-between mb-3">
+          <span className="text-xs font-semibold text-muted-foreground">कुल दिया गया</span>
+          <span className="text-xl font-extrabold tabular-nums text-primary">
+            ₹{totalAdvance.toLocaleString("hi-IN")}
+          </span>
+        </div>
+
+        {advances.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-3">
+            इस महीने कोई एडवांस नहीं दिया गया
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {advances.map((a, i) => {
+              const d = new Date(a.date);
+              const dStr = `${d.getDate()} ${HINDI_MONTHS[d.getMonth()].slice(0, 3)}`;
+              return (
+                <li
+                  key={`${a.worker_id}-${a.date}-${i}`}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold truncate">
+                      {a.workers?.name || "मजदूर"}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {dStr}{a.site_name ? ` • ${a.site_name}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-sm font-extrabold tabular-nums">
+                      ₹{(a.advance || 0).toLocaleString("hi-IN")}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      ✓ दिया गया
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       {/* Quick actions */}
