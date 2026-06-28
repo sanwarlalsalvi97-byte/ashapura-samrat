@@ -344,12 +344,21 @@ export default function HomePage({ onNavigate }: Props) {
         )}
       </section>
 
-      {/* Pending Payments */}
-      <PendingPaymentsCard
-        startISO={startISO}
-        endISO={endISO}
-        monthLabel={`${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`}
-      />
+      {/* पेमेंट बाकी — tap to open full screen */}
+      <button
+        onClick={() => onNavigate("pending")}
+        className="w-full flex items-center gap-4 rounded-2xl border border-orange-300/70 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20 px-4 py-4 shadow-sm active:scale-[0.98] transition text-left"
+      >
+        <span className="w-12 h-12 rounded-2xl bg-white dark:bg-orange-950/40 grid place-items-center text-orange-600 text-2xl font-extrabold shadow-sm shrink-0">
+          ₹
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-base font-extrabold text-orange-700 dark:text-orange-300">पेमेंट बाकी</span>
+          <span className="block text-xs font-semibold text-orange-600/80 dark:text-orange-400/80">बैंक से भेजें</span>
+        </span>
+        <ArrowRight className="w-5 h-5 text-orange-600 shrink-0" />
+      </button>
+
 
       {/* Quick actions */}
       <section>
