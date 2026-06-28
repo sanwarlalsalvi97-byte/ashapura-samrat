@@ -22,6 +22,7 @@ import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
 import TithiBadge from "./TithiBadge";
+import PendingPaymentsCard from "./PendingPaymentsCard";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -342,6 +343,13 @@ export default function HomePage({ onNavigate }: Props) {
           </ul>
         )}
       </section>
+
+      {/* Pending Payments */}
+      <PendingPaymentsCard
+        startISO={startISO}
+        endISO={endISO}
+        monthLabel={`${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`}
+      />
 
       {/* Quick actions */}
       <section>
