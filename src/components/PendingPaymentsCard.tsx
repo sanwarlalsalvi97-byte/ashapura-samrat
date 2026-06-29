@@ -22,7 +22,7 @@ type PendingRow = {
   days: number;
 };
 
-export default function PendingPaymentsCard({ startISO, endISO, monthLabel }: Props) {
+export default function PendingPaymentsCard({ startISO, endISO, monthLabel, siteFilter = null }: Props) {
   const [workers, setWorkers] = useState<W[]>([]);
   const [att, setAtt] = useState<A[]>([]);
   const [loading, setLoading] = useState(true);
