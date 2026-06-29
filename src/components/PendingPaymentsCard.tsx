@@ -68,14 +68,15 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
       if (dayFactor > 0) acc.days += dayFactor;
     });
     const out: PendingRow[] = [];
-    workers.forEach((w) => {
+    filteredWorkers.forEach((w) => {
       const v = byWorker.get(w.id)!;
       const pending = Math.round(v.earned - v.advance);
       if (pending > 0) out.push({ worker: w, earned: Math.round(v.earned), advance: Math.round(v.advance), pending, days: v.days });
     });
     out.sort((a, b) => b.pending - a.pending);
     return out;
-  }, [workers, att]);
+  }, [workers, att, siteFilter]);
+
 
   const total = rows.reduce((s, r) => s + r.pending, 0);
 
