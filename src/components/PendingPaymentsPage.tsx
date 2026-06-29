@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import PendingPaymentsCard from "./PendingPaymentsCard";
+import { listSites, subscribeSites, getSitesVersion } from "@/lib/sites";
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -14,6 +15,10 @@ function bounds(y: number, m: number) {
 export default function PendingPaymentsPage() {
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [site, setSite] = useState<string>("__all__");
+  useSyncExternalStore(subscribeSites, getSitesVersion, getSitesVersion);
+  const sites = useMemo(() => listSites(), []);
+
   const { startISO, endISO } = useMemo(
     () => bounds(cursor.getFullYear(), cursor.getMonth()),
     [cursor],
@@ -43,7 +48,29 @@ export default function PendingPaymentsPage() {
         </button>
       </div>
 
-      <PendingPaymentsCard startISO={startISO} endISO={endISO} monthLabel={label} />
+      <div className="bg-card rounded-2xl border border-border/60 px-3 py-2.5 shadow-sm">
+        <label className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground mb-1.5">
+          <MapPin className="w-3.5 h-3.5 text-primary" />
+          साइट फ़िल्टर
+        </label>
+        <select
+          value={site}
+          onChange={(e) => setSite(e.target.value)}
+          className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm font-semibold"
+        >
+          <option value="__all__">सभी साइट</option>
+          {sites.map((s) => (
+            <option key={s.id} value={s.name}>{s.name}{s.location ? ` — ${s.location}` : ""}</option>
+          ))}
+        </select>
+      </div>
+
+      <PendingPaymentsCard
+        startISO={startISO}
+        endISO={endISO}
+        monthLabel={label}
+        siteFilter={site === "__all__" ? null : site}
+      />
     </div>
   );
 }
