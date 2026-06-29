@@ -7,6 +7,8 @@ type Props = {
   startISO: string;
   endISO: string;
   monthLabel: string;
+  siteFilter?: string | null;
+
 };
 
 type W = { id: string; name: string; daily_rate: number | null; upi_id: string | null; phone: string | null; site_name: string | null };
@@ -20,7 +22,7 @@ type PendingRow = {
   days: number;
 };
 
-export default function PendingPaymentsCard({ startISO, endISO, monthLabel }: Props) {
+export default function PendingPaymentsCard({ startISO, endISO, monthLabel, siteFilter = null }: Props) {
   const [workers, setWorkers] = useState<W[]>([]);
   const [att, setAtt] = useState<A[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,12 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel }: Pr
   }, [startISO, endISO]);
 
   const rows = useMemo<PendingRow[]>(() => {
+    const filteredWorkers = siteFilter
+      ? workers.filter((w) => (w.site_name || "").trim() === siteFilter)
+      : workers;
     const byWorker = new Map<string, { earned: number; advance: number; days: number }>();
-    workers.forEach((w) => byWorker.set(w.id, { earned: 0, advance: 0, days: 0 }));
+    filteredWorkers.forEach((w) => byWorker.set(w.id, { earned: 0, advance: 0, days: 0 }));
+
     att.forEach((r) => {
       const acc = byWorker.get(r.worker_id);
       if (!acc) return;
@@ -62,14 +68,15 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel }: Pr
       if (dayFactor > 0) acc.days += dayFactor;
     });
     const out: PendingRow[] = [];
-    workers.forEach((w) => {
+    filteredWorkers.forEach((w) => {
       const v = byWorker.get(w.id)!;
       const pending = Math.round(v.earned - v.advance);
       if (pending > 0) out.push({ worker: w, earned: Math.round(v.earned), advance: Math.round(v.advance), pending, days: v.days });
     });
     out.sort((a, b) => b.pending - a.pending);
     return out;
-  }, [workers, att]);
+  }, [workers, att, siteFilter]);
+
 
   const total = rows.reduce((s, r) => s + r.pending, 0);
 
