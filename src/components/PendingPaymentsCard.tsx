@@ -49,8 +49,12 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
   }, [startISO, endISO]);
 
   const rows = useMemo<PendingRow[]>(() => {
+    const filteredWorkers = siteFilter
+      ? workers.filter((w) => (w.site_name || "").trim() === siteFilter)
+      : workers;
     const byWorker = new Map<string, { earned: number; advance: number; days: number }>();
-    workers.forEach((w) => byWorker.set(w.id, { earned: 0, advance: 0, days: 0 }));
+    filteredWorkers.forEach((w) => byWorker.set(w.id, { earned: 0, advance: 0, days: 0 }));
+
     att.forEach((r) => {
       const acc = byWorker.get(r.worker_id);
       if (!acc) return;
