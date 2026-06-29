@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
+import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import { listSites } from "@/lib/sites";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
+import { computeWorkerPayments, subscribePaymentSources, monthBoundsISO } from "@/lib/payment-engine";
 import {
   DropdownMenu,
   DropdownMenuContent,
