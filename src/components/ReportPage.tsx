@@ -39,6 +39,7 @@ interface WorkerSummary {
   absentDays: number;
   totalAdvance: number;
   totalEarning: number;
+  workerExpenses: number;
   netPayable: number;
 }
 
@@ -69,39 +70,35 @@ export default function ReportPage() {
 
   const loadReport = useCallback(async () => {
     try {
-      const data = await getMonthlyReport(year, month);
-      const map: Record<string, WorkerSummary> = {};
-      data.forEach((r: any) => {
-        const wid = r.worker_id;
-        if (!map[wid]) {
-          map[wid] = {
-            workerId: wid,
-            name: r.workers?.name || "",
-            role: r.workers?.role || "",
-            dailyRate: r.workers?.daily_rate || 0,
-            presentDays: 0,
-            halfDays: 0,
-            absentDays: 0,
-            totalAdvance: 0,
-            totalEarning: 0,
-            netPayable: 0,
-          };
-        }
-        const s = map[wid];
-        if (r.status === "Present") s.presentDays++;
-        else if (r.status === "Half-Day") s.halfDays++;
-        else s.absentDays++;
-        s.totalAdvance += r.advance || 0;
-      });
-      Object.values(map).forEach((s) => {
-        s.totalEarning = (s.presentDays * s.dailyRate) + (s.halfDays * s.dailyRate * 0.5);
-        s.netPayable = s.totalEarning - s.totalAdvance;
-      });
-      setSummary(Object.values(map));
+      const { startISO, endISO } = monthBoundsISO(year, month - 1);
+      const res = await computeWorkerPayments({ startISO, endISO });
+      // Need role per worker — fetch in parallel with workers list
+      const workersList = await getWorkers().catch(() => [] as Worker[]);
+      const roleById = new Map(workersList.map((w) => [w.id, w.role || ""]));
+      const rows: WorkerSummary[] = res.rows
+        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance > 0)
+        .map((r) => ({
+          workerId: r.worker.id,
+          name: r.worker.name,
+          role: roleById.get(r.worker.id) || "",
+          dailyRate: r.worker.daily_rate || 0,
+          presentDays: r.presentDays,
+          halfDays: r.halfDays,
+          absentDays: r.absentDays,
+          totalAdvance: r.advance,
+          totalEarning: r.earned,
+          workerExpenses: r.workerExpenses,
+          netPayable: r.outstanding,
+        }));
+      setSummary(rows);
     } catch {}
   }, [year, month]);
 
-  useEffect(() => { loadReport(); }, [loadReport]);
+  useEffect(() => {
+    loadReport();
+    const unsub = subscribePaymentSources(() => { loadReport(); loadSiteData(); });
+    return () => unsub();
+  }, [loadReport, loadSiteData]);
 
   const handleDelete = async (worker: WorkerSummary) => {
     try {
