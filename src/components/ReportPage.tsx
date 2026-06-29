@@ -159,17 +159,18 @@ export default function ReportPage() {
         `✅ हाजिर: ${worker.presentDays} दिन\n` +
         `⏰ आधा दिन: ${worker.halfDays}\n` +
         `❌ गैरहाजिर: ${worker.absentDays}\n\n` +
-        `💰 कुल कमाई: ₹${worker.totalEarning.toLocaleString("hi-IN")}\n` +
-        `💸 एडवांस: ₹${worker.totalAdvance.toLocaleString("hi-IN")}\n` +
-        `✅ *बाकी राशि: ₹${worker.netPayable.toLocaleString("hi-IN")}*`;
+        `💰 कुल कमाई: ₹${Math.round(worker.totalEarning).toLocaleString("hi-IN")}\n` +
+        `🛒 मजदूर खर्च: ₹${Math.round(worker.workerExpenses).toLocaleString("hi-IN")}\n` +
+        `💸 एडवांस: ₹${Math.round(worker.totalAdvance).toLocaleString("hi-IN")}\n` +
+        `✅ *बाकी राशि: ₹${Math.round(worker.netPayable).toLocaleString("hi-IN")}*`;
     } else {
       text = `📋 *हाजिरी रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
       summary.forEach((s) => {
         text += `👷 *${s.name}* (${s.role})\n` +
           `   हाजिर: ${s.presentDays} | आधा: ${s.halfDays} | गैरहाजिर: ${s.absentDays}\n` +
-          `   बाकी: ₹${s.netPayable.toLocaleString("hi-IN")}\n\n`;
+          `   बाकी: ₹${Math.round(s.netPayable).toLocaleString("hi-IN")}\n\n`;
       });
-      text += `💰 *कुल देय: ₹${grandTotal.toLocaleString("hi-IN")}*`;
+      text += `💰 *कुल देय: ₹${Math.round(grandTotal).toLocaleString("hi-IN")}*`;
     }
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
