@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getMonthlyReport, deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
+import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
 import { getGroupingMode, resolveGroupLabel } from "@/lib/grouping-prefs";
 import { listSites } from "@/lib/sites";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
+import { computeWorkerPayments, subscribePaymentSources, monthBoundsISO } from "@/lib/payment-engine";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,7 @@ interface WorkerSummary {
   absentDays: number;
   totalAdvance: number;
   totalEarning: number;
+  workerExpenses: number;
   netPayable: number;
 }
 
@@ -68,39 +70,35 @@ export default function ReportPage() {
 
   const loadReport = useCallback(async () => {
     try {
-      const data = await getMonthlyReport(year, month);
-      const map: Record<string, WorkerSummary> = {};
-      data.forEach((r: any) => {
-        const wid = r.worker_id;
-        if (!map[wid]) {
-          map[wid] = {
-            workerId: wid,
-            name: r.workers?.name || "",
-            role: r.workers?.role || "",
-            dailyRate: r.workers?.daily_rate || 0,
-            presentDays: 0,
-            halfDays: 0,
-            absentDays: 0,
-            totalAdvance: 0,
-            totalEarning: 0,
-            netPayable: 0,
-          };
-        }
-        const s = map[wid];
-        if (r.status === "Present") s.presentDays++;
-        else if (r.status === "Half-Day") s.halfDays++;
-        else s.absentDays++;
-        s.totalAdvance += r.advance || 0;
-      });
-      Object.values(map).forEach((s) => {
-        s.totalEarning = (s.presentDays * s.dailyRate) + (s.halfDays * s.dailyRate * 0.5);
-        s.netPayable = s.totalEarning - s.totalAdvance;
-      });
-      setSummary(Object.values(map));
+      const { startISO, endISO } = monthBoundsISO(year, month - 1);
+      const res = await computeWorkerPayments({ startISO, endISO });
+      // Need role per worker — fetch in parallel with workers list
+      const workersList = await getWorkers().catch(() => [] as Worker[]);
+      const roleById = new Map(workersList.map((w) => [w.id, w.role || ""]));
+      const rows: WorkerSummary[] = res.rows
+        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance > 0)
+        .map((r) => ({
+          workerId: r.worker.id,
+          name: r.worker.name,
+          role: roleById.get(r.worker.id) || "",
+          dailyRate: r.worker.daily_rate || 0,
+          presentDays: r.presentDays,
+          halfDays: r.halfDays,
+          absentDays: r.absentDays,
+          totalAdvance: r.advance,
+          totalEarning: r.earned,
+          workerExpenses: r.workerExpenses,
+          netPayable: r.outstanding,
+        }));
+      setSummary(rows);
     } catch {}
   }, [year, month]);
 
-  useEffect(() => { loadReport(); }, [loadReport]);
+  useEffect(() => {
+    loadReport();
+    const unsub = subscribePaymentSources(() => { loadReport(); loadSiteData(); });
+    return () => unsub();
+  }, [loadReport, loadSiteData]);
 
   const handleDelete = async (worker: WorkerSummary) => {
     try {
@@ -132,16 +130,16 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "बाकी"];
     const rows: (string | number)[][] = summary.map((s) => {
       const w = workerById.get(s.workerId);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
       return [
         group, s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
-        s.totalEarning, s.totalAdvance, s.netPayable,
+        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.netPayable),
       ];
     });
-    rows.push(["", "कुल", "", "", "", "", "", "", "", grandTotal]);
+    rows.push(["", "कुल", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
     if (format === "csv") {
       exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
@@ -161,17 +159,18 @@ export default function ReportPage() {
         `✅ हाजिर: ${worker.presentDays} दिन\n` +
         `⏰ आधा दिन: ${worker.halfDays}\n` +
         `❌ गैरहाजिर: ${worker.absentDays}\n\n` +
-        `💰 कुल कमाई: ₹${worker.totalEarning.toLocaleString("hi-IN")}\n` +
-        `💸 एडवांस: ₹${worker.totalAdvance.toLocaleString("hi-IN")}\n` +
-        `✅ *बाकी राशि: ₹${worker.netPayable.toLocaleString("hi-IN")}*`;
+        `💰 कुल कमाई: ₹${Math.round(worker.totalEarning).toLocaleString("hi-IN")}\n` +
+        `🛒 मजदूर खर्च: ₹${Math.round(worker.workerExpenses).toLocaleString("hi-IN")}\n` +
+        `💸 एडवांस: ₹${Math.round(worker.totalAdvance).toLocaleString("hi-IN")}\n` +
+        `✅ *बाकी राशि: ₹${Math.round(worker.netPayable).toLocaleString("hi-IN")}*`;
     } else {
       text = `📋 *हाजिरी रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
       summary.forEach((s) => {
         text += `👷 *${s.name}* (${s.role})\n` +
           `   हाजिर: ${s.presentDays} | आधा: ${s.halfDays} | गैरहाजिर: ${s.absentDays}\n` +
-          `   बाकी: ₹${s.netPayable.toLocaleString("hi-IN")}\n\n`;
+          `   बाकी: ₹${Math.round(s.netPayable).toLocaleString("hi-IN")}\n\n`;
       });
-      text += `💰 *कुल देय: ₹${grandTotal.toLocaleString("hi-IN")}*`;
+      text += `💰 *कुल देय: ₹${Math.round(grandTotal).toLocaleString("hi-IN")}*`;
     }
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
@@ -338,15 +337,21 @@ export default function ReportPage() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">कुल कमाई</span>
-                      <span className="font-medium">₹{s.totalEarning.toLocaleString("hi-IN")}</span>
+                      <span className="font-medium">₹{Math.round(s.totalEarning).toLocaleString("hi-IN")}</span>
                     </div>
+                    {s.workerExpenses > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">मजदूर खर्च</span>
+                        <span className="font-medium text-amber-600">+₹{Math.round(s.workerExpenses).toLocaleString("hi-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">एडवांस</span>
-                      <span className="font-medium text-destructive">-₹{s.totalAdvance.toLocaleString("hi-IN")}</span>
+                      <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
-                      <span className="font-bold text-primary">₹{s.netPayable.toLocaleString("hi-IN")}</span>
+                      <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
                     </div>
                   </div>
                 </CardContent>

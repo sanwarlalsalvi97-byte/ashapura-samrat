@@ -15,6 +15,7 @@ import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
+import WorkerExpensesPage from "@/components/WorkerExpensesPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat, Bell, UserCircle2, MapPin } from "lucide-react";
@@ -120,6 +121,7 @@ export default function Index() {
         {tab === "settings" && <SettingsPage onNavigate={setTab} />}
         {tab === "sites" && <SitesPage />}
         {tab === "pending" && <PendingPaymentsPage />}
+        {tab === "worker_expense" && <WorkerExpensesPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
