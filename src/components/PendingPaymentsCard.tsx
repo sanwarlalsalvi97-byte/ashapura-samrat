@@ -7,6 +7,8 @@ type Props = {
   startISO: string;
   endISO: string;
   monthLabel: string;
+  siteFilter?: string | null;
+
 };
 
 type W = { id: string; name: string; daily_rate: number | null; upi_id: string | null; phone: string | null; site_name: string | null };
