@@ -130,16 +130,16 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "एडवांस", "बाकी"];
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "बाकी"];
     const rows: (string | number)[][] = summary.map((s) => {
       const w = workerById.get(s.workerId);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
       return [
         group, s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
-        s.totalEarning, s.totalAdvance, s.netPayable,
+        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.netPayable),
       ];
     });
-    rows.push(["", "कुल", "", "", "", "", "", "", "", grandTotal]);
+    rows.push(["", "कुल", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
     if (format === "csv") {
       exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
