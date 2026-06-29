@@ -121,6 +121,7 @@ export default function Index() {
         {tab === "settings" && <SettingsPage onNavigate={setTab} />}
         {tab === "sites" && <SitesPage />}
         {tab === "pending" && <PendingPaymentsPage />}
+        {tab === "worker_expense" && <WorkerExpensesPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
       </main>
 
