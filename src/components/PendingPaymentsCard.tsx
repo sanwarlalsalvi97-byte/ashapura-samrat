@@ -1,84 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Wallet, Smartphone, Phone, ArrowRight, AlertCircle } from "lucide-react";
 import UpiPayDialog from "./UpiPayDialog";
+import {
+  computeWorkerPayments,
+  subscribePaymentSources,
+  type WorkerPayment,
+} from "@/lib/payment-engine";
 
 type Props = {
   startISO: string;
   endISO: string;
   monthLabel: string;
   siteFilter?: string | null;
-
-};
-
-type W = { id: string; name: string; daily_rate: number | null; upi_id: string | null; phone: string | null; site_name: string | null };
-type A = { worker_id: string; status: string; advance: number | null; overtime_hours: number | null };
-
-type PendingRow = {
-  worker: W;
-  earned: number;
-  advance: number;
-  pending: number;
-  days: number;
 };
 
 export default function PendingPaymentsCard({ startISO, endISO, monthLabel, siteFilter = null }: Props) {
-  const [workers, setWorkers] = useState<W[]>([]);
-  const [att, setAtt] = useState<A[]>([]);
+  const [rows, setRows] = useState<WorkerPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payTarget, setPayTarget] = useState<PendingRow | null>(null);
+  const [payTarget, setPayTarget] = useState<WorkerPayment | null>(null);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      setLoading(true);
-      const [w, a] = await Promise.all([
-        supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name").eq("is_active", true),
-        supabase
-          .from("attendance")
-          .select("worker_id,status,advance,overtime_hours")
-          .gte("date", startISO)
-          .lte("date", endISO),
-      ]);
+    const load = async () => {
+      const res = await computeWorkerPayments({ startISO, endISO, siteFilter });
       if (!alive) return;
-      setWorkers((w.data || []) as W[]);
-      setAtt((a.data || []) as A[]);
+      setRows(res.rows.filter((r) => Math.round(r.outstanding) > 0));
       setLoading(false);
-    })();
-    return () => { alive = false; };
-  }, [startISO, endISO]);
+    };
+    setLoading(true);
+    load();
+    const unsub = subscribePaymentSources(load);
+    return () => { alive = false; unsub(); };
+  }, [startISO, endISO, siteFilter]);
 
-  const rows = useMemo<PendingRow[]>(() => {
-    const filteredWorkers = siteFilter
-      ? workers.filter((w) => (w.site_name || "").trim() === siteFilter)
-      : workers;
-    const byWorker = new Map<string, { earned: number; advance: number; days: number }>();
-    filteredWorkers.forEach((w) => byWorker.set(w.id, { earned: 0, advance: 0, days: 0 }));
-
-    att.forEach((r) => {
-      const acc = byWorker.get(r.worker_id);
-      if (!acc) return;
-      const w = workers.find((x) => x.id === r.worker_id);
-      const rate = w?.daily_rate || 0;
-      const dayFactor = r.status === "Present" ? 1 : r.status === "Half-Day" ? 0.5 : 0;
-      const otHours = r.overtime_hours || 0;
-      const otRate = rate / 8; // hourly rate
-      acc.earned += rate * dayFactor + otRate * otHours;
-      acc.advance += r.advance || 0;
-      if (dayFactor > 0) acc.days += dayFactor;
-    });
-    const out: PendingRow[] = [];
-    filteredWorkers.forEach((w) => {
-      const v = byWorker.get(w.id)!;
-      const pending = Math.round(v.earned - v.advance);
-      if (pending > 0) out.push({ worker: w, earned: Math.round(v.earned), advance: Math.round(v.advance), pending, days: v.days });
-    });
-    out.sort((a, b) => b.pending - a.pending);
-    return out;
-  }, [workers, att, siteFilter]);
-
-
-  const total = rows.reduce((s, r) => s + r.pending, 0);
+  const total = useMemo(
+    () => rows.reduce((s, r) => s + Math.round(r.outstanding), 0),
+    [rows],
+  );
 
   return (
     <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
@@ -108,6 +66,10 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
       ) : (
         <ul className="space-y-2">
           {rows.slice(0, 8).map((r) => {
+            const pending = Math.round(r.outstanding);
+            const earned = Math.round(r.earned);
+            const exp = Math.round(r.workerExpenses);
+            const adv = Math.round(r.advance);
             const hasUpi = !!r.worker.upi_id;
             return (
               <li
@@ -117,13 +79,14 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold truncate">{r.worker.name}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {r.days} दिन • कमाई ₹{r.earned.toLocaleString("hi-IN")}
-                    {r.advance > 0 ? ` • एडवांस ₹${r.advance.toLocaleString("hi-IN")}` : ""}
+                    {r.days} दिन • कमाई ₹{earned.toLocaleString("hi-IN")}
+                    {exp > 0 ? ` • खर्च ₹${exp.toLocaleString("hi-IN")}` : ""}
+                    {adv > 0 ? ` • एडवांस ₹${adv.toLocaleString("hi-IN")}` : ""}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span className="text-sm font-extrabold tabular-nums text-rose-600 dark:text-rose-400">
-                    ₹{r.pending.toLocaleString("hi-IN")}
+                    ₹{pending.toLocaleString("hi-IN")}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {hasUpi ? (
@@ -164,7 +127,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
         onOpenChange={(v) => !v && setPayTarget(null)}
         payeeName={payTarget?.worker.name || ""}
         payeeVpa={payTarget?.worker.upi_id}
-        defaultAmount={payTarget?.pending}
+        defaultAmount={payTarget ? Math.round(payTarget.outstanding) : undefined}
         defaultNote={`${payTarget?.worker.name || ""} - ${monthLabel} की मजदूरी`}
       />
     </section>
