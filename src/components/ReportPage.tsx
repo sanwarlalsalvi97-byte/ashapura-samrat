@@ -337,15 +337,21 @@ export default function ReportPage() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">कुल कमाई</span>
-                      <span className="font-medium">₹{s.totalEarning.toLocaleString("hi-IN")}</span>
+                      <span className="font-medium">₹{Math.round(s.totalEarning).toLocaleString("hi-IN")}</span>
                     </div>
+                    {s.workerExpenses > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">मजदूर खर्च</span>
+                        <span className="font-medium text-amber-600">+₹{Math.round(s.workerExpenses).toLocaleString("hi-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">एडवांस</span>
-                      <span className="font-medium text-destructive">-₹{s.totalAdvance.toLocaleString("hi-IN")}</span>
+                      <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
-                      <span className="font-bold text-primary">₹{s.netPayable.toLocaleString("hi-IN")}</span>
+                      <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
                     </div>
                   </div>
                 </CardContent>
