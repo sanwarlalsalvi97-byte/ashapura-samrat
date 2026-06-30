@@ -24,6 +24,7 @@ import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sit
 import { useSyncExternalStore } from "react";
 import TithiBadge from "./TithiBadge";
 import PendingPaymentsCard from "./PendingPaymentsCard";
+import { computeWorkerPayments } from "@/lib/payment-engine";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
