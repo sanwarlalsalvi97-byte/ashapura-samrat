@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Smartphone, Phone, ArrowRight, AlertCircle } from "lucide-react";
+import { Wallet, Smartphone, Phone, ArrowRight, AlertCircle, Check } from "lucide-react";
 import UpiPayDialog from "./UpiPayDialog";
 import {
   computeWorkerPayments,
   subscribePaymentSources,
   type WorkerPayment,
 } from "@/lib/payment-engine";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Props = {
   startISO: string;
@@ -37,6 +39,33 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     () => rows.reduce((s, r) => s + Math.round(r.outstanding), 0),
     [rows],
   );
+
+  const handleMarkAsPaid = async (r: WorkerPayment) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("कृपया पहले लॉग इन करें");
+      return;
+    }
+    const amount = Math.round(r.outstanding);
+    if (amount <= 0) return;
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const { error } = await supabase.from("payment_history").insert({
+      user_id: user.id,
+      worker_id: r.worker.id,
+      amount: amount,
+      payment_date: todayISO,
+      payment_mode: "Cash",
+      note: `${monthLabel} भुगतान`,
+      site_name: r.worker.site_name || null,
+    });
+
+    if (error) {
+      toast.error("भुगतान दर्ज करने में विफल: " + error.message);
+    } else {
+      toast.success(`${r.worker.name} का ₹${amount.toLocaleString("hi-IN")} भुगतान दर्ज हुआ`);
+    }
+  };
 
   return (
     <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
@@ -88,7 +117,13 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
                   <span className="text-sm font-extrabold tabular-nums text-rose-600 dark:text-rose-400">
                     ₹{pending.toLocaleString("hi-IN")}
                   </span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <button
+                      onClick={() => handleMarkAsPaid(r)}
+                      className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 transition shadow-sm"
+                    >
+                      <Check className="w-3 h-3" /> ✓ Mark as Paid
+                    </button>
                     {hasUpi ? (
                       <button
                         onClick={() => setPayTarget(r)}
