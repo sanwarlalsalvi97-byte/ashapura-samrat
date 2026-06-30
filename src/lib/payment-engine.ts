@@ -55,6 +55,13 @@ type ExpRow = {
   date: string;
 };
 
+type PayRow = {
+  worker_id: string;
+  amount: number | null;
+  site_name: string | null;
+  payment_date: string;
+};
+
 export type PaymentResult = {
   rows: WorkerPayment[];
   totals: {
@@ -78,7 +85,7 @@ export async function computeWorkerPayments(opts: {
   const { startISO, endISO } = opts;
   const site = (opts.siteFilter || "").trim();
 
-  const [wRes, aRes, eRes] = await Promise.all([
+  const [wRes, aRes, eRes, pRes] = await Promise.all([
     supabase
       .from("workers")
       .select("id,name,daily_rate,upi_id,phone,site_name")
@@ -93,13 +100,19 @@ export async function computeWorkerPayments(opts: {
       .select("worker_id,amount,site_name,date")
       .gte("date", startISO)
       .lte("date", endISO),
+    supabase
+      .from("payment_history")
+      .select("worker_id,amount,site_name,payment_date")
+      .gte("payment_date", startISO)
+      .lte("payment_date", endISO),
   ]);
 
   const workers: WorkerLite[] = (wRes.data || []) as WorkerLite[];
   const att: AttRow[] = (aRes.data || []) as AttRow[];
   const exp: ExpRow[] = (eRes.data || []) as ExpRow[];
+  const pay: PayRow[] = (pRes.data || []) as PayRow[];
 
-  return reduceWorkerPayments(workers, att, exp, site);
+  return reduceWorkerPayments(workers, att, exp, pay, site);
 }
 
 /** Pure reducer — exported for tests / in-memory use. */
@@ -107,6 +120,7 @@ export function reduceWorkerPayments(
   workers: WorkerLite[],
   att: AttRow[],
   exp: ExpRow[],
+  pay: PayRow[] = [],
   siteFilter?: string | null,
 ): PaymentResult {
   const site = (siteFilter || "").trim();
@@ -128,6 +142,7 @@ export function reduceWorkerPayments(
     earned: 0,
     workerExpenses: 0,
     advance: 0,
+    paidAmount: 0,
     outstanding: 0,
   });
 
@@ -166,6 +181,16 @@ export function reduceWorkerPayments(
     acc.set(w.id, row);
   });
 
+  // Paid amount (payment_history)
+  pay.forEach((r) => {
+    if (!matchesSite(r.site_name)) return;
+    const w = byId.get(r.worker_id);
+    if (!w) return;
+    const row = acc.get(w.id) || init(w);
+    row.paidAmount += Number(r.amount) || 0;
+    acc.set(w.id, row);
+  });
+
   // If site filter is set, drop workers with no activity in that site.
   // If not, include all active workers (even zero rows).
   if (!site) {
@@ -177,7 +202,7 @@ export function reduceWorkerPayments(
   const rows: WorkerPayment[] = [];
   acc.forEach((row) => {
     row.earned = row.baseEarning + row.overtimePay;
-    row.outstanding = row.earned + row.workerExpenses - row.advance;
+    row.outstanding = row.earned + row.workerExpenses - row.advance - row.paidAmount;
     rows.push(row);
   });
   rows.sort((a, b) => b.outstanding - a.outstanding);
@@ -187,10 +212,11 @@ export function reduceWorkerPayments(
       t.earned += r.earned;
       t.workerExpenses += r.workerExpenses;
       t.advance += r.advance;
+      t.paidAmount += r.paidAmount;
       t.outstanding += r.outstanding;
       return t;
     },
-    { earned: 0, workerExpenses: 0, advance: 0, outstanding: 0 },
+    { earned: 0, workerExpenses: 0, advance: 0, paidAmount: 0, outstanding: 0 },
   );
 
   return { rows, totals };
@@ -205,6 +231,8 @@ export function subscribePaymentSources(onChange: () => void) {
     .channel("payment-engine-" + Math.random().toString(36).slice(2, 8))
     .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "worker_expenses" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "payment_history" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, onChange)
     .on("postgres_changes", { event: "*", schema: "public", table: "workers" }, onChange)
     .subscribe();
   return () => {
