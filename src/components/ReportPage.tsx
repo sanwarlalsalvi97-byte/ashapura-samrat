@@ -52,18 +52,24 @@ export default function ReportPage() {
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
   const [siteAtt, setSiteAtt] = useState<any[]>([]);
   const [siteCash, setSiteCash] = useState<{ amount: number; site_name: string | null; type: string }[]>([]);
+  const [siteExp, setSiteExp] = useState<{ amount: number; site_name: string | null }[]>([]);
+  const [sitePay, setSitePay] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
 
   const loadSiteData = useCallback(async () => {
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-    const [a, c, w] = await Promise.all([
+    const [a, c, e, p, w] = await Promise.all([
       supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
       supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
+      supabase.from("worker_expenses").select("amount, site_name").gte("date", startDate).lte("date", endDate),
+      supabase.from("payment_history").select("amount, site_name").gte("payment_date", startDate).lte("payment_date", endDate),
       getWorkers().catch(() => [] as Worker[]),
     ]);
     setSiteAtt((a.data as any[]) || []);
     setSiteCash((c.data as any[]) || []);
+    setSiteExp((e.data as any[]) || []);
+    setSitePay((p.data as any[]) || []);
     setAllWorkers(w);
   }, [year, month]);
 
@@ -229,6 +235,8 @@ export default function ReportPage() {
       <SiteWiseReport
         att={siteAtt}
         cash={siteCash}
+        exp={siteExp}
+        pay={sitePay}
         workers={allWorkers}
         monthLabel={`${monthNames[month - 1]} ${year}`}
         siteFilter={siteFilter}
@@ -373,10 +381,12 @@ export default function ReportPage() {
 }
 
 function SiteWiseReport({
-  att, cash, workers, monthLabel, siteFilter, onSiteFilterChange,
+  att, cash, exp, pay, workers, monthLabel, siteFilter, onSiteFilterChange,
 }: {
   att: any[];
   cash: { amount: number; site_name: string | null; type: string }[];
+  exp: { amount: number; site_name: string | null }[];
+  pay: { amount: number; site_name: string | null }[];
   workers: Worker[];
   monthLabel: string;
   siteFilter: string;
@@ -392,6 +402,8 @@ function SiteWiseReport({
     return list.map((siteName) => {
       const aRows = att.filter((r) => (r.site_name || "") === siteName);
       const cRows = cash.filter((r) => (r.site_name || "") === siteName);
+      const eRows = exp.filter((r) => (r.site_name || "") === siteName);
+      const pRows = pay.filter((r) => (r.site_name || "") === siteName);
       const workerSet = new Set<string>();
       aRows.forEach((r) => workerSet.add(r.worker_id));
       workers.filter((w) => w.site_name === siteName).forEach((w) => workerSet.add(w.id));
@@ -405,23 +417,29 @@ function SiteWiseReport({
         if (r.status === "Half-Day") return s + rate / 2;
         return s;
       }, 0);
-      const expense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
+      const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
+      const totalSiteExpense = earning + workerExpenses + cashbookExpense;
       return {
         siteName,
         workers: workerSet.size,
         attendance: present + half + absent,
         present, half, absent,
-        payment: earning,
-        expense,
+        earning,
+        workerExpenses,
         advance: totalAdvance,
+        cashbookExpense,
+        salaryPaid,
+        totalSiteExpense,
       };
     });
-  }, [att, cash, workers, sites, siteFilter]);
+  }, [att, cash, exp, pay, workers, sites, siteFilter]);
 
   const totals = useMemo(() => ({
     workers: data.reduce((s, x) => s + x.workers, 0),
     attendance: data.reduce((s, x) => s + x.attendance, 0),
-    expense: data.reduce((s, x) => s + x.expense + x.payment, 0),
+    expense: data.reduce((s, x) => s + x.totalSiteExpense, 0),
   }), [data]);
 
   return (
@@ -488,9 +506,14 @@ function SiteWiseReport({
                   </div>
                 </div>
                 <div className="border-t border-border/60 pt-2 space-y-1">
-                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.payment.toLocaleString("hi-IN")}`} bold />
+                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.earning.toLocaleString("hi-IN")}`} bold />
+                  <Row label="मजदूर खर्च" value={`₹${s.workerExpenses.toLocaleString("hi-IN")}`} tone="text-amber-600" />
                   <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
-                  <Row label="अन्य खर्च" value={`₹${s.expense.toLocaleString("hi-IN")}`} tone="text-destructive" />
+                  <Row label="कैशबुक खर्च" value={`₹${s.cashbookExpense.toLocaleString("hi-IN")}`} tone="text-destructive" />
+                  <Row label="सैलरी चुकाई (Paid)" value={`₹${s.salaryPaid.toLocaleString("hi-IN")}`} tone="text-emerald-600" />
+                  <div className="border-t border-border/40 pt-1 mt-1 font-bold">
+                    <Row label="कुल साइट खर्च" value={`₹${s.totalSiteExpense.toLocaleString("hi-IN")}`} bold tone="text-primary" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
