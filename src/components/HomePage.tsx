@@ -411,12 +411,10 @@ export default function HomePage({ onNavigate }: Props) {
           <QuickAction icon={CalendarCheck} label="हाजिरी दर्ज करें" onClick={() => onNavigate("attendance")} tone="green" />
           <QuickAction icon={Plus} label="खर्च जोड़ें" onClick={() => onNavigate("cashbook")} tone="red" />
           <QuickAction icon={FileBarChart} label="रिपोर्ट देखें" onClick={() => onNavigate("report")} tone="blue" />
-          <QuickAction icon={Briefcase} label="मजदूर खर्च" onClick={() => onNavigate("worker_expense")} tone="orange" />
           <QuickAction icon={ClipboardList} label="भुगतान इतिहास" onClick={() => onNavigate("payment_history")} tone="green" />
           <QuickAction icon={ClipboardList} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} tone="purple" />
           <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="violet" />
           <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
-          <QuickAction icon={ShoppingBag} label="मजदूर खर्च" onClick={() => onNavigate("worker_expense")} tone="yellow" />
           <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
         </div>
       </section>
