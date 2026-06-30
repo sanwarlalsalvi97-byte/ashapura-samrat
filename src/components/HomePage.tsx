@@ -130,7 +130,10 @@ export default function HomePage({ onNavigate }: Props) {
 
   // Summary numbers
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
-  const expense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const cashbookExpense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const totalWorkerExp = monthExp.reduce((s, x) => s + (x.amount || 0), 0);
+  const totalSalaryPaid = monthPay.reduce((s, x) => s + (x.amount || 0), 0);
+  const expense = cashbookExpense + totalWorkerExp + totalSalaryPaid;
   const balance = income - expense;
 
   const presentToday = todayAtt.filter((x) => x.status === "Present").length;
@@ -199,7 +202,7 @@ export default function HomePage({ onNavigate }: Props) {
       </div>
 
 
-      {/* 4 Summary Cards */}
+      {/* Top Cards: Income, Expense, Pending Salary, Balance */}
       <div className="grid grid-cols-2 gap-3">
         <SummaryCard
           tone="green"
@@ -214,17 +217,31 @@ export default function HomePage({ onNavigate }: Props) {
           value={`₹${shortInr(expense)}`}
         />
         <SummaryCard
+          tone="orange"
+          icon={Wallet}
+          label="बकाया सैलरी"
+          value={`₹${shortInr(sitewise.pendingSalary)}`}
+        />
+        <SummaryCard
           tone="blue"
           icon={Wallet}
           label="कुल बैलेंस"
           value={`₹${shortInr(balance)}`}
         />
-        <SummaryCard
-          tone="orange"
-          icon={Users}
-          label="कुल मजदूर"
-          value={String(workersList.length)}
-        />
+      </div>
+
+      {/* Separate Statistics Card: Total Workers */}
+      <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 grid place-items-center text-orange-600">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground font-semibold">कुल पंजीकृत</div>
+            <div className="text-base font-extrabold">कुल मजदूर</div>
+          </div>
+        </div>
+        <div className="text-2xl font-extrabold text-primary tabular-nums">{workersList.length}</div>
       </div>
 
       {/* Site-wise मजदूरी खर्च (from attendance only) */}
