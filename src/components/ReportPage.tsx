@@ -40,6 +40,7 @@ interface WorkerSummary {
   totalAdvance: number;
   totalEarning: number;
   workerExpenses: number;
+  paidAmount: number;
   netPayable: number;
 }
 
@@ -76,7 +77,7 @@ export default function ReportPage() {
       const workersList = await getWorkers().catch(() => [] as Worker[]);
       const roleById = new Map(workersList.map((w) => [w.id, w.role || ""]));
       const rows: WorkerSummary[] = res.rows
-        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance > 0)
+        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance + r.paidAmount > 0)
         .map((r) => ({
           workerId: r.worker.id,
           name: r.worker.name,
@@ -88,6 +89,7 @@ export default function ReportPage() {
           totalAdvance: r.advance,
           totalEarning: r.earned,
           workerExpenses: r.workerExpenses,
+          paidAmount: r.paidAmount,
           netPayable: r.outstanding,
         }));
       setSummary(rows);
@@ -130,13 +132,13 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "बाकी"];
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "चुकाई राशि (Paid)", "बाकी"];
     const rows: (string | number)[][] = summary.map((s) => {
       const w = workerById.get(s.workerId);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
       return [
         group, s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
-        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.netPayable),
+        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.paidAmount), Math.round(s.netPayable),
       ];
     });
     rows.push(["", "कुल", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
@@ -349,6 +351,12 @@ export default function ReportPage() {
                       <span className="text-muted-foreground">एडवांस</span>
                       <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
+                    {s.paidAmount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">चुकाई राशि (Paid)</span>
+                        <span className="font-medium text-emerald-600">-₹{Math.round(s.paidAmount).toLocaleString("hi-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
                       <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
