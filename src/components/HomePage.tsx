@@ -33,6 +33,8 @@ type CashRow = { type: "income" | "expense"; amount: number; date: string };
 type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
 type WorkerRow = { id: string; name?: string | null; daily_rate: number | null };
 type AdvRow = { worker_id: string; date: string; advance: number; site_name: string | null; workers?: { name: string | null } | null };
+type ExpRow = { amount: number };
+type PayRow = { amount: number };
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -65,6 +67,8 @@ export default function HomePage({ onNavigate }: Props) {
   const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
   const [monthCash, setMonthCash] = useState<CashRow[]>([]);
   const [advances, setAdvances] = useState<AdvRow[]>([]);
+  const [monthExp, setMonthExp] = useState<ExpRow[]>([]);
+  const [monthPay, setMonthPay] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -83,6 +87,8 @@ export default function HomePage({ onNavigate }: Props) {
       .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "workers" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_expenses" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payment_history" }, load)
       .subscribe();
     return () => {
       window.removeEventListener("sites-updated", refresh);
@@ -93,7 +99,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function load() {
     try {
-      const [w, mAtt, tAtt, cash, adv] = await Promise.all([
+      const [w, mAtt, tAtt, cash, adv, exp, pay] = await Promise.all([
         supabase.from("workers").select("id,name,daily_rate").eq("is_active", true),
         supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
         supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
@@ -105,12 +111,16 @@ export default function HomePage({ onNavigate }: Props) {
           .gt("advance", 0)
           .order("date", { ascending: false })
           .limit(8),
+        supabase.from("worker_expenses").select("amount").gte("date", startISO).lte("date", endISO),
+        supabase.from("payment_history").select("amount").gte("payment_date", startISO).lte("payment_date", endISO),
       ]);
       setWorkersList((w.data || []) as WorkerRow[]);
       setMonthAtt((mAtt.data || []) as AttRow[]);
       setTodayAtt((tAtt.data || []) as AttRow[]);
       setMonthCash((cash.data || []) as CashRow[]);
       setAdvances((adv.data || []) as any);
+      setMonthExp((exp.data || []) as ExpRow[]);
+      setMonthPay((pay.data || []) as PayRow[]);
     } finally {
       setLoading(false);
     }
