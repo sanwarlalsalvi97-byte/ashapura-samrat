@@ -147,7 +147,7 @@ export default function ReportPage() {
         Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.paidAmount), Math.round(s.netPayable),
       ];
     });
-    rows.push(["", "कुल", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
+    rows.push(["", "कुल", "", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
     if (format === "csv") {
       exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
@@ -170,6 +170,7 @@ export default function ReportPage() {
         `💰 कुल कमाई: ₹${Math.round(worker.totalEarning).toLocaleString("hi-IN")}\n` +
         `🛒 मजदूर खर्च: ₹${Math.round(worker.workerExpenses).toLocaleString("hi-IN")}\n` +
         `💸 एडवांस: ₹${Math.round(worker.totalAdvance).toLocaleString("hi-IN")}\n` +
+        `💵 चुकाई राशि: ₹${Math.round(worker.paidAmount).toLocaleString("hi-IN")}\n` +
         `✅ *बाकी राशि: ₹${Math.round(worker.netPayable).toLocaleString("hi-IN")}*`;
     } else {
       text = `📋 *हाजिरी रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
