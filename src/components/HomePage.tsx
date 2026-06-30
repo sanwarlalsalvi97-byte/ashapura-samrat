@@ -140,6 +140,17 @@ export default function HomePage({ onNavigate }: Props) {
   const halfToday = todayAtt.filter((x) => x.status === "Half-Day").length;
   const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
 
+  const [pendingPaymentsData, setPendingPaymentsData] = useState<{ totalOutstanding: number }>({ totalOutstanding: 0 });
+
+  useEffect(() => {
+    let alive = true;
+    computeWorkerPayments({ startISO, endISO }).then((res) => {
+      if (!alive) return;
+      setPendingPaymentsData({ totalOutstanding: res.totals.outstanding });
+    });
+    return () => { alive = false; };
+  }, [startISO, endISO, monthAtt, advances, monthExp, monthPay, workersList]);
+
   // Site-wise wages from attendance ONLY
   const sitewise = useMemo(() => {
     const wageOf = new Map<string, number>();
@@ -220,7 +231,7 @@ export default function HomePage({ onNavigate }: Props) {
           tone="orange"
           icon={Wallet}
           label="बकाया सैलरी"
-          value={`₹${shortInr(sitewise.pendingSalary)}`}
+          value={`₹${shortInr(pendingPaymentsData.totalOutstanding)}`}
         />
         <SummaryCard
           tone="blue"
