@@ -9,6 +9,7 @@ import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
+import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
 
 import {
   AlertDialog,
@@ -33,13 +34,21 @@ export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
   const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
 
   const load = async () => {
     try {
       const ws = await getWorkers();
       setWorkers(ws);
-      // Sites are managed only via Sites page; never auto-derived from workers.
       setSites(listSites());
+
+      const now = new Date();
+      const startISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const endISO = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const res = await computeWorkerPayments({ startISO, endISO });
+      const pMap = new Map<string, WorkerPayment>();
+      res.rows.forEach((r) => pMap.set(r.worker.id, r));
+      setPaymentsMap(pMap);
     } catch {}
   };
 
@@ -47,7 +56,11 @@ export default function WorkersPage() {
     load();
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
-    return () => window.removeEventListener("sites-updated", refresh);
+    const unsub = subscribePaymentSources(load);
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      unsub();
+    };
   }, []);
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
