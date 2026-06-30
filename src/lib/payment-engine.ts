@@ -35,7 +35,8 @@ export type WorkerPayment = {
   earned: number;          // baseEarning + overtimePay
   workerExpenses: number;  // sum of worker_expenses for that worker in window
   advance: number;
-  outstanding: number;     // earned + workerExpenses − advance
+  paidAmount: number;      // sum of payment_history for that worker in window
+  outstanding: number;     // earned + workerExpenses − advance − paidAmount
 };
 
 type AttRow = {
@@ -60,6 +61,7 @@ export type PaymentResult = {
     earned: number;
     workerExpenses: number;
     advance: number;
+    paidAmount: number;
     outstanding: number;
   };
 };
