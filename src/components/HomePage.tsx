@@ -384,6 +384,9 @@ export default function HomePage({ onNavigate }: Props) {
         )}
       </section>
 
+      {/* PendingPaymentsCard embedded above the button */}
+      <PendingPaymentsCard startISO={startISO} endISO={endISO} monthLabel={`${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`} />
+
       {/* पेमेंट बाकी — tap to open full screen */}
       <button
         onClick={() => onNavigate("pending")}
