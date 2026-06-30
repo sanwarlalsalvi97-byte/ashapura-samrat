@@ -206,7 +206,8 @@ export default function WorkersPage() {
 
               </Card>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
 
