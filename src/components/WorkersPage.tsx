@@ -119,7 +119,10 @@ export default function WorkersPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {workers.map((w, i) => (
+          {workers.map((w, i) => {
+            const pInfo = paymentsMap.get(w.id);
+            const pendingBal = pInfo ? Math.round(pInfo.outstanding) : 0;
+            return (
             <motion.div key={w.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card>
                 <CardContent className="p-4 space-y-3">
@@ -131,6 +134,11 @@ export default function WorkersPage() {
                           {w.role}
                         </span>
                         <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
+                        {pendingBal !== 0 && (
+                          <span className={`text-xs font-bold ${pendingBal > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+                            • बाकी: ₹{pendingBal.toLocaleString("hi-IN")}
+                          </span>
+                        )}
                       </div>
                     </div>
 
