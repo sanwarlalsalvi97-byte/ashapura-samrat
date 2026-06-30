@@ -229,6 +229,50 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_history: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          note: string | null
+          payment_date: string
+          payment_mode: string
+          site_name: string | null
+          user_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          payment_date?: string
+          payment_mode?: string
+          site_name?: string | null
+          user_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          payment_date?: string
+          payment_mode?: string
+          site_name?: string | null
+          user_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -260,6 +304,7 @@ export type Database = {
           note: string | null
           site_name: string | null
           updated_at: string
+          user_id: string | null
           worker_id: string
         }
         Insert: {
@@ -271,6 +316,7 @@ export type Database = {
           note?: string | null
           site_name?: string | null
           updated_at?: string
+          user_id?: string | null
           worker_id: string
         }
         Update: {
@@ -282,6 +328,7 @@ export type Database = {
           note?: string | null
           site_name?: string | null
           updated_at?: string
+          user_id?: string | null
           worker_id?: string
         }
         Relationships: [

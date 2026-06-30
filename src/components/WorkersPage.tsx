@@ -9,6 +9,7 @@ import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
+import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
 
 import {
   AlertDialog,
@@ -33,13 +34,21 @@ export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
   const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
 
   const load = async () => {
     try {
       const ws = await getWorkers();
       setWorkers(ws);
-      // Sites are managed only via Sites page; never auto-derived from workers.
       setSites(listSites());
+
+      const now = new Date();
+      const startISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const endISO = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const res = await computeWorkerPayments({ startISO, endISO });
+      const pMap = new Map<string, WorkerPayment>();
+      res.rows.forEach((r) => pMap.set(r.worker.id, r));
+      setPaymentsMap(pMap);
     } catch {}
   };
 
@@ -47,7 +56,11 @@ export default function WorkersPage() {
     load();
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
-    return () => window.removeEventListener("sites-updated", refresh);
+    const unsub = subscribePaymentSources(load);
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      unsub();
+    };
   }, []);
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
@@ -106,7 +119,10 @@ export default function WorkersPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {workers.map((w, i) => (
+          {workers.map((w, i) => {
+            const pInfo = paymentsMap.get(w.id);
+            const pendingBal = pInfo ? Math.round(pInfo.outstanding) : 0;
+            return (
             <motion.div key={w.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card>
                 <CardContent className="p-4 space-y-3">
@@ -118,6 +134,11 @@ export default function WorkersPage() {
                           {w.role}
                         </span>
                         <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
+                        {pendingBal !== 0 && (
+                          <span className={`text-xs font-bold ${pendingBal > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+                            • बाकी: ₹{pendingBal.toLocaleString("hi-IN")}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -185,7 +206,8 @@ export default function WorkersPage() {
 
               </Card>
             </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
 

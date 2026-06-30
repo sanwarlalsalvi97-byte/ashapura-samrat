@@ -24,6 +24,7 @@ import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sit
 import { useSyncExternalStore } from "react";
 import TithiBadge from "./TithiBadge";
 import PendingPaymentsCard from "./PendingPaymentsCard";
+import { computeWorkerPayments } from "@/lib/payment-engine";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -33,6 +34,8 @@ type CashRow = { type: "income" | "expense"; amount: number; date: string };
 type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
 type WorkerRow = { id: string; name?: string | null; daily_rate: number | null };
 type AdvRow = { worker_id: string; date: string; advance: number; site_name: string | null; workers?: { name: string | null } | null };
+type ExpRow = { amount: number };
+type PayRow = { amount: number };
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -65,6 +68,8 @@ export default function HomePage({ onNavigate }: Props) {
   const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
   const [monthCash, setMonthCash] = useState<CashRow[]>([]);
   const [advances, setAdvances] = useState<AdvRow[]>([]);
+  const [monthExp, setMonthExp] = useState<ExpRow[]>([]);
+  const [monthPay, setMonthPay] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [sites, setSites] = useState<Site[]>(() => listSites());
@@ -83,6 +88,8 @@ export default function HomePage({ onNavigate }: Props) {
       .on("postgres_changes", { event: "*", schema: "public", table: "cashbook" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "workers" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_expenses" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payment_history" }, load)
       .subscribe();
     return () => {
       window.removeEventListener("sites-updated", refresh);
@@ -93,7 +100,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function load() {
     try {
-      const [w, mAtt, tAtt, cash, adv] = await Promise.all([
+      const [w, mAtt, tAtt, cash, adv, exp, pay] = await Promise.all([
         supabase.from("workers").select("id,name,daily_rate").eq("is_active", true),
         supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
         supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
@@ -105,12 +112,16 @@ export default function HomePage({ onNavigate }: Props) {
           .gt("advance", 0)
           .order("date", { ascending: false })
           .limit(8),
+        supabase.from("worker_expenses").select("amount").gte("date", startISO).lte("date", endISO),
+        supabase.from("payment_history").select("amount").gte("payment_date", startISO).lte("payment_date", endISO),
       ]);
       setWorkersList((w.data || []) as WorkerRow[]);
       setMonthAtt((mAtt.data || []) as AttRow[]);
       setTodayAtt((tAtt.data || []) as AttRow[]);
       setMonthCash((cash.data || []) as CashRow[]);
       setAdvances((adv.data || []) as any);
+      setMonthExp((exp.data || []) as ExpRow[]);
+      setMonthPay((pay.data || []) as PayRow[]);
     } finally {
       setLoading(false);
     }
@@ -120,12 +131,26 @@ export default function HomePage({ onNavigate }: Props) {
 
   // Summary numbers
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
-  const expense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const cashbookExpense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const totalWorkerExp = monthExp.reduce((s, x) => s + (x.amount || 0), 0);
+  const totalSalaryPaid = monthPay.reduce((s, x) => s + (x.amount || 0), 0);
+  const expense = cashbookExpense + totalWorkerExp + totalSalaryPaid;
   const balance = income - expense;
 
   const presentToday = todayAtt.filter((x) => x.status === "Present").length;
   const halfToday = todayAtt.filter((x) => x.status === "Half-Day").length;
   const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
+
+  const [pendingPaymentsData, setPendingPaymentsData] = useState<{ totalOutstanding: number }>({ totalOutstanding: 0 });
+
+  useEffect(() => {
+    let alive = true;
+    computeWorkerPayments({ startISO, endISO }).then((res) => {
+      if (!alive) return;
+      setPendingPaymentsData({ totalOutstanding: res.totals.outstanding });
+    });
+    return () => { alive = false; };
+  }, [startISO, endISO, monthAtt, advances, monthExp, monthPay, workersList]);
 
   // Site-wise wages from attendance ONLY
   const sitewise = useMemo(() => {
@@ -189,7 +214,7 @@ export default function HomePage({ onNavigate }: Props) {
       </div>
 
 
-      {/* 4 Summary Cards */}
+      {/* Top Cards: Income, Expense, Pending Salary, Balance */}
       <div className="grid grid-cols-2 gap-3">
         <SummaryCard
           tone="green"
@@ -204,17 +229,31 @@ export default function HomePage({ onNavigate }: Props) {
           value={`₹${shortInr(expense)}`}
         />
         <SummaryCard
+          tone="orange"
+          icon={Wallet}
+          label="बकाया सैलरी"
+          value={`₹${shortInr(pendingPaymentsData.totalOutstanding)}`}
+        />
+        <SummaryCard
           tone="blue"
           icon={Wallet}
           label="कुल बैलेंस"
           value={`₹${shortInr(balance)}`}
         />
-        <SummaryCard
-          tone="orange"
-          icon={Users}
-          label="कुल मजदूर"
-          value={String(workersList.length)}
-        />
+      </div>
+
+      {/* Separate Statistics Card: Total Workers */}
+      <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 grid place-items-center text-orange-600">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground font-semibold">कुल पंजीकृत</div>
+            <div className="text-base font-extrabold">कुल मजदूर</div>
+          </div>
+        </div>
+        <div className="text-2xl font-extrabold text-primary tabular-nums">{workersList.length}</div>
       </div>
 
       {/* Site-wise मजदूरी खर्च (from attendance only) */}
@@ -345,6 +384,9 @@ export default function HomePage({ onNavigate }: Props) {
         )}
       </section>
 
+      {/* PendingPaymentsCard embedded above the button */}
+      <PendingPaymentsCard startISO={startISO} endISO={endISO} monthLabel={`${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`} />
+
       {/* पेमेंट बाकी — tap to open full screen */}
       <button
         onClick={() => onNavigate("pending")}
@@ -369,10 +411,10 @@ export default function HomePage({ onNavigate }: Props) {
           <QuickAction icon={CalendarCheck} label="हाजिरी दर्ज करें" onClick={() => onNavigate("attendance")} tone="green" />
           <QuickAction icon={Plus} label="खर्च जोड़ें" onClick={() => onNavigate("cashbook")} tone="red" />
           <QuickAction icon={FileBarChart} label="रिपोर्ट देखें" onClick={() => onNavigate("report")} tone="blue" />
+          <QuickAction icon={ClipboardList} label="भुगतान इतिहास" onClick={() => onNavigate("payment_history")} tone="green" />
           <QuickAction icon={ClipboardList} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} tone="purple" />
           <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="violet" />
           <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
-          <QuickAction icon={ShoppingBag} label="मजदूर खर्च" onClick={() => onNavigate("worker_expense")} tone="yellow" />
           <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
         </div>
       </section>

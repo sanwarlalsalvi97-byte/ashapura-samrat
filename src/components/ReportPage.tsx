@@ -40,6 +40,7 @@ interface WorkerSummary {
   totalAdvance: number;
   totalEarning: number;
   workerExpenses: number;
+  paidAmount: number;
   netPayable: number;
 }
 
@@ -51,18 +52,24 @@ export default function ReportPage() {
   const [siteFilter, setSiteFilter] = useState<string>("__all__");
   const [siteAtt, setSiteAtt] = useState<any[]>([]);
   const [siteCash, setSiteCash] = useState<{ amount: number; site_name: string | null; type: string }[]>([]);
+  const [siteExp, setSiteExp] = useState<{ amount: number; site_name: string | null }[]>([]);
+  const [sitePay, setSitePay] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
 
   const loadSiteData = useCallback(async () => {
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-    const [a, c, w] = await Promise.all([
+    const [a, c, e, p, w] = await Promise.all([
       supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
       supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
+      supabase.from("worker_expenses").select("amount, site_name").gte("date", startDate).lte("date", endDate),
+      supabase.from("payment_history").select("amount, site_name").gte("payment_date", startDate).lte("payment_date", endDate),
       getWorkers().catch(() => [] as Worker[]),
     ]);
     setSiteAtt((a.data as any[]) || []);
     setSiteCash((c.data as any[]) || []);
+    setSiteExp((e.data as any[]) || []);
+    setSitePay((p.data as any[]) || []);
     setAllWorkers(w);
   }, [year, month]);
 
@@ -76,7 +83,7 @@ export default function ReportPage() {
       const workersList = await getWorkers().catch(() => [] as Worker[]);
       const roleById = new Map(workersList.map((w) => [w.id, w.role || ""]));
       const rows: WorkerSummary[] = res.rows
-        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance > 0)
+        .filter((r) => r.presentDays + r.halfDays + r.absentDays + r.workerExpenses + r.advance + r.paidAmount > 0)
         .map((r) => ({
           workerId: r.worker.id,
           name: r.worker.name,
@@ -88,6 +95,7 @@ export default function ReportPage() {
           totalAdvance: r.advance,
           totalEarning: r.earned,
           workerExpenses: r.workerExpenses,
+          paidAmount: r.paidAmount,
           netPayable: r.outstanding,
         }));
       setSummary(rows);
@@ -130,16 +138,16 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "बाकी"];
+    const headers = ["ठेकेदार/साइट", "नाम", "पद", "दैनिक दर", "हाजिर", "आधा दिन", "गैरहाजिर", "कमाई", "मजदूर खर्च", "एडवांस", "चुकाई राशि (Paid)", "बाकी"];
     const rows: (string | number)[][] = summary.map((s) => {
       const w = workerById.get(s.workerId);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
       return [
         group, s.name, s.role, s.dailyRate, s.presentDays, s.halfDays, s.absentDays,
-        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.netPayable),
+        Math.round(s.totalEarning), Math.round(s.workerExpenses), Math.round(s.totalAdvance), Math.round(s.paidAmount), Math.round(s.netPayable),
       ];
     });
-    rows.push(["", "कुल", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
+    rows.push(["", "कुल", "", "", "", "", "", "", "", "", "", Math.round(grandTotal)]);
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
     if (format === "csv") {
       exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
@@ -162,6 +170,7 @@ export default function ReportPage() {
         `💰 कुल कमाई: ₹${Math.round(worker.totalEarning).toLocaleString("hi-IN")}\n` +
         `🛒 मजदूर खर्च: ₹${Math.round(worker.workerExpenses).toLocaleString("hi-IN")}\n` +
         `💸 एडवांस: ₹${Math.round(worker.totalAdvance).toLocaleString("hi-IN")}\n` +
+        `💵 चुकाई राशि: ₹${Math.round(worker.paidAmount).toLocaleString("hi-IN")}\n` +
         `✅ *बाकी राशि: ₹${Math.round(worker.netPayable).toLocaleString("hi-IN")}*`;
     } else {
       text = `📋 *हाजिरी रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
@@ -227,6 +236,8 @@ export default function ReportPage() {
       <SiteWiseReport
         att={siteAtt}
         cash={siteCash}
+        exp={siteExp}
+        pay={sitePay}
         workers={allWorkers}
         monthLabel={`${monthNames[month - 1]} ${year}`}
         siteFilter={siteFilter}
@@ -349,6 +360,12 @@ export default function ReportPage() {
                       <span className="text-muted-foreground">एडवांस</span>
                       <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
+                    {s.paidAmount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">चुकाई राशि (Paid)</span>
+                        <span className="font-medium text-emerald-600">-₹{Math.round(s.paidAmount).toLocaleString("hi-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
                       <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
@@ -365,10 +382,12 @@ export default function ReportPage() {
 }
 
 function SiteWiseReport({
-  att, cash, workers, monthLabel, siteFilter, onSiteFilterChange,
+  att, cash, exp, pay, workers, monthLabel, siteFilter, onSiteFilterChange,
 }: {
   att: any[];
   cash: { amount: number; site_name: string | null; type: string }[];
+  exp: { amount: number; site_name: string | null }[];
+  pay: { amount: number; site_name: string | null }[];
   workers: Worker[];
   monthLabel: string;
   siteFilter: string;
@@ -384,6 +403,8 @@ function SiteWiseReport({
     return list.map((siteName) => {
       const aRows = att.filter((r) => (r.site_name || "") === siteName);
       const cRows = cash.filter((r) => (r.site_name || "") === siteName);
+      const eRows = exp.filter((r) => (r.site_name || "") === siteName);
+      const pRows = pay.filter((r) => (r.site_name || "") === siteName);
       const workerSet = new Set<string>();
       aRows.forEach((r) => workerSet.add(r.worker_id));
       workers.filter((w) => w.site_name === siteName).forEach((w) => workerSet.add(w.id));
@@ -397,23 +418,29 @@ function SiteWiseReport({
         if (r.status === "Half-Day") return s + rate / 2;
         return s;
       }, 0);
-      const expense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
+      const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
+      const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
+      const totalSiteExpense = earning + workerExpenses + cashbookExpense;
       return {
         siteName,
         workers: workerSet.size,
         attendance: present + half + absent,
         present, half, absent,
-        payment: earning,
-        expense,
+        earning,
+        workerExpenses,
         advance: totalAdvance,
+        cashbookExpense,
+        salaryPaid,
+        totalSiteExpense,
       };
     });
-  }, [att, cash, workers, sites, siteFilter]);
+  }, [att, cash, exp, pay, workers, sites, siteFilter]);
 
   const totals = useMemo(() => ({
     workers: data.reduce((s, x) => s + x.workers, 0),
     attendance: data.reduce((s, x) => s + x.attendance, 0),
-    expense: data.reduce((s, x) => s + x.expense + x.payment, 0),
+    expense: data.reduce((s, x) => s + x.totalSiteExpense, 0),
   }), [data]);
 
   return (
@@ -480,9 +507,14 @@ function SiteWiseReport({
                   </div>
                 </div>
                 <div className="border-t border-border/60 pt-2 space-y-1">
-                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.payment.toLocaleString("hi-IN")}`} bold />
+                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.earning.toLocaleString("hi-IN")}`} bold />
+                  <Row label="मजदूर खर्च" value={`₹${s.workerExpenses.toLocaleString("hi-IN")}`} tone="text-amber-600" />
                   <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
-                  <Row label="अन्य खर्च" value={`₹${s.expense.toLocaleString("hi-IN")}`} tone="text-destructive" />
+                  <Row label="कैशबुक खर्च" value={`₹${s.cashbookExpense.toLocaleString("hi-IN")}`} tone="text-destructive" />
+                  <Row label="सैलरी चुकाई (Paid)" value={`₹${s.salaryPaid.toLocaleString("hi-IN")}`} tone="text-emerald-600" />
+                  <div className="border-t border-border/40 pt-1 mt-1 font-bold">
+                    <Row label="कुल साइट खर्च" value={`₹${s.totalSiteExpense.toLocaleString("hi-IN")}`} bold tone="text-primary" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
