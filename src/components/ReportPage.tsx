@@ -350,22 +350,10 @@ export default function ReportPage() {
                       <span className="text-muted-foreground">कुल कमाई</span>
                       <span className="font-medium">₹{Math.round(s.totalEarning).toLocaleString("hi-IN")}</span>
                     </div>
-                    {s.workerExpenses > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">मजदूर खर्च</span>
-                        <span className="font-medium text-amber-600">+₹{Math.round(s.workerExpenses).toLocaleString("hi-IN")}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">एडवांस</span>
                       <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
-                    {s.paidAmount > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">चुकाई राशि (Paid)</span>
-                        <span className="font-medium text-emerald-600">-₹{Math.round(s.paidAmount).toLocaleString("hi-IN")}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
                       <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
@@ -421,7 +409,7 @@ function SiteWiseReport({
       const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
       const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
       const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
-      const totalSiteExpense = earning + workerExpenses + cashbookExpense;
+      const totalSiteExpense = earning + totalAdvance;
       return {
         siteName,
         workers: workerSet.size,
@@ -508,10 +496,7 @@ function SiteWiseReport({
                 </div>
                 <div className="border-t border-border/60 pt-2 space-y-1">
                   <Row label="कुल भुगतान (कमाई)" value={`₹${s.earning.toLocaleString("hi-IN")}`} bold />
-                  <Row label="मजदूर खर्च" value={`₹${s.workerExpenses.toLocaleString("hi-IN")}`} tone="text-amber-600" />
                   <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
-                  <Row label="कैशबुक खर्च" value={`₹${s.cashbookExpense.toLocaleString("hi-IN")}`} tone="text-destructive" />
-                  <Row label="सैलरी चुकाई (Paid)" value={`₹${s.salaryPaid.toLocaleString("hi-IN")}`} tone="text-emerald-600" />
                   <div className="border-t border-border/40 pt-1 mt-1 font-bold">
                     <Row label="कुल साइट खर्च" value={`₹${s.totalSiteExpense.toLocaleString("hi-IN")}`} bold tone="text-primary" />
                   </div>

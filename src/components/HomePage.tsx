@@ -17,13 +17,11 @@ import {
   Briefcase,
   Clock,
   HardHat,
-  ShoppingBag,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
 import TithiBadge from "./TithiBadge";
-import PendingPaymentsCard from "./PendingPaymentsCard";
 import { computeWorkerPayments } from "@/lib/payment-engine";
 
 interface Props {
@@ -33,7 +31,7 @@ interface Props {
 type CashRow = { type: "income" | "expense"; amount: number; date: string };
 type AttRow = { worker_id: string; status: string; site_name: string | null; date: string };
 type WorkerRow = { id: string; name?: string | null; daily_rate: number | null };
-type AdvRow = { worker_id: string; date: string; advance: number; site_name: string | null; workers?: { name: string | null } | null };
+type AdvRow = { advance: number };
 type ExpRow = { amount: number };
 type PayRow = { amount: number };
 
@@ -64,7 +62,6 @@ export default function HomePage({ onNavigate }: Props) {
   );
 
   const [workersList, setWorkersList] = useState<WorkerRow[]>([]);
-  const [monthAtt, setMonthAtt] = useState<AttRow[]>([]);
   const [todayAtt, setTodayAtt] = useState<AttRow[]>([]);
   const [monthCash, setMonthCash] = useState<CashRow[]>([]);
   const [advances, setAdvances] = useState<AdvRow[]>([]);
@@ -72,7 +69,7 @@ export default function HomePage({ onNavigate }: Props) {
   const [monthPay, setMonthPay] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [, setSites] = useState<Site[]>(() => listSites());
   useSyncExternalStore(
     (cb) => subscribeSites(() => { setSites(listSites()); cb(); }),
     getSitesVersion,
@@ -100,26 +97,18 @@ export default function HomePage({ onNavigate }: Props) {
 
   async function load() {
     try {
-      const [w, mAtt, tAtt, cash, adv, exp, pay] = await Promise.all([
+      const [w, tAtt, cash, adv, exp, pay] = await Promise.all([
         supabase.from("workers").select("id,name,daily_rate").eq("is_active", true),
-        supabase.from("attendance").select("worker_id,status,site_name,date").gte("date", startISO).lte("date", endISO),
         supabase.from("attendance").select("worker_id,status,site_name,date").eq("date", todayISO),
         supabase.from("cashbook").select("type,amount,date").gte("date", startISO).lte("date", endISO),
-        supabase
-          .from("attendance")
-          .select("worker_id,date,advance,site_name,workers(name)")
-          .gte("date", startISO).lte("date", endISO)
-          .gt("advance", 0)
-          .order("date", { ascending: false })
-          .limit(8),
+        supabase.from("attendance").select("advance").gte("date", startISO).lte("date", endISO).gt("advance", 0),
         supabase.from("worker_expenses").select("amount").gte("date", startISO).lte("date", endISO),
         supabase.from("payment_history").select("amount").gte("payment_date", startISO).lte("payment_date", endISO),
       ]);
       setWorkersList((w.data || []) as WorkerRow[]);
-      setMonthAtt((mAtt.data || []) as AttRow[]);
       setTodayAtt((tAtt.data || []) as AttRow[]);
       setMonthCash((cash.data || []) as CashRow[]);
-      setAdvances((adv.data || []) as any);
+      setAdvances((adv.data || []) as AdvRow[]);
       setMonthExp((exp.data || []) as ExpRow[]);
       setMonthPay((pay.data || []) as PayRow[]);
     } finally {
@@ -128,8 +117,9 @@ export default function HomePage({ onNavigate }: Props) {
   }
 
   const totalAdvance = advances.reduce((s, a) => s + (a.advance || 0), 0);
+  const advanceCount = advances.length;
 
-  // Summary numbers
+  // Summary numbers — logic unchanged
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
   const cashbookExpense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
   const totalWorkerExp = monthExp.reduce((s, x) => s + (x.amount || 0), 0);
@@ -141,176 +131,67 @@ export default function HomePage({ onNavigate }: Props) {
   const halfToday = todayAtt.filter((x) => x.status === "Half-Day").length;
   const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
 
-  const [pendingPaymentsData, setPendingPaymentsData] = useState<{ totalOutstanding: number }>({ totalOutstanding: 0 });
-
+  const [pendingOutstanding, setPendingOutstanding] = useState(0);
   useEffect(() => {
     let alive = true;
     computeWorkerPayments({ startISO, endISO }).then((res) => {
       if (!alive) return;
-      setPendingPaymentsData({ totalOutstanding: res.totals.outstanding });
+      setPendingOutstanding(res.totals.outstanding);
     });
     return () => { alive = false; };
-  }, [startISO, endISO, monthAtt, advances, monthExp, monthPay, workersList]);
-
-  // Site-wise wages from attendance ONLY
-  const sitewise = useMemo(() => {
-    const wageOf = new Map<string, number>();
-    workersList.forEach((w) => wageOf.set(w.id, w.daily_rate || 0));
-    const known = new Set(sites.map((s) => s.name));
-    const map = new Map<string, number>();
-    sites.forEach((s) => map.set(s.name, 0));
-    monthAtt.forEach((row) => {
-      const site = (row.site_name || "").trim();
-      if (!site || !known.has(site)) return;
-      const wage = wageOf.get(row.worker_id) || 0;
-      const w = row.status === "Present" ? 1 : row.status === "Half-Day" ? 0.5 : 0;
-      if (w > 0) map.set(site, (map.get(site) || 0) + wage * w);
-    });
-    const rows = Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
-    rows.sort((a, b) => b.amount - a.amount);
-    const total = rows.reduce((s, r) => s + r.amount, 0);
-    const max = Math.max(1, ...rows.map((r) => r.amount));
-    return { rows, total, max };
-  }, [monthAtt, workersList, sites]);
+  }, [startISO, endISO, advances, monthExp, monthPay, workersList]);
 
   const goPrevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
   const goNextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
 
   return (
-    <div className="space-y-5 animate-fade-in pb-24">
-      {/* Month selector */}
-      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-3 py-2.5 shadow-sm">
-        <button
-          onClick={goPrevMonth}
-          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
-          aria-label="पिछला महीना"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <div className="text-center">
-          <div className="text-[11px] text-muted-foreground font-semibold">महीना</div>
-          <div className="text-base font-extrabold tracking-tight">
-            {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
-          </div>
-        </div>
-        <button
-          onClick={goNextMonth}
-          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
-          aria-label="अगला महीना"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Today's Tithi */}
-      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-4 py-3 shadow-sm">
-        <div className="min-w-0">
-          <div className="text-[11px] text-muted-foreground font-semibold">आज की तिथि</div>
-          <div className="text-sm font-extrabold">
-            {today.toLocaleDateString("hi-IN", { weekday: "long", day: "numeric", month: "long" })}
-          </div>
-        </div>
-        <TithiBadge date={today} />
-      </div>
-
-
-      {/* Top Cards: Income, Expense, Pending Salary, Balance */}
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryCard
-          tone="green"
-          icon={TrendingUp}
-          label="कुल आय"
-          value={`₹${shortInr(income)}`}
-        />
-        <SummaryCard
-          tone="red"
-          icon={TrendingDown}
-          label="कुल खर्च"
-          value={`₹${shortInr(expense)}`}
-        />
-        <SummaryCard
-          tone="orange"
-          icon={Wallet}
-          label="बकाया सैलरी"
-          value={`₹${shortInr(pendingPaymentsData.totalOutstanding)}`}
-        />
-        <SummaryCard
-          tone="blue"
-          icon={Wallet}
-          label="कुल बैलेंस"
-          value={`₹${shortInr(balance)}`}
-        />
-      </div>
-
-      {/* Separate Statistics Card: Total Workers */}
-      <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 grid place-items-center text-orange-600">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground font-semibold">कुल पंजीकृत</div>
-            <div className="text-base font-extrabold">कुल मजदूर</div>
-          </div>
-        </div>
-        <div className="text-2xl font-extrabold text-primary tabular-nums">{workersList.length}</div>
-      </div>
-
-      {/* Site-wise मजदूरी खर्च (from attendance only) */}
-      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-primary" />
-            <h2 className="text-base font-extrabold">साइट-वाइज मजदूरी खर्च</h2>
-          </div>
+    <div className="space-y-3 animate-fade-in pb-24">
+      {/* Month + Tithi combined compact bar */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex items-center justify-between bg-card rounded-[20px] border border-border/60 px-2 py-2 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)]">
           <button
-            onClick={() => onNavigate("report")}
-            className="text-[11px] font-semibold text-primary flex items-center gap-1"
+            onClick={goPrevMonth}
+            className="w-8 h-8 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
+            aria-label="पिछला महीना"
           >
-            रिपोर्ट <ArrowRight className="w-3 h-3" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
-        </div>
-
-        {sitewise.rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-4">
-            कोई साइट नहीं — सेटिंग्स से जोड़ें
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sitewise.rows.map((r) => (
-              <div key={r.name}>
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <div className="min-w-0 pr-2">
-                    <div className="text-sm font-bold truncate">{r.name}</div>
-                    <div className="text-[10px] text-muted-foreground font-medium">
-                      उपस्थित मजदूरी खर्च
-                    </div>
-                  </div>
-                  <div className="text-lg font-extrabold tabular-nums">
-                    ₹{r.amount.toLocaleString("hi-IN")}
-                  </div>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all"
-                    style={{ width: `${(r.amount / sitewise.max) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-            <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-border/60">
-              <span className="text-xs font-bold text-muted-foreground">कुल मजदूरी खर्च</span>
-              <span className="text-lg font-extrabold tabular-nums text-primary">
-                ₹{sitewise.total.toLocaleString("hi-IN")}
-              </span>
+          <div className="text-center leading-tight">
+            <div className="text-[10px] text-muted-foreground font-semibold">महीना</div>
+            <div className="text-sm font-extrabold tracking-tight">
+              {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
             </div>
           </div>
-        )}
-      </section>
+          <button
+            onClick={goNextMonth}
+            className="w-8 h-8 rounded-xl grid place-items-center hover:bg-muted active:scale-95 transition"
+            aria-label="अगला महीना"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="bg-card rounded-[20px] border border-border/60 px-3 py-2 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] flex items-center gap-2">
+          <div className="leading-tight">
+            <div className="text-[10px] text-muted-foreground font-semibold">आज</div>
+            <div className="text-xs font-extrabold">
+              {today.toLocaleDateString("hi-IN", { day: "numeric", month: "short" })}
+            </div>
+          </div>
+          <TithiBadge date={today} />
+        </div>
+      </div>
+
+      {/* Summary Cards: Income, Expense, Balance, Workers */}
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryCard tone="green" icon={TrendingUp} label="कुल आय" value={`₹${shortInr(income)}`} />
+        <SummaryCard tone="red" icon={TrendingDown} label="कुल खर्च" value={`₹${shortInr(expense)}`} />
+        <SummaryCard tone="blue" icon={Wallet} label="कुल बैलेंस" value={`₹${shortInr(balance)}`} />
+        <SummaryCard tone="orange" icon={Users} label="कुल मजदूर" value={String(workersList.length)} />
+      </div>
 
       {/* Today's attendance */}
-      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
+      <section className="bg-card rounded-[20px] border border-border/60 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] p-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <CalendarCheck className="w-4 h-4 text-primary" />
             <h2 className="text-base font-extrabold">आज की हाजिरी</h2>
@@ -325,97 +206,66 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </section>
 
-      {/* एडवांस / Advance card */}
-      <section className="bg-card rounded-2xl border border-border/60 shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
+      {/* Advance compact card */}
+      <button
+        onClick={() => onNavigate("advance")}
+        className="w-full text-left bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 rounded-[20px] border border-orange-200/70 dark:border-orange-900/40 p-3 shadow-[0_4px_14px_-6px_rgba(234,88,12,0.35)] active:scale-[0.99] transition"
+      >
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-primary" />
-            <h2 className="text-base font-extrabold">एडवांस (इस महीने)</h2>
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 grid place-items-center text-white shadow-sm">
+              <Wallet className="w-4 h-4" />
+            </span>
+            <h2 className="text-base font-extrabold text-orange-800 dark:text-orange-200">कुल एडवांस दिया</h2>
           </div>
-          <button
-            onClick={() => onNavigate("advance")}
-            className="text-[11px] font-semibold text-primary flex items-center gap-1"
-          >
-            सभी <ArrowRight className="w-3 h-3" />
-          </button>
-        </div>
-
-        <div className="flex items-baseline justify-between mb-3">
-          <span className="text-xs font-semibold text-muted-foreground">कुल दिया गया</span>
-          <span className="text-xl font-extrabold tabular-nums text-primary">
-            ₹{totalAdvance.toLocaleString("hi-IN")}
+          <span className="text-[11px] font-bold text-orange-700 dark:text-orange-300 flex items-center gap-0.5">
+            सब देखें <ArrowRight className="w-3 h-3" />
           </span>
         </div>
+        <div className="text-2xl font-extrabold tabular-nums text-orange-700 dark:text-orange-300 leading-tight">
+          ₹{totalAdvance.toLocaleString("hi-IN")}
+        </div>
+        <div className="text-[11px] font-semibold text-orange-700/80 dark:text-orange-400/80 mt-0.5">
+          {advanceCount} बार एडवांस दिया गया
+        </div>
+      </button>
 
-        {advances.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-3">
-            इस महीने कोई एडवांस नहीं दिया गया
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {advances.map((a, i) => {
-              const d = new Date(a.date);
-              const dStr = `${d.getDate()} ${HINDI_MONTHS[d.getMonth()].slice(0, 3)}`;
-              return (
-                <li
-                  key={`${a.worker_id}-${a.date}-${i}`}
-                  className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold truncate">
-                      {a.workers?.name || "मजदूर"}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground truncate">
-                      {dStr}{a.site_name ? ` • ${a.site_name}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-sm font-extrabold tabular-nums">
-                      ₹{(a.advance || 0).toLocaleString("hi-IN")}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      ✓ दिया गया
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {/* PendingPaymentsCard embedded above the button */}
-      <PendingPaymentsCard startISO={startISO} endISO={endISO} monthLabel={`${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`} />
-
-      {/* पेमेंट बाकी — tap to open full screen */}
+      {/* Pending Payments compact CTA */}
       <button
         onClick={() => onNavigate("pending")}
-        className="w-full flex items-center gap-4 rounded-2xl border border-orange-300/70 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20 px-4 py-4 shadow-sm active:scale-[0.98] transition text-left"
+        className="w-full flex items-center gap-3 rounded-[20px] border border-orange-300/70 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/20 px-3 py-3 shadow-[0_4px_14px_-6px_rgba(234,88,12,0.35)] active:scale-[0.98] transition text-left"
       >
-        <span className="w-12 h-12 rounded-2xl bg-white dark:bg-orange-950/40 grid place-items-center text-orange-600 text-2xl font-extrabold shadow-sm shrink-0">
+        <span className="w-10 h-10 rounded-2xl bg-white dark:bg-orange-950/40 grid place-items-center text-orange-600 text-xl font-extrabold shadow-sm shrink-0">
           ₹
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-base font-extrabold text-orange-700 dark:text-orange-300">पेमेंट बाकी</span>
-          <span className="block text-xs font-semibold text-orange-600/80 dark:text-orange-400/80">बैंक से भेजें</span>
+          <span className="block text-base font-extrabold text-orange-700 dark:text-orange-300 leading-tight">पेमेंट बाकी</span>
+          <span className="block text-xs font-semibold text-orange-600/80 dark:text-orange-400/80 tabular-nums">
+            ₹{pendingOutstanding.toLocaleString("hi-IN")} बकाया
+          </span>
         </span>
         <ArrowRight className="w-5 h-5 text-orange-600 shrink-0" />
       </button>
-
+      <button
+        onClick={() => onNavigate("pending")}
+        className="w-full text-center text-xs font-bold text-primary py-1 -mt-1"
+      >
+        सभी पेमेंट बाकी देखें →
+      </button>
 
       {/* Quick actions */}
       <section>
-        <h2 className="text-sm font-extrabold mb-3 px-1">त्वरित कार्य</h2>
+        <h2 className="text-base font-extrabold mb-2 px-1">त्वरित कार्य</h2>
         <div className="grid grid-cols-2 gap-3">
-          <QuickAction icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} tone="orange" />
-          <QuickAction icon={CalendarCheck} label="हाजिरी दर्ज करें" onClick={() => onNavigate("attendance")} tone="green" />
+          <QuickAction icon={Wallet} label="एडवांस" onClick={() => onNavigate("advance")} tone="orange" />
+          <QuickAction icon={CalendarCheck} label="हाजिरी" onClick={() => onNavigate("attendance")} tone="green" />
+          <QuickAction icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} tone="violet" />
           <QuickAction icon={Plus} label="खर्च जोड़ें" onClick={() => onNavigate("cashbook")} tone="red" />
-          <QuickAction icon={FileBarChart} label="रिपोर्ट देखें" onClick={() => onNavigate("report")} tone="blue" />
+          <QuickAction icon={FileBarChart} label="रिपोर्ट" onClick={() => onNavigate("report")} tone="blue" />
           <QuickAction icon={ClipboardList} label="भुगतान इतिहास" onClick={() => onNavigate("payment_history")} tone="green" />
-          <QuickAction icon={ClipboardList} label="मासिक रिपोर्ट" onClick={() => onNavigate("report")} tone="purple" />
-          <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="violet" />
           <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
           <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
+          <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="purple" />
         </div>
       </section>
 
@@ -454,14 +304,14 @@ function SummaryCard({
   tone, icon: Icon, label, value,
 }: { tone: Tone; icon: any; label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-card border border-border/60 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm`}>
-          <Icon className="w-5 h-5" />
+    <div className="rounded-[20px] bg-card border border-border/60 p-3 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)]">
+      <div className="flex items-center justify-between mb-1">
+        <span className={`w-8 h-8 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm`}>
+          <Icon className="w-4 h-4" />
         </span>
       </div>
-      <div className="text-xl font-extrabold tabular-nums tracking-tight leading-tight">{value}</div>
-      <div className="text-xs font-semibold text-muted-foreground mt-0.5">{label}</div>
+      <div className="text-lg font-extrabold tabular-nums tracking-tight leading-tight">{value}</div>
+      <div className="text-[11px] font-semibold text-muted-foreground mt-0.5">{label}</div>
     </div>
   );
 }
@@ -470,8 +320,8 @@ function AttStat({
   tone, label, value, suffix, icon: Icon,
 }: { tone: Tone; label: string; value: number; suffix?: string; icon?: any }) {
   return (
-    <div className={`rounded-2xl ${TONE_SOFT[tone]} p-3 text-center`}>
-      <div className="text-xl font-extrabold tabular-nums leading-none">
+    <div className={`rounded-2xl ${TONE_SOFT[tone]} p-2.5 text-center`}>
+      <div className="text-lg font-extrabold tabular-nums leading-none">
         {String(value).padStart(2, "0")}{suffix || ""}
       </div>
       <div className="text-[11px] font-bold mt-1 flex items-center justify-center gap-1">
@@ -488,10 +338,10 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="rounded-2xl bg-card border border-border/60 p-4 flex items-center gap-3 shadow-sm active:scale-[0.96] transition text-left"
+      className="rounded-[20px] bg-card border border-border/60 p-3 flex items-center gap-3 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] active:scale-[0.96] transition text-left"
     >
-      <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm shrink-0`}>
-        <Icon className="w-5 h-5" />
+      <span className={`w-9 h-9 rounded-xl bg-gradient-to-br ${TONE_BG[tone]} grid place-items-center text-white shadow-sm shrink-0`}>
+        <Icon className="w-4 h-4" />
       </span>
       <span className="text-sm font-bold leading-tight">{label}</span>
     </button>
