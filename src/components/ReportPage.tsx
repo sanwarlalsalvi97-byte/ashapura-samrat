@@ -496,10 +496,7 @@ function SiteWiseReport({
                 </div>
                 <div className="border-t border-border/60 pt-2 space-y-1">
                   <Row label="कुल भुगतान (कमाई)" value={`₹${s.earning.toLocaleString("hi-IN")}`} bold />
-                  <Row label="मजदूर खर्च" value={`₹${s.workerExpenses.toLocaleString("hi-IN")}`} tone="text-amber-600" />
                   <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
-                  <Row label="कैशबुक खर्च" value={`₹${s.cashbookExpense.toLocaleString("hi-IN")}`} tone="text-destructive" />
-                  <Row label="सैलरी चुकाई (Paid)" value={`₹${s.salaryPaid.toLocaleString("hi-IN")}`} tone="text-emerald-600" />
                   <div className="border-t border-border/40 pt-1 mt-1 font-bold">
                     <Row label="कुल साइट खर्च" value={`₹${s.totalSiteExpense.toLocaleString("hi-IN")}`} bold tone="text-primary" />
                   </div>
