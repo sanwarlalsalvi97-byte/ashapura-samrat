@@ -350,22 +350,10 @@ export default function ReportPage() {
                       <span className="text-muted-foreground">कुल कमाई</span>
                       <span className="font-medium">₹{Math.round(s.totalEarning).toLocaleString("hi-IN")}</span>
                     </div>
-                    {s.workerExpenses > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">मजदूर खर्च</span>
-                        <span className="font-medium text-amber-600">+₹{Math.round(s.workerExpenses).toLocaleString("hi-IN")}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">एडवांस</span>
                       <span className="font-medium text-destructive">-₹{Math.round(s.totalAdvance).toLocaleString("hi-IN")}</span>
                     </div>
-                    {s.paidAmount > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">चुकाई राशि (Paid)</span>
-                        <span className="font-medium text-emerald-600">-₹{Math.round(s.paidAmount).toLocaleString("hi-IN")}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between border-t pt-1 border-border">
                       <span className="font-semibold">बाकी राशि</span>
                       <span className="font-bold text-primary">₹{Math.round(s.netPayable).toLocaleString("hi-IN")}</span>
