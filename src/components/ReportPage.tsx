@@ -409,7 +409,7 @@ function SiteWiseReport({
       const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
       const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
       const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
-      const totalSiteExpense = earning + workerExpenses + cashbookExpense;
+      const totalSiteExpense = earning + totalAdvance;
       return {
         siteName,
         workers: workerSet.size,
