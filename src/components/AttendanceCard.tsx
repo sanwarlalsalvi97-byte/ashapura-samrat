@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { toISODate } from "@/lib/date-utils";
 
 export type WorkerTimes = {
   in_time: string | null;
