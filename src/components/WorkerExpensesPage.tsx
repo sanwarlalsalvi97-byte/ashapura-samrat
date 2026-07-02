@@ -29,7 +29,7 @@ const CATEGORIES = [
 ];
 
 function todayISO() {
-toISODate(return new Date());
+  return toISODate(new Date());
 }
 
 export default function WorkerExpensesPage() {
