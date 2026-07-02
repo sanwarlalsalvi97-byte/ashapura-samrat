@@ -47,7 +47,7 @@ function shortInr(n: number): string {
 function monthBounds(year: number, month: number) {
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const iso = (d: Date) => toISODate(d);
   return { startISO: iso(start), endISO: iso(end) };
 }
 

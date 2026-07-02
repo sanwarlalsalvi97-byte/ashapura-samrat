@@ -27,8 +27,9 @@ const STATUS_LABEL: Record<string, string> = {
   Absent: "गैरहाजिर",
 };
 
+import { toISODate } from "@/lib/date-utils";
 function formatDate(d: Date) {
-  return d.toISOString().split("T")[0];
+  return toISODate(d);
 }
 
 function formatDisplayDate(d: Date) {
