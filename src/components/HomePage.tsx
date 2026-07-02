@@ -53,7 +53,7 @@ function monthBounds(year: number, month: number) {
 
 export default function HomePage({ onNavigate }: Props) {
   const today = new Date();
-  const todayISO = today.toISOString().slice(0, 10);
+  const todayISO = toISODate(today);
 
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const { startISO, endISO } = useMemo(

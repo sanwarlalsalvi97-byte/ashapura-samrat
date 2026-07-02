@@ -127,7 +127,7 @@ export default function CashbookPage() {
   const balance = income - expense;
 
   // This month
-  const ym = new Date().toISOString().slice(0, 7);
+  const ym = toISODate(new Date()).slice(0, 7);
   const monthEntries = entries.filter((e) => e.date.startsWith(ym));
   const mIncome = monthEntries.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
   const mExpense = monthEntries.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);

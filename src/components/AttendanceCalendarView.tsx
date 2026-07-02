@@ -13,7 +13,7 @@ const WEEK = ["रवि", "सोम", "मंगल", "बुध", "गुर�
 
 type DayStat = { P: number; A: number; H: number };
 
-function ymd(d: Date) { return d.toISOString().slice(0, 10); }
+function ymd(d: Date) { return toISODate(d); }
 
 export default function AttendanceCalendarView() {
   const [cursor, setCursor] = useState(() => new Date());

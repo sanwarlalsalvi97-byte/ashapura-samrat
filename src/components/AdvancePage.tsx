@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getWorkers, markAttendance, type Worker } from "@/lib/supabase-helpers";
@@ -41,7 +42,7 @@ type AdvEntry = {
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
-function iso(d: Date) { return d.toISOString().slice(0, 10); }
+function iso(d: Date) { return toISODate(d); }
 function fmt(d: string) {
   const dt = new Date(d);
   return `${dt.getDate()} ${HINDI_MONTHS[dt.getMonth()].slice(0, 3)} ${dt.getFullYear()}`;
