@@ -17,11 +17,12 @@ import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { calcMortarForBricks } from "@/lib/mortar-calc";
 import {
+import { toISODate } from "@/lib/date-utils";
   getMaterialEntries, addMaterialEntry, deleteMaterialEntry, getMaterialTotals,
   type MaterialEntry, type MaterialKind,
 } from "@/lib/material-stock";
 
-const today = () => new Date().toISOString().split("T")[0];
+const today = () =>toISODate(new Date());
 const MORTAR_RATIOS = ["1:4", "1:5", "1:6"];
 
 export default function BricksPage() {

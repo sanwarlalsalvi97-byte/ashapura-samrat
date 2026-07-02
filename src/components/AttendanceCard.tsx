@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { toISODate } from "@/lib/date-utils";
 
 export type WorkerTimes = {
   in_time: string | null;
@@ -436,12 +437,12 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
   const month = cursor.getMonth();
   const firstDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso =toISODate(new Date());
 
   const fetchMonth = async () => {
     setLoading(true);
-    const start = new Date(year, month, 1).toISOString().slice(0, 10);
-    const end = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    const start =toISODate(new Date(year, month, 1));
+    const end =toISODate(new Date(year, month + 1, 0));
     const { data } = await supabase
       .from("attendance")
       .select("date,status,advance,site_name,notes,created_at,updated_at")
@@ -498,7 +499,7 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
   const cells: ({ day: number; iso: string } | null)[] = [];
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
-    const iso = new Date(year, month, d).toISOString().slice(0, 10);
+    const iso =toISODate(new Date(year, month, d));
     cells.push({ day: d, iso });
   }
 

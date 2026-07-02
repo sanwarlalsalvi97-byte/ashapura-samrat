@@ -7,6 +7,7 @@ import { Trash2, FileDown, Search, History, Building2, Calendar } from "lucide-r
 import { toast } from "sonner";
 import { listSites } from "@/lib/sites";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
+import { toISODate } from "@/lib/date-utils";
 
 type PaymentRow = {
   id: string;
@@ -41,7 +42,7 @@ export default function PaymentHistoryPage() {
     if (selectedMonth) {
       const start = `${selectedMonth}-01`;
       const [y, m] = selectedMonth.split("-").map(Number);
-      const end = new Date(y, m, 0).toISOString().slice(0, 10);
+      const end =toISODate(new Date(y, m, 0));
       query = query.gte("payment_date", start).lte("payment_date", end);
     }
 

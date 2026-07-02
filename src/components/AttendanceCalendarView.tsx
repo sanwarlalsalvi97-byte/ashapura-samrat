@@ -6,6 +6,7 @@ import { approxTithi } from "@/lib/tithi";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { toISODate } from "@/lib/date-utils";
 
 const HINDI_MONTHS = ["जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
 const WEEK = ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"];
@@ -187,7 +188,7 @@ function DayDetails({ iso, onChanged }: { iso: string; onChanged: () => void }) 
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const tithi = approxTithi(new Date(iso));
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso =toISODate(new Date());
   const isFuture = iso > todayIso;
 
   const load = async () => {

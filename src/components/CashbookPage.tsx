@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Plus, TrendingUp, TrendingDown, Wallet, Trash2, Pencil } from "lucide-react";
+import { toISODate } from "@/lib/date-utils";
 
 type Entry = {
   id: string;
@@ -37,7 +38,7 @@ export default function CashbookPage() {
   const [type, setType] = useState<Entry["type"]>("expense");
   const [category, setCategory] = useState<Entry["category"]>("material");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toISODate(new Date()));
   const [site, setSite] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);

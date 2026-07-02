@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, ShoppingBag, Utensils, Coffee, Pill, Home as HomeIcon, Wrench, MoreHorizontal } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { listSites } from "@/lib/sites";
+import { toISODate } from "@/lib/date-utils";
 
 type Worker = { id: string; name: string; site_name: string | null };
 type Expense = {
@@ -28,7 +29,7 @@ const CATEGORIES = [
 ];
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+toISODate(return new Date());
 }
 
 export default function WorkerExpensesPage() {

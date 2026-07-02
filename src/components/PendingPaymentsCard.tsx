@@ -8,6 +8,7 @@ import {
 } from "@/lib/payment-engine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { toISODate } from "@/lib/date-utils";
 
 type Props = {
   startISO: string;
@@ -49,7 +50,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     const amount = Math.round(r.outstanding);
     if (amount <= 0) return;
 
-    const todayISO = new Date().toISOString().slice(0, 10);
+    const todayISO =toISODate(new Date());
     const { error } = await supabase.from("payment_history").insert({
       user_id: user.id,
       worker_id: r.worker.id,
