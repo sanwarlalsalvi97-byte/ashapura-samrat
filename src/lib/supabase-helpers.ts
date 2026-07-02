@@ -124,28 +124,27 @@ export async function markAttendance(record: Omit<AttendanceInsert, "user_id">) 
 }
 
 export async function getMonthlyReport(year: number, month: number) {
-  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
-  
+  const { monthBoundsISO } = await import("@/lib/date-utils");
+  const { startISO, endISO } = monthBoundsISO(year, month - 1);
   const { data, error } = await supabase
     .from("attendance")
-    .select("*, workers(name, role, daily_rate)")
-    .gte("date", startDate)
-    .lte("date", endDate)
+    .select("*, workers(name, role, daily_rate, worker_code)")
+    .gte("date", startISO)
+    .lte("date", endISO)
     .order("date");
   if (error) throw error;
   return data;
 }
 
 export async function deleteWorkerMonthAttendance(workerId: string, year: number, month: number) {
-  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+  const { monthBoundsISO } = await import("@/lib/date-utils");
+  const { startISO, endISO } = monthBoundsISO(year, month - 1);
   const { error } = await supabase
     .from("attendance")
     .delete()
     .eq("worker_id", workerId)
-    .gte("date", startDate)
-    .lte("date", endDate);
+    .gte("date", startISO)
+    .lte("date", endISO);
   if (error) throw error;
 }
 
