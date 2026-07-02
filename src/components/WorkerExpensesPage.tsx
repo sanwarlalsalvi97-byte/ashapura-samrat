@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +29,7 @@ const CATEGORIES = [
 ];
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return toISODate(new Date());
 }
 
 export default function WorkerExpensesPage() {

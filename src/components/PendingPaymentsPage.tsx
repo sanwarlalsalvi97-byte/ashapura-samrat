@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import PendingPaymentsCard from "./PendingPaymentsCard";
@@ -8,7 +9,7 @@ const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अ
 function bounds(y: number, m: number) {
   const s = new Date(y, m, 1);
   const e = new Date(y, m + 1, 0);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const iso = (d: Date) => toISODate(d);
   return { startISO: iso(s), endISO: iso(e) };
 }
 

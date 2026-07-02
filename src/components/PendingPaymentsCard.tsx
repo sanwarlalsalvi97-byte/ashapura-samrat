@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { Wallet, Smartphone, Phone, ArrowRight, AlertCircle, Check } from "lucide-react";
 import UpiPayDialog from "./UpiPayDialog";
@@ -49,7 +50,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     const amount = Math.round(r.outstanding);
     if (amount <= 0) return;
 
-    const todayISO = new Date().toISOString().slice(0, 10);
+    const todayISO =toISODate(new Date());
     const { error } = await supabase.from("payment_history").insert({
       user_id: user.id,
       worker_id: r.worker.id,

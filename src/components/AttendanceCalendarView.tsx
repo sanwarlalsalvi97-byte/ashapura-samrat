@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, CalendarIcon, MapPin, Loader2 } from "lucide-react";
@@ -12,7 +13,7 @@ const WEEK = ["रवि", "सोम", "मंगल", "बुध", "गुर�
 
 type DayStat = { P: number; A: number; H: number };
 
-function ymd(d: Date) { return d.toISOString().slice(0, 10); }
+function ymd(d: Date) { return toISODate(d); }
 
 export default function AttendanceCalendarView() {
   const [cursor, setCursor] = useState(() => new Date());
@@ -187,7 +188,7 @@ function DayDetails({ iso, onChanged }: { iso: string; onChanged: () => void }) 
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const tithi = approxTithi(new Date(iso));
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso =toISODate(new Date());
   const isFuture = iso > todayIso;
 
   const load = async () => {

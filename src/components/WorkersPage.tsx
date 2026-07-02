@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useState, useEffect } from "react";
 import { getWorkers, deleteWorker, updateWorker, type Worker } from "@/lib/supabase-helpers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,7 +45,7 @@ export default function WorkersPage() {
 
       const now = new Date();
       const startISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-      const endISO = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const endISO =toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
       const res = await computeWorkerPayments({ startISO, endISO });
       const pMap = new Map<string, WorkerPayment>();
       res.rows.forEach((r) => pMap.set(r.worker.id, r));

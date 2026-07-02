@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,7 +38,7 @@ export default function CashbookPage() {
   const [type, setType] = useState<Entry["type"]>("expense");
   const [category, setCategory] = useState<Entry["category"]>("material");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toISODate(new Date()));
   const [site, setSite] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -126,7 +127,7 @@ export default function CashbookPage() {
   const balance = income - expense;
 
   // This month
-  const ym = new Date().toISOString().slice(0, 7);
+  const ym = toISODate(new Date()).slice(0, 7);
   const monthEntries = entries.filter((e) => e.date.startsWith(ym));
   const mIncome = monthEntries.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
   const mExpense = monthEntries.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);

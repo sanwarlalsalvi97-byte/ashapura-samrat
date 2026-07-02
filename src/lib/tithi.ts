@@ -1,5 +1,5 @@
-// Hindu calendar helpers — Tithi + Festival (offline approximate).
-// Optional remote API attempted with cache; offline fallback always works.
+// Hindu calendar helpers — Tithi + Vaar (weekday) + Masa (lunar month) + Festival.
+// Offline approximate; optional remote API attempted with cache.
 
 const TITHI = [
   "प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी", "पंचमी",
@@ -7,17 +7,39 @@ const TITHI = [
   "एकादशी", "द्वादशी", "त्रयोदशी", "चतुर्दशी", "पूर्णिमा/अमावस्या",
 ];
 
+const VAAR = [
+  "रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार",
+];
+
+// Approximate mapping of Gregorian month → dominant Hindu (Purnimanta) masa.
+const MASA_BY_MONTH = [
+  "पौष",     // Jan
+  "माघ",     // Feb
+  "फाल्गुन", // Mar
+  "चैत्र",   // Apr
+  "वैशाख",   // May
+  "ज्येष्ठ", // Jun
+  "आषाढ़",   // Jul
+  "श्रावण",   // Aug
+  "भाद्रपद", // Sep
+  "आश्विन",  // Oct
+  "कार्तिक", // Nov
+  "मार्गशीर्ष", // Dec
+];
+
 export type TithiKind = "ekadashi" | "purnima" | "amavasya" | "normal";
 
 export interface TithiInfo {
-  paksha: string;      // शुक्ल / कृष्ण
-  name: string;        // तिथि नाम
-  full: string;        // "शुक्ल एकादशी"
+  paksha: string;    // शुक्ल / कृष्ण
+  name: string;      // तिथि नाम
+  full: string;      // "शुक्ल एकादशी"
+  vaar: string;      // सोमवार
+  masa: string;      // आषाढ़
+  panchang: string;  // "सोमवार, आषाढ़ शुक्ल पंचमी"
   kind: TithiKind;
-  festival?: string;   // optional festival label
+  festival?: string;
 }
 
-// Fixed Gregorian-date festivals (best-effort, common in India)
 const FIXED_FESTIVALS: Record<string, string> = {
   "01-01": "नव वर्ष",
   "01-14": "मकर संक्रांति",
@@ -44,13 +66,8 @@ export function approxTithi(d: Date): TithiInfo {
     kind = "ekadashi";
     festival = paksha === "शुक्ल" ? "शुक्ल एकादशी" : "कृष्ण एकादशी";
   } else if (tIdx === 14) {
-    if (paksha === "शुक्ल") {
-      kind = "purnima";
-      festival = "पूर्णिमा";
-    } else {
-      kind = "amavasya";
-      festival = "अमावस्या";
-    }
+    if (paksha === "शुक्ल") { kind = "purnima"; festival = "पूर्णिमा"; }
+    else { kind = "amavasya"; festival = "अमावस्या"; }
   }
 
   const mmdd = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -58,51 +75,43 @@ export function approxTithi(d: Date): TithiInfo {
     festival = festival ? `${FIXED_FESTIVALS[mmdd]} • ${festival}` : FIXED_FESTIVALS[mmdd];
   }
 
-  return { paksha, name, full: `${paksha} ${name}`, kind, festival };
+  const vaar = VAAR[d.getDay()];
+  const masa = MASA_BY_MONTH[d.getMonth()];
+  const full = `${paksha} ${name}`;
+  const panchang = `${vaar}, ${masa} ${full}`;
+
+  return { paksha, name, full, vaar, masa, panchang, kind, festival };
 }
 
 /* ---------------- API + cache layer ---------------- */
 
-const CACHE_KEY = "tithi-cache-v1";
+const CACHE_KEY = "tithi-cache-v2";
 
 type CacheMap = Record<string, TithiInfo>;
 
 function readCache(): CacheMap {
-  try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { return {}; }
 }
-
 function writeCache(c: CacheMap) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch {}
 }
-
 function isoDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/**
- * Best-effort fetch with timeout + offline fallback. Always resolves.
- * Caches per ISO date in localStorage so repeated calls are free.
- */
 export async function getTithi(d: Date): Promise<TithiInfo> {
   const key = isoDate(d);
   const cache = readCache();
   if (cache[key]) return cache[key];
 
   const offline = approxTithi(d);
-  // Save offline value immediately so UI never blocks
   cache[key] = offline;
   writeCache(cache);
 
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 2500);
-    const res = await fetch(`https://api.drk7.in/vedic-calendar/tithi?date=${key}`, {
-      signal: ctl.signal,
-    });
+    const res = await fetch(`https://api.drk7.in/vedic-calendar/tithi?date=${key}`, { signal: ctl.signal });
     clearTimeout(t);
     if (res.ok) {
       const j: any = await res.json();
@@ -113,6 +122,7 @@ export async function getTithi(d: Date): Promise<TithiInfo> {
           ...offline,
           name: tName,
           full: `${offline.paksha} ${tName}`,
+          panchang: `${offline.vaar}, ${offline.masa} ${offline.paksha} ${tName}`,
           festival: fest || offline.festival,
         };
         cache[key] = merged;
@@ -120,8 +130,6 @@ export async function getTithi(d: Date): Promise<TithiInfo> {
         return merged;
       }
     }
-  } catch {
-    // ignore — offline value already returned via cache below
-  }
+  } catch {}
   return offline;
 }

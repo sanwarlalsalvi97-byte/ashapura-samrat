@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
@@ -58,7 +59,7 @@ export default function ReportPage() {
 
   const loadSiteData = useCallback(async () => {
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    const endDate =toISODate(new Date(year, month, 0));
     const [a, c, e, p, w] = await Promise.all([
       supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
       supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),

@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useState, useEffect, useMemo } from "react";
 import { getBrickEntries, addBrickEntry, deleteBrickEntry, type BrickStock, type BrickEntryType } from "@/lib/supabase-helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import {
   type MaterialEntry, type MaterialKind,
 } from "@/lib/material-stock";
 
-const today = () => new Date().toISOString().split("T")[0];
+const today = () =>toISODate(new Date());
 const MORTAR_RATIOS = ["1:4", "1:5", "1:6"];
 
 export default function BricksPage() {

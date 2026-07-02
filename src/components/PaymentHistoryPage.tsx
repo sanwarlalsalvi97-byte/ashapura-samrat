@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date-utils";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +42,7 @@ export default function PaymentHistoryPage() {
     if (selectedMonth) {
       const start = `${selectedMonth}-01`;
       const [y, m] = selectedMonth.split("-").map(Number);
-      const end = new Date(y, m, 0).toISOString().slice(0, 10);
+      const end =toISODate(new Date(y, m, 0));
       query = query.gte("payment_date", start).lte("payment_date", end);
     }
 
