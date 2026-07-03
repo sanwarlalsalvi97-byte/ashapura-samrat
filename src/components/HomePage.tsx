@@ -148,7 +148,7 @@ export default function HomePage({ onNavigate }: Props) {
 
   return (
     <div className="space-y-3 animate-fade-in pb-24">
-      {/* Month + Tithi combined compact bar */}
+      {/* Month selector + Refresh */}
       <div className="flex items-center gap-2">
         <div className="flex-1 flex items-center justify-between bg-card rounded-[20px] border border-border/60 px-2 py-2 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)]">
           <button
@@ -172,16 +172,18 @@ export default function HomePage({ onNavigate }: Props) {
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <div className="bg-card rounded-[20px] border border-border/60 px-3 py-2 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] flex items-center gap-2">
-          <div className="leading-tight">
-            <div className="text-[10px] text-muted-foreground font-semibold">आज</div>
-            <div className="text-xs font-extrabold">
-              {today.toLocaleDateString("hi-IN", { day: "numeric", month: "short" })}
-            </div>
-          </div>
-          <TithiBadge date={today} />
-        </div>
+        <button
+          onClick={() => load()}
+          className="w-11 h-11 rounded-[20px] bg-card border border-border/60 grid place-items-center shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] hover:bg-muted active:scale-95 transition"
+          aria-label="रिफ्रेश"
+          title="रिफ्रेश"
+        >
+          <RefreshCw className={`w-4 h-4 text-primary ${loading ? "animate-spin" : ""}`} />
+        </button>
       </div>
+
+      {/* Full Panchang */}
+      <PanchangCard />
 
       {/* Summary Cards: Income, Expense, Balance, Workers */}
       <div className="grid grid-cols-2 gap-3">
