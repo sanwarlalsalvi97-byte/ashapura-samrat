@@ -18,11 +18,12 @@ import {
   Briefcase,
   Clock,
   HardHat,
+  RefreshCw,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
-import TithiBadge from "./TithiBadge";
+import PanchangCard from "./PanchangCard";
 import { computeWorkerPayments } from "@/lib/payment-engine";
 
 interface Props {
