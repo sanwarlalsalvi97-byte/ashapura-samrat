@@ -107,13 +107,14 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
   useEffect(() => { setInT(currentInTime?.slice(0, 5) || ""); }, [currentInTime, date]);
   useEffect(() => { setOutT(currentOutTime?.slice(0, 5) || ""); }, [currentOutTime, date]);
+  useEffect(() => { setOtHours(Number(currentOvertimeHours) || 0); }, [currentOvertimeHours, date]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
 
-  // Whenever times or status change, recompute & emit
+  // Whenever times/status/OT change, recompute & emit. Overtime is ALWAYS manual — never derived from IN/OUT.
   useEffect(() => {
     if (sel === "Absent") {
       onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0, invalid: false });
@@ -121,7 +122,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       return;
     }
     const total = calcHours(inT, outT);
-    const { overtime } = splitOT(total);
     const aMin = timeToMinutes(inT);
     const bMin = timeToMinutes(outT);
     let err = "";
@@ -136,10 +136,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       in_time: inT || null,
       out_time: outT || null,
       total_hours: total,
-      overtime_hours: overtime,
+      overtime_hours: otHours || 0,
       invalid,
     });
-  }, [sel, inT, outT, worker.id]);
+  }, [sel, inT, outT, otHours, worker.id]);
 
   /** Suggested OUT time given current IN and selected status. */
   const suggestion = useMemo(() => {
