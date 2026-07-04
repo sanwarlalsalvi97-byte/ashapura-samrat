@@ -13,12 +13,9 @@ type Mode = "login" | "signup" | "forgot";
 export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [method, setMethod] = useState<Method>("email");
   const [mode, setMode] = useState<Mode>("login");
   const [loading, setLoading] = useState(false);
+
 
   const handleGoogle = async () => {
     setLoading(true);
