@@ -100,6 +100,7 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const workDefaults = useMemo(() => getWorkTime(), []);
   const [inT, setInT] = useState<string>(currentInTime?.slice(0, 5) || "");
   const [outT, setOutT] = useState<string>(currentOutTime?.slice(0, 5) || "");
+  const [otHours, setOtHours] = useState<number>(Number(currentOvertimeHours) || 0);
   const [timeError, setTimeError] = useState<string>("");
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
