@@ -100,19 +100,21 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
   const workDefaults = useMemo(() => getWorkTime(), []);
   const [inT, setInT] = useState<string>(currentInTime?.slice(0, 5) || "");
   const [outT, setOutT] = useState<string>(currentOutTime?.slice(0, 5) || "");
+  const [otHours, setOtHours] = useState<number>(Number(currentOvertimeHours) || 0);
   const [timeError, setTimeError] = useState<string>("");
 
   useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
   useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
   useEffect(() => { setInT(currentInTime?.slice(0, 5) || ""); }, [currentInTime, date]);
   useEffect(() => { setOutT(currentOutTime?.slice(0, 5) || ""); }, [currentOutTime, date]);
+  useEffect(() => { setOtHours(Number(currentOvertimeHours) || 0); }, [currentOvertimeHours, date]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
 
-  // Whenever times or status change, recompute & emit
+  // Whenever times/status/OT change, recompute & emit. Overtime is ALWAYS manual — never derived from IN/OUT.
   useEffect(() => {
     if (sel === "Absent") {
       onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0, invalid: false });
@@ -120,7 +122,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       return;
     }
     const total = calcHours(inT, outT);
-    const { overtime } = splitOT(total);
     const aMin = timeToMinutes(inT);
     const bMin = timeToMinutes(outT);
     let err = "";
@@ -135,10 +136,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       in_time: inT || null,
       out_time: outT || null,
       total_hours: total,
-      overtime_hours: overtime,
+      overtime_hours: otHours || 0,
       invalid,
     });
-  }, [sel, inT, outT, worker.id]);
+  }, [sel, inT, outT, otHours, worker.id]);
 
   /** Suggested OUT time given current IN and selected status. */
   const suggestion = useMemo(() => {
@@ -241,8 +242,9 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     : null;
 
   const liveTotal = sel === "Absent" ? 0 : calcHours(inT, outT);
-  const liveOT = splitOT(liveTotal).overtime;
+  const liveOT = sel === "Absent" ? 0 : (otHours || 0);
   const showTimes = sel !== "Absent";
+  const OT_OPTIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8];
 
   return (
     <motion.div
@@ -383,7 +385,27 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       </div>
 
 
-
+      {/* Manual Overtime (never auto-calculated from IN/OUT) */}
+      {sel && sel !== "Absent" && (
+        <div className="px-4 pb-2">
+          <label className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+            <Timer className="w-3 h-3" /> ओवरटाइम (घंटे)
+          </label>
+          <Select value={String(otHours || 0)} onValueChange={(v) => setOtHours(Number(v))}>
+            <SelectTrigger className="h-10 mt-1 text-sm rounded-xl bg-background border-primary/30">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100] bg-popover max-h-64">
+              {OT_OPTIONS.map((h) => (
+                <SelectItem key={h} value={String(h)}>{h} घंटे</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+            ओवरटाइम मैन्युअली भरा जाता है — IN/OUT समय से अपने-आप नहीं जोड़ा जाता।
+          </p>
+        </div>
+      )}
 
 
       {/* Site dropdown */}
