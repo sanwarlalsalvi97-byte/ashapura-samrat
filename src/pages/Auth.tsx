@@ -103,115 +103,59 @@ export default function Auth() {
             Google से लॉगिन
           </Button>
 
-          {/* Method toggle */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={method === "email" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setMethod("email"); setOtpSent(false); }}
-            >
-              <Mail className="w-4 h-4 mr-1" /> Email
-            </Button>
-            <Button
-              type="button"
-              variant={method === "phone" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setMethod("phone"); setMode("login"); }}
-            >
-              <Phone className="w-4 h-4 mr-1" /> Mobile OTP
-            </Button>
-          </div>
-
-          {method === "phone" ? (
-            <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-3">
+          <form onSubmit={handleEmailAuth} className="space-y-3">
+            <Input
+              type="email"
+              placeholder="ईमेल"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            {mode !== "forgot" && (
               <Input
-                type="tel"
-                placeholder="मोबाइल नंबर (10 अंक)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={otpSent || loading}
+                type="password"
+                placeholder="पासवर्ड"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                inputMode="tel"
+                minLength={6}
               />
-              {otpSent && (
-                <Input
-                  type="text"
-                  placeholder="6-अंकों का OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                />
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "रुकें..." : otpSent ? "OTP वेरिफाई करें" : "OTP भेजें"}
-              </Button>
-              {otpSent && (
-                <button
-                  type="button"
-                  onClick={() => { setOtpSent(false); setOtp(""); }}
-                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  नंबर बदलें
-                </button>
-              )}
-            </form>
-          ) : (
-            <form onSubmit={handleEmailAuth} className="space-y-3">
-              <Input
-                type="email"
-                placeholder="ईमेल"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              {mode !== "forgot" && (
-                <Input
-                  type="password"
-                  placeholder="पासवर्ड"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading
-                  ? "रुकें..."
-                  : mode === "forgot"
-                  ? "लिंक भेजें"
-                  : mode === "signup"
-                  ? "अकाउंट बनाएं"
-                  : "लॉगिन करें"}
-              </Button>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading
+                ? "रुकें..."
+                : mode === "forgot"
+                ? "लिंक भेजें"
+                : mode === "signup"
+                ? "अकाउंट बनाएं"
+                : "लॉगिन करें"}
+            </Button>
 
-              {mode === "login" && (
-                <div className="space-y-2">
-                  <button type="button" onClick={() => setMode("forgot")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    पासवर्ड भूल गए?
-                  </button>
-                  <button type="button" onClick={() => setMode("signup")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    नया अकाउंट बनाएं
-                  </button>
-                </div>
-              )}
-
-              {mode === "signup" && (
-                <button type="button" onClick={() => setMode("login")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  पहले से अकाउंट है? लॉगिन करें
+            {mode === "login" && (
+              <div className="space-y-2">
+                <button type="button" onClick={() => setMode("forgot")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  पासवर्ड भूल गए?
                 </button>
-              )}
-
-              {mode === "forgot" && (
-                <button type="button" onClick={() => setMode("login")} className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  <ArrowLeft className="w-4 h-4" />
-                  लॉगिन पर वापस जाएं
+                <button type="button" onClick={() => setMode("signup")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  नया अकाउंट बनाएं
                 </button>
-              )}
-            </form>
-          )}
+              </div>
+            )}
+
+            {mode === "signup" && (
+              <button type="button" onClick={() => setMode("login")} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+                पहले से अकाउंट है? लॉगिन करें
+              </button>
+            )}
+
+            {mode === "forgot" && (
+              <button type="button" onClick={() => setMode("login")} className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                लॉगिन पर वापस जाएं
+              </button>
+            )}
+          </form>
+
         </CardContent>
       </Card>
     </div>
