@@ -242,8 +242,9 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     : null;
 
   const liveTotal = sel === "Absent" ? 0 : calcHours(inT, outT);
-  const liveOT = splitOT(liveTotal).overtime;
+  const liveOT = sel === "Absent" ? 0 : (otHours || 0);
   const showTimes = sel !== "Absent";
+  const OT_OPTIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8];
 
   return (
     <motion.div
