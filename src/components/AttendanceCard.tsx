@@ -385,7 +385,27 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       </div>
 
 
-
+      {/* Manual Overtime (never auto-calculated from IN/OUT) */}
+      {sel && sel !== "Absent" && (
+        <div className="px-4 pb-2">
+          <label className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+            <Timer className="w-3 h-3" /> ओवरटाइम (घंटे)
+          </label>
+          <Select value={String(otHours || 0)} onValueChange={(v) => setOtHours(Number(v))}>
+            <SelectTrigger className="h-10 mt-1 text-sm rounded-xl bg-background border-primary/30">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100] bg-popover max-h-64">
+              {OT_OPTIONS.map((h) => (
+                <SelectItem key={h} value={String(h)}>{h} घंटे</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+            ओवरटाइम मैन्युअली भरा जाता है — IN/OUT समय से अपने-आप नहीं जोड़ा जाता।
+          </p>
+        </div>
+      )}
 
 
       {/* Site dropdown */}
