@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import logoUrl from "@/assets/logo.png";
 
-type Mode = "login" | "signup" | "forgot" | "phone";
-type Method = "email" | "phone";
+type Mode = "login" | "signup" | "forgot";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
