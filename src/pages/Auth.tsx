@@ -32,48 +32,8 @@ export default function Auth() {
     }
   };
 
-  const normalizePhone = (p: string) => {
-    const trimmed = p.trim().replace(/[\s-]/g, "");
-    if (trimmed.startsWith("+")) return trimmed;
-    // Default to India country code if 10 digits provided
-    if (/^\d{10}$/.test(trimmed)) return `+91${trimmed}`;
-    return trimmed;
-  };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: normalizePhone(phone),
-      });
-      if (error) throw error;
-      setOtpSent(true);
-      toast({ title: "OTP भेजा गया", description: "अपने मोबाइल पर कोड चेक करें।" });
-    } catch (err: any) {
-      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: normalizePhone(phone),
-        token: otp.trim(),
-        type: "sms",
-      });
-      if (error) throw error;
-      // onAuthStateChange in Index.tsx will pick up the session.
-    } catch (err: any) {
-      toast({ title: "गलत OTP", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
