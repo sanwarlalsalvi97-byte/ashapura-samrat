@@ -60,13 +60,17 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
+          options: { emailRedirectTo: redirectTarget },
         });
         if (error) throw error;
         toast({ title: "अकाउंट बन गया!", description: "ईमेल चेक करें।" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (consentNext && consentNext.startsWith("/")) {
+          try { sessionStorage.removeItem("mcp_oauth_consent_next"); } catch {}
+          window.location.href = consentNext;
+        }
       }
     } catch (err: any) {
       toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
