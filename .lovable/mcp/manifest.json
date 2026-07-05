@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://uwyoyxdhvgkicinouong.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "ashapura-samrat-mcp",
+      "version": "0.1.0",
+      "title": "Ashapura Samrat MCP"
+    },
+    "tools": [
+      {
+        "name": "list_workers",
+        "title": "List workers",
+        "description": "List workers for the signed-in user with their daily wage and worker code.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_attendance",
+        "title": "Get attendance",
+        "description": "Get attendance records for a date range (YYYY-MM-DD). Optionally filter by worker_id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from_date": {
+              "type": "string",
+              "description": "Start date, inclusive. Format YYYY-MM-DD."
+            },
+            "to_date": {
+              "type": "string",
+              "description": "End date, inclusive. Format YYYY-MM-DD."
+            },
+            "worker_id": {
+              "type": "string",
+              "description": "Optional worker UUID to filter."
+            }
+          },
+          "required": [
+            "from_date",
+            "to_date"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_cashbook",
+        "title": "Get cashbook entries",
+        "description": "List cashbook (income/expense) entries within a date range.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from_date": {
+              "type": "string",
+              "description": "Start date YYYY-MM-DD."
+            },
+            "to_date": {
+              "type": "string",
+              "description": "End date YYYY-MM-DD."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": [
+            "from_date",
+            "to_date"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
