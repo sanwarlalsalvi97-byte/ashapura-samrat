@@ -17,11 +17,18 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
 
 
+  const consentNext = (() => {
+    try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
+  })();
+  const redirectTarget = consentNext && consentNext.startsWith("/")
+    ? `${window.location.origin}${consentNext}`
+    : window.location.origin;
+
   const handleGoogle = async () => {
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectTarget,
       });
       if (result.error) throw new Error(result.error.message || "Google login failed");
       // result.redirected → browser will redirect; tokens-set path returns silently.
