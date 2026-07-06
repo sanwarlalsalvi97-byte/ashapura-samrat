@@ -63,6 +63,36 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [simOffline, setSimOffline] = useState(isSimulatedOffline());
   const [groupingMode, setGroupingModeState] = useState<GroupingMode>(getGroupingMode());
 
+  // PIN lock
+  const [pinEnabled, setPinEnabled] = useState(isPinEnabled());
+  const [newPin, setNewPin] = useState("");
+
+  // Backup / Restore
+  const [backupPassword, setBackupPassword] = useState("");
+  const [busy, setBusy] = useState<null | "backup" | "restore">(null);
+  const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
+  const [restoreFileName, setRestoreFileName] = useState<string>("");
+  const [restorePassword, setRestorePassword] = useState("");
+  const [restorePreview, setRestorePreview] = useState<ReturnType<typeof previewEnvelope> | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => localStorage.getItem("last-backup-at"));
+  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem("auto-backup-freq") || "manual");
+  const [pending, setPending] = useState(() => readPendingBackup());
+
+  // Auto-flush pending backup when back online
+  useEffect(() => {
+    const onOnline = () => {
+      const p = readPendingBackup();
+      if (!p) return;
+      downloadText(p.name, p.text);
+      clearPendingBackup();
+      setPending(null);
+      toast({ title: t("बैकअप डाउनलोड हो गया / Backup downloaded", "Backup downloaded") });
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     loadProfile();
     const savedLang = localStorage.getItem("hajiri-lang");
