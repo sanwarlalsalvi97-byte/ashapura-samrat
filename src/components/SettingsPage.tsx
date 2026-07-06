@@ -29,6 +29,9 @@ import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
 import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
 import RolesSection from "./RolesSection";
+import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/lib/pin-lock";
+import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
+import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
