@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type, Lock, Upload, HardDriveDownload, RefreshCw, AlertTriangle, Cloud } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import { getFontSize, setFontSize as persistFontSize, type FontSize } from "@/lib/font-size";
 import type { TabId } from "./BottomNav";
@@ -29,6 +29,9 @@ import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
 import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
 import RolesSection from "./RolesSection";
+import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/lib/pin-lock";
+import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
+import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
@@ -59,6 +62,36 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
   const [simOffline, setSimOffline] = useState(isSimulatedOffline());
   const [groupingMode, setGroupingModeState] = useState<GroupingMode>(getGroupingMode());
+
+  // PIN lock
+  const [pinEnabled, setPinEnabled] = useState(isPinEnabled());
+  const [newPin, setNewPin] = useState("");
+
+  // Backup / Restore
+  const [backupPassword, setBackupPassword] = useState("");
+  const [busy, setBusy] = useState<null | "backup" | "restore">(null);
+  const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
+  const [restoreFileName, setRestoreFileName] = useState<string>("");
+  const [restorePassword, setRestorePassword] = useState("");
+  const [restorePreview, setRestorePreview] = useState<ReturnType<typeof previewEnvelope> | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => localStorage.getItem("last-backup-at"));
+  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem("auto-backup-freq") || "manual");
+  const [pending, setPending] = useState(() => readPendingBackup());
+
+  // Auto-flush pending backup when back online
+  useEffect(() => {
+    const onOnline = () => {
+      const p = readPendingBackup();
+      if (!p) return;
+      downloadText(p.name, p.text);
+      clearPendingBackup();
+      setPending(null);
+      toast({ title: t("बैकअप डाउनलोड हो गया / Backup downloaded", "Backup downloaded") });
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadProfile();
@@ -600,6 +633,273 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           <Button onClick={exportData} disabled={exporting} variant="outline" className="w-full" size="sm">
             {exporting ? t("डाउनलोड हो रहा है...", "Exporting...") : t("इस महीने की CSV डाउनलोड करें", "Download this month's CSV")}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* PIN Lock */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Lock className="w-4 h-4" />
+            {t("PIN लॉक", "PIN Lock")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{t("ऐप खोलने पर PIN मांगें", "Require PIN to open app")}</span>
+            <Switch
+              checked={pinEnabled}
+              onCheckedChange={async (c) => {
+                if (!c) { removePin(); setPinEnabled(false); toast({ title: t("PIN हटा दिया गया", "PIN removed") }); }
+                else {
+                  const p = prompt(t("4-8 अंक का नया PIN", "New PIN (4-8 digits)") || "") || "";
+                  try { await savePin(p); setPinEnabled(true); toast({ title: t("PIN सेट हो गया", "PIN set") }); }
+                  catch (e: any) { toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" }); }
+                }
+              }}
+            />
+          </div>
+          {pinEnabled && (
+            <div className="flex gap-2">
+              <Input type="password" inputMode="numeric" pattern="\d*" maxLength={8} value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} placeholder={t("नया PIN बदलें", "Change PIN")} />
+              <Button size="sm" variant="secondary" onClick={async () => {
+                try { await savePin(newPin); setNewPin(""); toast({ title: t("PIN बदल दिया गया", "PIN updated") }); }
+                catch (e: any) { toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" }); }
+              }}>{t("बदलें", "Update")}</Button>
+              <Button size="sm" variant="outline" onClick={() => { lockApp(); location.reload(); }}>{t("अभी लॉक", "Lock now")}</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Backup & Restore */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Cloud className="w-4 h-4" />
+            {t("बैकअप और रीस्टोर", "Backup & Restore")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "एन्क्रिप्टेड JSON बैकअप डाउनलोड करें (Workers, Attendance, Advances, Cashbook, Reports, Settings)। Google Drive में सुरक्षित रखें।",
+              "Download an encrypted JSON backup (Workers, Attendance, Advances, Cashbook, Reports, Settings). Save it to Google Drive for safety."
+            )}
+          </p>
+
+          <div>
+            <Label className="text-xs">{t("बैकअप पासवर्ड", "Backup password")}</Label>
+            <Input type="password" value={backupPassword} onChange={(e) => setBackupPassword(e.target.value)} placeholder={t("मजबूत पासवर्ड", "Strong password")} className="mt-1" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              disabled={busy !== null || backupPassword.length < 6}
+              onClick={async () => {
+                setBusy("backup");
+                try {
+                  const p = await buildBackup();
+                  const text = await encryptBackup(p, backupPassword);
+                  const name = backupFilename();
+                  if (navigator.onLine) {
+                    downloadText(name, text);
+                  } else {
+                    savePendingBackup(text, name);
+                    setPending(readPendingBackup());
+                    toast({ title: t("ऑफलाइन: कनेक्शन लौटने पर डाउनलोड होगा", "Offline: will download when back online") });
+                  }
+                  const now = new Date().toISOString();
+                  localStorage.setItem("last-backup-at", now);
+                  setLastBackupAt(now);
+                  toast({ title: t("✅ बैकअप तैयार", "✅ Backup ready") });
+                } catch (e: any) {
+                  toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" });
+                } finally { setBusy(null); }
+              }}
+              className="gap-2"
+            >
+              <HardDriveDownload className="w-4 h-4" />
+              {busy === "backup" ? t("बना रहा है...", "Building...") : t("बैकअप बनाएँ", "Backup now")}
+            </Button>
+
+            <Button asChild size="sm" variant="outline" className="gap-2">
+              <label>
+                <Upload className="w-4 h-4" />
+                {t("फ़ाइल चुनें", "Choose file")}
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const text = await f.text();
+                    setRestoreFileText(text);
+                    setRestoreFileName(f.name);
+                    setRestorePreview(previewEnvelope(text));
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </Button>
+          </div>
+
+          {restorePreview && restoreFileText && (
+            <div className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
+              <div className="text-xs font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                {t("रीस्टोर पूर्वावलोकन", "Restore preview")}
+              </div>
+              <div className="text-xs text-muted-foreground truncate">{restoreFileName}</div>
+              {restorePreview.createdAt && (
+                <div className="text-xs">{t("बैकअप तारीख", "Backup date")}: <b>{new Date(restorePreview.createdAt).toLocaleString()}</b></div>
+              )}
+              <div className="text-xs">{t("आकार", "Size")}: {(restoreFileText.length / 1024).toFixed(1)} KB {restorePreview.encrypted ? "🔒" : ""}</div>
+              {restorePreview.counts && (
+                <div className="text-[11px] text-muted-foreground">
+                  {Object.entries(restorePreview.counts).map(([k, v]) => `${k}: ${v}`).join(" • ")}
+                </div>
+              )}
+              {restorePreview.encrypted && (
+                <Input type="password" value={restorePassword} onChange={(e) => setRestorePassword(e.target.value)} placeholder={t("बैकअप पासवर्ड", "Backup password")} />
+              )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" className="w-full" disabled={busy !== null || (restorePreview.encrypted && restorePassword.length < 1)}>
+                    {t("मौजूदा डेटा बदलें और रीस्टोर करें", "Replace data & restore")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("क्या आप पक्के हैं?", "Are you sure?")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("आपका मौजूदा डेटा पूरी तरह बदल दिया जाएगा। यह वापस नहीं आएगा।", "Your current data will be fully replaced. This cannot be undone.")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("रद्द", "Cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        setBusy("restore");
+                        try {
+                          let payload: BackupPayload;
+                          try { payload = await decryptBackup(restoreFileText!, restorePassword); }
+                          catch (e: any) { throw new Error(e.message); }
+                          if (payload.app !== "AshapuraSamrat") throw new Error("Invalid backup");
+                          await restoreBackup(payload);
+                          setRestoreFileText(null); setRestorePreview(null); setRestorePassword("");
+                          toast({ title: t("✅ रीस्टोर पूरा हुआ", "✅ Restore complete") });
+                        } catch (e: any) {
+                          toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" });
+                        } finally { setBusy(null); }
+                      }}
+                    >
+                      {t("रीस्टोर करें", "Restore")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">{t("ऑटो बैकअप", "Auto backup")}</Label>
+              <select
+                className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={autoBackup}
+                onChange={(e) => { setAutoBackup(e.target.value); localStorage.setItem("auto-backup-freq", e.target.value); }}
+              >
+                <option value="manual">{t("केवल मैन्युअल", "Manual only")}</option>
+                <option value="daily">{t("रोज़", "Daily")}</option>
+                <option value="weekly">{t("साप्ताहिक", "Weekly")}</option>
+                <option value="monthly">{t("मासिक", "Monthly")}</option>
+              </select>
+            </div>
+            <div className="text-xs self-end pb-1">
+              <div className="text-muted-foreground">{t("अंतिम बैकअप", "Last backup")}</div>
+              <div className="font-semibold truncate">{lastBackupAt ? new Date(lastBackupAt).toLocaleString() : "—"}</div>
+              {pending && <div className="text-amber-600 mt-1">{t("ऑफलाइन बैकअप लंबित", "Offline backup pending")}</div>}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground border-t border-border pt-2">
+            {t(
+              "📌 Google Drive में ऑटो-अपलोड चाहिए तो अपने Google Cloud OAuth Client ID जोड़ने की ज़रूरत होगी। तब तक बैकअप फ़ाइल डाउनलोड करके अपने Google Drive में स्वयं अपलोड करें — यह उतना ही सुरक्षित है।",
+              "📌 Direct auto-upload to Google Drive needs your own Google Cloud OAuth client. Until then, download the backup file and upload it to your Google Drive manually — equally secure."
+            )}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Cache & Reset */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
+            {t("कैश और रीसेट", "Cache & Reset")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <RefreshCw className="w-4 h-4" />
+                {t("कैश डेटा साफ करें", "Clear cached data")}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("कैश साफ करें?", "Clear caches?")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("पंचांग, स्थानीय कैश, IndexedDB और Service Worker कैश हटाए जाएंगे। लॉगिन बरकरार रहेगा।", "Panchang, local caches, IndexedDB and service-worker caches will be cleared. Login stays.")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("रद्द", "Cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => { await clearAllCaches({ keepAuth: true }); location.reload(); }}>
+                  {t("साफ करें", "Clear")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" className="w-full gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {t("ऐप डेटा रीसेट करें", "Reset app data")}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("पूरा डेटा हटाएँ?", "Erase all data?")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("Workers, Attendance, Advances, Reports, Cashbook, स्थानीय स्टोरेज — सब कुछ स्थायी रूप से हट जाएगा। लॉगिन बरकरार रहेगा। कृपया पहले बैकअप बनाएँ।", "Workers, Attendance, Advances, Reports, Cashbook and local storage will be permanently deleted. Login stays. Please take a backup first.")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("रद्द", "Cancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={async () => {
+                    try {
+                      await resetAllUserData();
+                      await clearAllCaches({ keepAuth: true });
+                      toast({ title: t("✅ ऐप रीसेट हो गया", "✅ App reset") });
+                      setTimeout(() => location.reload(), 400);
+                    } catch (e: any) {
+                      toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" });
+                    }
+                  }}
+                >
+                  {t("सब हटाएँ", "Delete everything")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 

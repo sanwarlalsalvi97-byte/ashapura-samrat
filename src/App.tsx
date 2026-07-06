@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Trust from "./pages/Trust.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
+import PinLockGate from "./components/PinLockGate";
 
 const queryClient = new QueryClient();
 
@@ -16,16 +17,18 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/trust" element={<Trust />} />
-          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <PinLockGate>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/trust" element={<Trust />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </PinLockGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
