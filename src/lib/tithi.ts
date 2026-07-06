@@ -83,53 +83,12 @@ export function approxTithi(d: Date): TithiInfo {
   return { paksha, name, full, vaar, masa, panchang, kind, festival };
 }
 
-/* ---------------- API + cache layer ---------------- */
+/* ---------------- No cache: always recompute from selected date ---------------- */
 
-const CACHE_KEY = "tithi-cache-v2";
-
-type CacheMap = Record<string, TithiInfo>;
-
-function readCache(): CacheMap {
-  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch { return {}; }
-}
-function writeCache(c: CacheMap) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch {}
-}
-function isoDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+// Purge any legacy cache the app previously wrote.
+try { localStorage.removeItem("tithi-cache-v2"); localStorage.removeItem("tithi-cache-v1"); } catch {}
 
 export async function getTithi(d: Date): Promise<TithiInfo> {
-  const key = isoDate(d);
-  const cache = readCache();
-  if (cache[key]) return cache[key];
-
-  const offline = approxTithi(d);
-  cache[key] = offline;
-  writeCache(cache);
-
-  try {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 2500);
-    const res = await fetch(`https://api.drk7.in/vedic-calendar/tithi?date=${key}`, { signal: ctl.signal });
-    clearTimeout(t);
-    if (res.ok) {
-      const j: any = await res.json();
-      const tName: string | undefined = j?.tithi || j?.data?.tithi;
-      const fest: string | undefined = j?.festival || j?.data?.festival;
-      if (tName) {
-        const merged: TithiInfo = {
-          ...offline,
-          name: tName,
-          full: `${offline.paksha} ${tName}`,
-          panchang: `${offline.vaar}, ${offline.masa} ${offline.paksha} ${tName}`,
-          festival: fest || offline.festival,
-        };
-        cache[key] = merged;
-        writeCache(cache);
-        return merged;
-      }
-    }
-  } catch {}
-  return offline;
+  // Deterministic, timezone-safe, no network, no cache.
+  return approxTithi(d);
 }
