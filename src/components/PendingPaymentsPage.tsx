@@ -1,4 +1,4 @@
-import { toISODate } from "@/lib/date-utils";
+import { monthBoundsISO } from "@/lib/date-utils";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import PendingPaymentsCard from "./PendingPaymentsCard";
@@ -7,10 +7,7 @@ import { listSites, subscribeSites, getSitesVersion } from "@/lib/sites";
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
 function bounds(y: number, m: number) {
-  const s = new Date(y, m, 1);
-  const e = new Date(y, m + 1, 0);
-  const iso = (d: Date) => toISODate(d);
-  return { startISO: iso(s), endISO: iso(e) };
+  return monthBoundsISO(y, m);
 }
 
 export default function PendingPaymentsPage() {

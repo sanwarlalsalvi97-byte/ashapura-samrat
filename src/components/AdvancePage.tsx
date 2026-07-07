@@ -1,4 +1,4 @@
-import { toISODate } from "@/lib/date-utils";
+import { monthBoundsISO, parseISODate, toISODate } from "@/lib/date-utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getWorkers, markAttendance, type Worker } from "@/lib/supabase-helpers";
@@ -44,14 +44,13 @@ const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अ
 
 function iso(d: Date) { return toISODate(d); }
 function fmt(d: string) {
-  const dt = new Date(d);
+  const dt = parseISODate(d);
   return `${dt.getDate()} ${HINDI_MONTHS[dt.getMonth()].slice(0, 3)} ${dt.getFullYear()}`;
 }
 
 export default function AdvancePage() {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const { startISO: monthStartISO, endISO: monthEndISO } = monthBoundsISO(now.getFullYear(), now.getMonth());
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [entries, setEntries] = useState<AdvEntry[]>([]);
@@ -69,8 +68,8 @@ export default function AdvancePage() {
         supabase
           .from("attendance")
           .select("id,worker_id,date,advance,notes,site_name,status,workers(name)")
-          .gte("date", iso(monthStart))
-          .lte("date", iso(monthEnd))
+          .gte("date", monthStartISO)
+          .lte("date", monthEndISO)
           .gt("advance", 0)
           .order("date", { ascending: false }),
       ]);
@@ -300,7 +299,7 @@ function AdvanceFormDialog({
     if (!open) return;
     if (editing) {
       setWorkerId(editing.worker_id);
-      setDate(new Date(editing.date));
+      setDate(parseISODate(editing.date));
       setAmount(String(editing.advance || ""));
       setNotes(editing.notes || "");
     } else {

@@ -1,4 +1,4 @@
-import { toISODate } from "@/lib/date-utils";
+import { daysInMonth, isoDateFromParts, monthBoundsISO, toISODate, weekdayOfISO } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronLeft, ChevronRight, CalendarIcon, MapPin, Loader2 } from "lucide-react";
@@ -23,14 +23,13 @@ export default function AttendanceCalendarView() {
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = weekdayOfISO(year, month, 1);
+  const monthDays = daysInMonth(year, month);
   const today = ymd(new Date());
 
   const loadStats = async () => {
       setLoading(true);
-      const start = ymd(new Date(year, month, 1));
-      const end = ymd(new Date(year, month + 1, 0));
+      const { startISO: start, endISO: end } = monthBoundsISO(year, month);
       const { data } = await supabase
         .from("attendance")
         .select("date,status")
@@ -67,12 +66,12 @@ export default function AttendanceCalendarView() {
   const cells = useMemo(() => {
     const arr: ({ day: number; iso: string } | null)[] = [];
     for (let i = 0; i < firstDow; i++) arr.push(null);
-    for (let d = 1; d <= daysInMonth; d++) {
-      arr.push({ day: d, iso: ymd(new Date(year, month, d)) });
+    for (let d = 1; d <= monthDays; d++) {
+      arr.push({ day: d, iso: isoDateFromParts(year, month, d) });
     }
     while (arr.length % 7 !== 0) arr.push(null);
     return arr;
-  }, [firstDow, daysInMonth, year, month]);
+  }, [firstDow, monthDays, year, month]);
 
   function dominantBadge(s?: DayStat) {
     if (!s) return null;
