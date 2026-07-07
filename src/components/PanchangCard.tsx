@@ -78,6 +78,8 @@ export default function PanchangCard({ date, className }: Props) {
         <Info icon={Star} label="नक्षत्र" value={p.nakshatra} />
         <Info icon={Compass} label="अयन" value={p.ayana} />
         <Info icon={Sprout} label="ऋतु" value={p.ritu} />
+        <Info icon={Star} label="योग" value={p.yoga} />
+        <Info icon={Moon} label="करण" value={p.karana} />
         <Info icon={Sun} label="सूर्योदय" value={p.sunrise} tone="text-amber-600" />
         <Info icon={Sunset} label="सूर्यास्त" value={p.sunset} tone="text-rose-600" />
       </div>

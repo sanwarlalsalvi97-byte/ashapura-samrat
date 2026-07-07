@@ -1,4 +1,4 @@
-import { toISODate } from "@/lib/date-utils";
+import { monthBoundsISO } from "@/lib/date-utils";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
-import { computeWorkerPayments, subscribePaymentSources, monthBoundsISO } from "@/lib/payment-engine";
+import { computeWorkerPayments, subscribePaymentSources } from "@/lib/payment-engine";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +58,7 @@ export default function ReportPage() {
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
 
   const loadSiteData = useCallback(async () => {
-    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-    const endDate =toISODate(new Date(year, month, 0));
+    const { startISO: startDate, endISO: endDate } = monthBoundsISO(year, month - 1);
     const [a, c, e, p, w] = await Promise.all([
       supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
       supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),

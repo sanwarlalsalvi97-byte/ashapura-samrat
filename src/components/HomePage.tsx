@@ -1,4 +1,4 @@
-import { toISODate } from "@/lib/date-utils";
+import { monthBoundsISO, toISODate } from "@/lib/date-utils";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -46,20 +46,13 @@ function shortInr(n: number): string {
   return `${Math.round(n)}`;
 }
 
-function monthBounds(year: number, month: number) {
-  const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 0);
-  const iso = (d: Date) => toISODate(d);
-  return { startISO: iso(start), endISO: iso(end) };
-}
-
 export default function HomePage({ onNavigate }: Props) {
   const today = new Date();
   const todayISO = toISODate(today);
 
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const { startISO, endISO } = useMemo(
-    () => monthBounds(cursor.getFullYear(), cursor.getMonth()),
+    () => monthBoundsISO(cursor.getFullYear(), cursor.getMonth()),
     [cursor],
   );
 

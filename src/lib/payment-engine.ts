@@ -14,6 +14,7 @@
  *   Outstanding = Earnings (Attendance) + Worker Expenses − Advances
  */
 import { supabase } from "@/integrations/supabase/client";
+import { monthBoundsISO as getMonthBoundsISO } from "@/lib/date-utils";
 
 export type WorkerLite = {
   id: string;
@@ -241,8 +242,5 @@ export function subscribePaymentSources(onChange: () => void) {
 }
 
 export function monthBoundsISO(year: number, monthIndex0: number) {
-  const s = new Date(year, monthIndex0, 1);
-  const e = new Date(year, monthIndex0 + 1, 0);
-  const iso = (d: Date) => { const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${dd}`; };
-  return { startISO: iso(s), endISO: iso(e) };
+  return getMonthBoundsISO(year, monthIndex0);
 }
