@@ -135,16 +135,17 @@ function formatDateInIST(date: Date): string {
 
 function formatTimeInIST(date: Date | null | undefined): string {
   if (!date) return "—";
+  const rounded = new Date(Math.round(date.getTime() / 60_000) * 60_000);
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
-  }).format(date).toUpperCase();
+  }).format(rounded).toUpperCase();
 }
 
 function normalizeTithiIndex(index: number): number {
-  return index >= 1 && index <= 30 ? index - 1 : Math.max(0, Math.min(29, index));
+  return Math.max(0, Math.min(29, index));
 }
 
 export function computePanchang(
