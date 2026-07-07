@@ -32,6 +32,7 @@ import RolesSection from "./RolesSection";
 import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/lib/pin-lock";
 import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
 import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
+import { downloadLatestBackupFromGoogleDrive, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
@@ -69,7 +70,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
   // Backup / Restore
   const [backupPassword, setBackupPassword] = useState("");
-  const [busy, setBusy] = useState<null | "backup" | "restore">(null);
+  const [busy, setBusy] = useState<null | "backup" | "restore" | "drive-backup" | "drive-restore">(null);
   const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
   const [restoreFileName, setRestoreFileName] = useState<string>("");
   const [restorePassword, setRestorePassword] = useState("");
@@ -286,6 +287,16 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   };
 
   const t = (hi: string, en: string) => isHindi ? hi : en;
+
+  const createEncryptedBackup = async () => {
+    const p = await buildBackup();
+    const text = await encryptBackup(p, backupPassword);
+    const name = backupFilename();
+    const now = new Date().toISOString();
+    localStorage.setItem("last-backup-at", now);
+    setLastBackupAt(now);
+    return { text, name };
+  };
 
   return (
     <div className="space-y-4">
@@ -700,9 +711,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
               onClick={async () => {
                 setBusy("backup");
                 try {
-                  const p = await buildBackup();
-                  const text = await encryptBackup(p, backupPassword);
-                  const name = backupFilename();
+                  const { text, name } = await createEncryptedBackup();
                   if (navigator.onLine) {
                     downloadText(name, text);
                   } else {
@@ -710,9 +719,6 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
                     setPending(readPendingBackup());
                     toast({ title: t("ऑफलाइन: कनेक्शन लौटने पर डाउनलोड होगा", "Offline: will download when back online") });
                   }
-                  const now = new Date().toISOString();
-                  localStorage.setItem("last-backup-at", now);
-                  setLastBackupAt(now);
                   toast({ title: t("✅ बैकअप तैयार", "✅ Backup ready") });
                 } catch (e: any) {
                   toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" });
@@ -743,6 +749,50 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
                   }}
                 />
               </label>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy !== null || backupPassword.length < 6}
+              onClick={async () => {
+                setBusy("drive-backup");
+                try {
+                  const { text, name } = await createEncryptedBackup();
+                  await uploadBackupToGoogleDrive(name, text);
+                  toast({ title: t("✅ Google Drive में बैकअप सेव", "✅ Backup saved to Google Drive") });
+                } catch (e: any) {
+                  toast({ title: t("Google Drive गलती", "Google Drive error"), description: e.message, variant: "destructive" });
+                } finally { setBusy(null); }
+              }}
+              className="gap-2"
+            >
+              <Cloud className="w-4 h-4" />
+              {busy === "drive-backup" ? t("अपलोड हो रहा है...", "Uploading...") : t("Drive बैकअप", "Drive backup")}
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy !== null}
+              onClick={async () => {
+                setBusy("drive-restore");
+                try {
+                  const file = await downloadLatestBackupFromGoogleDrive();
+                  setRestoreFileText(file.text);
+                  setRestoreFileName(file.name);
+                  setRestorePreview(previewEnvelope(file.text));
+                  toast({ title: t("Google Drive बैकअप मिला", "Google Drive backup loaded") });
+                } catch (e: any) {
+                  toast({ title: t("Google Drive गलती", "Google Drive error"), description: e.message, variant: "destructive" });
+                } finally { setBusy(null); }
+              }}
+              className="gap-2"
+            >
+              <HardDriveDownload className="w-4 h-4" />
+              {busy === "drive-restore" ? t("लोड हो रहा है...", "Loading...") : t("Drive रीस्टोर", "Drive restore")}
             </Button>
           </div>
 
@@ -827,8 +877,8 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
           <p className="text-[11px] text-muted-foreground border-t border-border pt-2">
             {t(
-              "📌 Google Drive में ऑटो-अपलोड चाहिए तो अपने Google Cloud OAuth Client ID जोड़ने की ज़रूरत होगी। तब तक बैकअप फ़ाइल डाउनलोड करके अपने Google Drive में स्वयं अपलोड करें — यह उतना ही सुरक्षित है।",
-              "📌 Direct auto-upload to Google Drive needs your own Google Cloud OAuth client. Until then, download the backup file and upload it to your Google Drive manually — equally secure."
+              "Google Drive बैकअप निजी “Ashapura Samrat Backup” folder में सेव होगा।",
+              "Google Drive backups are saved in the private “Ashapura Samrat Backup” folder."
             )}
           </p>
         </CardContent>
