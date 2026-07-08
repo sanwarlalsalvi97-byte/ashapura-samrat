@@ -22,6 +22,7 @@ import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat, Bell, UserCircle2, MapPin } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { useAutoBackup } from "@/hooks/use-auto-backup";
 
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
@@ -30,6 +31,7 @@ export default function Index() {
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
   useAttendanceAlarm();
   useOfflineSync();
+  useAutoBackup(!!session);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {

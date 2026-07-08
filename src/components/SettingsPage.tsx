@@ -33,6 +33,7 @@ import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/l
 import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
 import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
 import { downloadLatestBackupFromGoogleDrive, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
+import { AUTO_BACKUP_FREQ_KEY, dispatchAutoBackupSettingsChanged, getAutoBackupPassword, setAutoBackupPassword } from "@/hooks/use-auto-backup";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
@@ -69,14 +70,14 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [newPin, setNewPin] = useState("");
 
   // Backup / Restore
-  const [backupPassword, setBackupPassword] = useState("");
+  const [backupPassword, setBackupPassword] = useState(() => getAutoBackupPassword());
   const [busy, setBusy] = useState<null | "backup" | "restore" | "drive-backup" | "drive-restore">(null);
   const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
   const [restoreFileName, setRestoreFileName] = useState<string>("");
   const [restorePassword, setRestorePassword] = useState("");
   const [restorePreview, setRestorePreview] = useState<ReturnType<typeof previewEnvelope> | null>(null);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => localStorage.getItem("last-backup-at"));
-  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem("auto-backup-freq") || "manual");
+  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem(AUTO_BACKUP_FREQ_KEY) || "manual");
   const [pending, setPending] = useState(() => readPendingBackup());
 
   // Auto-flush pending backup when back online
@@ -297,6 +298,16 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
     setLastBackupAt(now);
     return { text, name };
   };
+
+  useEffect(() => {
+    const onAutoBackupCompleted = (event: Event) => {
+      const at = (event as CustomEvent<{ at?: string }>).detail?.at || localStorage.getItem("last-backup-at");
+      if (at) setLastBackupAt(at);
+      setPending(readPendingBackup());
+    };
+    window.addEventListener("auto-backup-completed", onAutoBackupCompleted);
+    return () => window.removeEventListener("auto-backup-completed", onAutoBackupCompleted);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -701,7 +712,16 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
           <div>
             <Label className="text-xs">{t("बैकअप पासवर्ड", "Backup password")}</Label>
-            <Input type="password" value={backupPassword} onChange={(e) => setBackupPassword(e.target.value)} placeholder={t("मजबूत पासवर्ड", "Strong password")} className="mt-1" />
+            <Input
+              type="password"
+              value={backupPassword}
+              onChange={(e) => {
+                setBackupPassword(e.target.value);
+                setAutoBackupPassword(e.target.value);
+              }}
+              placeholder={t("मजबूत पासवर्ड", "Strong password")}
+              className="mt-1"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -860,7 +880,11 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
               <select
                 className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
                 value={autoBackup}
-                onChange={(e) => { setAutoBackup(e.target.value); localStorage.setItem("auto-backup-freq", e.target.value); }}
+                onChange={(e) => {
+                  setAutoBackup(e.target.value);
+                  localStorage.setItem(AUTO_BACKUP_FREQ_KEY, e.target.value);
+                  dispatchAutoBackupSettingsChanged();
+                }}
               >
                 <option value="manual">{t("केवल मैन्युअल", "Manual only")}</option>
                 <option value="daily">{t("रोज़", "Daily")}</option>
