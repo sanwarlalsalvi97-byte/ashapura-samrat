@@ -409,7 +409,9 @@ function SiteWiseReport({
       const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
       const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
       const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
-      const totalSiteExpense = earning + totalAdvance;
+      // Total Payable = Earnings − Advances already paid.
+      // Advances are NEVER added to earnings; they reduce the remaining liability.
+      const totalSiteExpense = earning - totalAdvance;
       return {
         siteName,
         workers: workerSet.size,
