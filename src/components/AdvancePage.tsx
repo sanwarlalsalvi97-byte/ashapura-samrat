@@ -50,7 +50,13 @@ function fmt(d: string) {
 
 export default function AdvancePage() {
   const now = new Date();
-  const { startISO: monthStartISO, endISO: monthEndISO } = monthBoundsISO(now.getFullYear(), now.getMonth());
+  const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const { startISO: monthStartISO, endISO: monthEndISO } = useMemo(
+    () => monthBoundsISO(cursor.getFullYear(), cursor.getMonth()),
+    [cursor],
+  );
+  const goPrevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  const goNextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [entries, setEntries] = useState<AdvEntry[]>([]);
