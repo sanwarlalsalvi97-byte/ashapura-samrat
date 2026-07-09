@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
