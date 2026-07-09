@@ -87,7 +87,7 @@ export default function AdvancePage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [monthStartISO, monthEndISO]);
 
   useEffect(() => {
     load();
