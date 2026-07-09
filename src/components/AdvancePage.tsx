@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -50,7 +50,13 @@ function fmt(d: string) {
 
 export default function AdvancePage() {
   const now = new Date();
-  const { startISO: monthStartISO, endISO: monthEndISO } = monthBoundsISO(now.getFullYear(), now.getMonth());
+  const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const { startISO: monthStartISO, endISO: monthEndISO } = useMemo(
+    () => monthBoundsISO(cursor.getFullYear(), cursor.getMonth()),
+    [cursor],
+  );
+  const goPrevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  const goNextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [entries, setEntries] = useState<AdvEntry[]>([]);
@@ -81,7 +87,7 @@ export default function AdvancePage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [monthStartISO, monthEndISO]);
 
   useEffect(() => {
     load();
@@ -149,10 +155,34 @@ export default function AdvancePage() {
         </Button>
       </div>
 
+      {/* Month selector */}
+      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-2 py-2 shadow-sm">
+        <button
+          onClick={goPrevMonth}
+          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
+          aria-label="पिछला महीना"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="text-center leading-tight">
+          <div className="text-[10px] text-muted-foreground font-semibold">महीना</div>
+          <div className="text-sm font-extrabold tracking-tight">
+            {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
+          </div>
+        </div>
+        <button
+          onClick={goNextMonth}
+          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
+          aria-label="अगला महीना"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Summary card */}
       <div className="rounded-[20px] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-orange-200/70 dark:border-orange-900/40 p-4 shadow-[0_4px_14px_-6px_rgba(234,88,12,0.35)]">
         <div className="text-xs font-bold text-orange-700/80 dark:text-orange-400/80">
-          कुल एडवांस दिया — {HINDI_MONTHS[now.getMonth()]} {now.getFullYear()}
+          कुल एडवांस दिया — {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
         </div>
         <div className="text-3xl font-extrabold tabular-nums text-orange-700 dark:text-orange-300 mt-1">
           ₹{total.toLocaleString("hi-IN")}
