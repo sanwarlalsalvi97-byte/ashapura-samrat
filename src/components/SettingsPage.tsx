@@ -715,10 +715,8 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
             <Input
               type="password"
               value={backupPassword}
-              onChange={(e) => {
-                setBackupPassword(e.target.value);
-                setAutoBackupPassword(e.target.value);
-              }}
+              onChange={(e) => setBackupPassword(e.target.value)}
+              onBlur={(e) => setAutoBackupPassword(e.target.value)}
               placeholder={t("मजबूत पासवर्ड", "Strong password")}
               className="mt-1"
             />
