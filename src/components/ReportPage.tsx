@@ -463,7 +463,7 @@ function SiteWiseReport({
         <Card><CardContent className="p-3 text-center">
           <TrendingDown className="w-4 h-4 mx-auto text-destructive mb-1" />
           <div className="text-lg font-bold tabular-nums">₹{totals.expense.toLocaleString("hi-IN")}</div>
-          <div className="text-[10px] text-muted-foreground">कुल खर्च</div>
+          <div className="text-[10px] text-muted-foreground">कुल देय (Payable)</div>
         </CardContent></Card>
       </div>
 
