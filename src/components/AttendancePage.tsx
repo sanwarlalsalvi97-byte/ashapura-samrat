@@ -41,7 +41,7 @@ function formatDisplayDate(d: Date) {
 export default function AttendancePage() {
   const [date, setDate] = useState(new Date());
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string; in_time?: string | null; out_time?: string | null; total_hours?: number; overtime_hours?: number }>>({});
+  const [attendance, setAttendance] = useState<Record<string, { status: AttendanceStatus; advance: number; created_at?: string; updated_at?: string; in_time?: string | null; out_time?: string | null; total_hours?: number; overtime_hours?: number; notes?: string | null }>>({});
   const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
   const [siteOverrides, setSiteOverrides] = useState<Record<string, string>>({});
   const [gpsMap, setGpsMap] = useState<Record<string, { lat: number; lng: number }>>({});
