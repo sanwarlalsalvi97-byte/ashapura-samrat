@@ -503,7 +503,7 @@ export default function AttendancePage() {
             </div>
           ) : (
             <>
-              <div className="space-y-2 pb-44">
+              <div className="space-y-2 pb-24">
                 {filteredWorkers.map((w) => (
                   <AttendanceCard
                     key={w.id}
@@ -517,6 +517,7 @@ export default function AttendancePage() {
                     currentOutTime={attendance[w.id]?.out_time}
                     currentTotalHours={attendance[w.id]?.total_hours}
                     currentOvertimeHours={attendance[w.id]?.overtime_hours}
+                    currentNotes={(attendance[w.id] as any)?.notes}
                     mode={mode}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
@@ -527,9 +528,9 @@ export default function AttendancePage() {
                 ))}
               </div>
 
-              {/* Totals strip + Save button (sticky bottom) */}
-              <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10">
-                <div className="max-w-lg mx-auto space-y-2">
+              {/* Sticky totals strip (instant-save — no manual Save button) */}
+              <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background to-transparent z-10 pointer-events-none">
+                <div className="max-w-lg mx-auto pointer-events-auto">
                   <div className="grid grid-cols-4 gap-2">
                     <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-2 text-center">
                       <div className="text-[10px] font-semibold text-emerald-600">P</div>
@@ -543,57 +544,15 @@ export default function AttendancePage() {
                       <div className="text-[10px] font-semibold text-amber-600">HD</div>
                       <div className="text-base font-extrabold text-amber-600 leading-none">{totals.H}</div>
                     </div>
-                    <div className="rounded-xl bg-muted border border-border p-2 text-center">
+                    <div className="rounded-xl bg-card border border-border p-2 text-center shadow-sm">
                       <div className="text-[10px] font-semibold text-muted-foreground">कुल</div>
                       <div className="text-base font-extrabold leading-none">{totals.total}</div>
                     </div>
                   </div>
-                  {hasInvalidTimes && (
-                    <button
-                      type="button"
-                      onClick={() => scrollToInvalid(invalidEntries[0].id)}
-                      className="w-full flex items-center justify-between gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-left active:scale-[0.99] transition"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-7 h-7 rounded-full bg-rose-500 text-white grid place-items-center text-xs font-extrabold shrink-0">
-                          {invalidEntries.length}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[12px] font-bold text-rose-700 dark:text-rose-300 leading-tight">
-                            {invalidEntries.length === 1
-                              ? "1 मजदूर का समय गलत है"
-                              : `${invalidEntries.length} मजदूरों का समय गलत है`}
-                          </div>
-                          <div className="text-[10px] text-rose-600/80 dark:text-rose-300/80 truncate">
-                            पहले: {invalidEntries[0].name} • टैप करके ठीक करें
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-rose-600 font-bold text-lg shrink-0">→</span>
-                    </button>
-                  )}
-                  <Button
-                    className="w-full shadow-lg"
-                    size="lg"
-                    onClick={saveAll}
-                    disabled={
-                      savingAll ||
-                      hasInvalidTimes ||
-                      (Object.keys(selections).length === 0 && Object.keys(timesMap).length === 0)
-                    }
-                  >
-                    <Check className="w-5 h-5" />
-                    {savingAll
-                      ? "सेव हो रहा है..."
-                      : hasInvalidTimes
-                        ? "समय ठीक करें"
-                        : Object.keys(selections).length > 0
-                          ? `हाजिरी सेव करें (${Object.keys(selections).length})`
-                          : "हाजिरी सेव करें"}
-                  </Button>
                 </div>
               </div>
             </>
+
           )}
         </>
       )}
