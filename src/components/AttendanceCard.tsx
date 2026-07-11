@@ -2,17 +2,29 @@ import { daysInMonth, isoDateFromParts, monthBoundsISO, toISODate, weekdayOfISO 
 import { useEffect, useMemo, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, Loader2, Pencil, Clock, AlertCircle, Timer } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { CalendarDays, MapPin, Loader2, Pencil, Clock, Timer, Check } from "lucide-react";
+import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { listSites, createSite, type Site } from "@/lib/sites";
 import { getWorkTime } from "@/lib/work-time";
-import { calcHours, splitOT, fmt12, fmtHours, timeToMinutes, HALF_DAY_HOURS, STANDARD_HOURS } from "@/lib/work-hours";
+import { HALF_DAY_HOURS, STANDARD_HOURS, timeToMinutes } from "@/lib/work-hours";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+
+/**
+ * Attendance codes — encoded on top of the DB enum + overtime_hours + notes:
+ *   A     → status=Absent
+ *   P     → status=Present,   ot=0
+ *   HALF  → status=Half-Day,  ot=0            (label "½")
+ *   P_HALF→ status=Present,   ot=4            (label "P+½", = 1.5 day)
+ *   PP    → status=Present,   ot=8            (label "P+P", = 2 days)
+ *   OT    → status=Present,   ot=<user hrs>
+ *   PA    → status=Present,   ot=0, notes="PA"  (Paid Absent)
+ */
+export type AttCode = "A" | "P" | "HALF" | "P_HALF" | "PP" | "OT" | "PA";
 
 export type WorkerTimes = {
   in_time: string | null;
@@ -33,48 +45,20 @@ interface Props {
   currentOutTime?: string | null;
   currentTotalHours?: number;
   currentOvertimeHours?: number;
+  currentNotes?: string | null;
   mode?: "manual" | "gps";
   onMarked: () => void;
+  // Legacy no-op props (page still passes them)
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
   onSiteChange?: (workerId: string, site: string) => void;
   onGpsChange?: (workerId: string, gps: { lat: number; lng: number } | undefined) => void;
   onTimesChange?: (workerId: string, times: WorkerTimes) => void;
 }
 
-const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
+const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
+const WEEK = ["र", "सो", "मं", "बु", "गु", "शु", "श"];
 
-const STATUS_OPTIONS: { value: AttendanceStatus; label: string; full: string; activeBg: string; activeText: string; ring: string; idleBg: string; idleText: string }[] = [
-  {
-    value: "Present",
-    label: "P",
-    full: "हाजिर",
-    activeBg: "bg-emerald-500",
-    activeText: "text-white",
-    ring: "ring-emerald-500/40",
-    idleBg: "bg-emerald-500/10",
-    idleText: "text-emerald-700 dark:text-emerald-400",
-  },
-  {
-    value: "Half-Day",
-    label: "HD",
-    full: "आधा दिन",
-    activeBg: "bg-amber-500",
-    activeText: "text-white",
-    ring: "ring-amber-500/40",
-    idleBg: "bg-amber-500/10",
-    idleText: "text-amber-700 dark:text-amber-400",
-  },
-  {
-    value: "Absent",
-    label: "A",
-    full: "गैरहाजिर",
-    activeBg: "bg-rose-500",
-    activeText: "text-white",
-    ring: "ring-rose-500/40",
-    idleBg: "bg-rose-500/10",
-    idleText: "text-rose-700 dark:text-rose-400",
-  },
-];
+const ORDER: AttendanceStatus[] = ["Present", "Absent", "Half-Day"];
 
 const PILL: Record<string, { label: string; bg: string }> = {
   Present: { label: "P", bg: "bg-emerald-500" },
@@ -82,111 +66,149 @@ const PILL: Record<string, { label: string; bg: string }> = {
   "Half-Day": { label: "HD", bg: "bg-amber-500" },
 };
 
-const WEEK = ["र", "सो", "मं", "बु", "गु", "शु", "श"];
-const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
+type CodeSpec = {
+  code: AttCode;
+  label: string;
+  full: string;
+  active: string;   // active bg + text
+  idle: string;     // idle bg + text
+};
+
+const CODES: CodeSpec[] = [
+  { code: "A",      label: "A",   full: "गैरहाजिर",  active: "bg-rose-500 text-white",     idle: "bg-rose-500/10 text-rose-700 dark:text-rose-300" },
+  { code: "P",      label: "P",   full: "हाजिर",     active: "bg-emerald-500 text-white",  idle: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  { code: "HALF",   label: "½",   full: "आधा दिन",   active: "bg-amber-500 text-white",    idle: "bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  { code: "P_HALF", label: "P+½", full: "1.5 दिन",   active: "bg-lime-600 text-white",     idle: "bg-lime-500/10 text-lime-700 dark:text-lime-300" },
+  { code: "PP",     label: "P+P", full: "डबल",       active: "bg-teal-600 text-white",     idle: "bg-teal-500/10 text-teal-700 dark:text-teal-300" },
+  { code: "OT",     label: "OT",  full: "ओवरटाइम",   active: "bg-purple-600 text-white",   idle: "bg-purple-500/10 text-purple-700 dark:text-purple-300" },
+  { code: "PA",     label: "PA",  full: "पेड़ छुट्टी", active: "bg-sky-600 text-white",     idle: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+];
 
 function initials(name: string) {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-export default function AttendanceCard({ worker, date, currentStatus, currentCreatedAt, currentUpdatedAt, currentInTime, currentOutTime, currentTotalHours, currentOvertimeHours, mode = "manual", onMarked, onSelectionChange, onSiteChange, onGpsChange, onTimesChange }: Props) {
-  const [sel, setSel] = useState<AttendanceStatus | undefined>(currentStatus);
+/** Derive current attendance code from stored row. */
+function deriveCode(
+  status?: AttendanceStatus,
+  ot?: number | null,
+  notes?: string | null,
+): AttCode | undefined {
+  if (!status) return undefined;
+  if (status === "Absent") return "A";
+  if (status === "Half-Day") return "HALF";
+  // Present
+  const otN = Number(ot || 0);
+  if (notes && notes.trim().toUpperCase() === "PA") return "PA";
+  if (otN === 4) return "P_HALF";
+  if (otN === 8) return "PP";
+  if (otN > 0) return "OT";
+  return "P";
+}
+
+/** Convert code + optional OT hours into DB payload fields. */
+function codeToPayload(code: AttCode, otHours: number, checkIn: string, checkOut: string) {
+  // Default IN/OUT auto-filled for Present-like codes
+  const halfOut = (() => {
+    const startMin = timeToMinutes(checkIn) ?? 8 * 60;
+    const end = startMin + HALF_DAY_HOURS * 60;
+    const h = Math.floor(end / 60) % 24;
+    const m = end % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  })();
+
+  switch (code) {
+    case "A":
+      return { status: "Absent" as AttendanceStatus, ot: 0, in_time: null as string | null, out_time: null as string | null, total: 0, notes: null as string | null };
+    case "P":
+      return { status: "Present" as AttendanceStatus, ot: 0, in_time: checkIn, out_time: checkOut, total: STANDARD_HOURS, notes: null };
+    case "HALF":
+      return { status: "Half-Day" as AttendanceStatus, ot: 0, in_time: checkIn, out_time: halfOut, total: HALF_DAY_HOURS, notes: null };
+    case "P_HALF":
+      return { status: "Present" as AttendanceStatus, ot: 4, in_time: checkIn, out_time: checkOut, total: STANDARD_HOURS, notes: null };
+    case "PP":
+      return { status: "Present" as AttendanceStatus, ot: 8, in_time: checkIn, out_time: checkOut, total: STANDARD_HOURS, notes: null };
+    case "OT":
+      return { status: "Present" as AttendanceStatus, ot: Math.max(0.5, otHours), in_time: checkIn, out_time: checkOut, total: STANDARD_HOURS, notes: null };
+    case "PA":
+      return { status: "Present" as AttendanceStatus, ot: 0, in_time: null, out_time: null, total: 0, notes: "PA" };
+  }
+}
+
+export default function AttendanceCard({
+  worker, date, currentStatus, currentCreatedAt, currentUpdatedAt,
+  currentInTime, currentOutTime, currentOvertimeHours, currentNotes,
+  mode = "manual", onMarked, onSiteChange, onGpsChange,
+}: Props) {
+  const derivedCode = deriveCode(currentStatus, currentOvertimeHours, currentNotes);
+  const [code, setCode] = useState<AttCode | undefined>(derivedCode);
   const [site, setSite] = useState(worker.site_name || "");
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [gps, setGps] = useState<{ lat: number; lng: number } | undefined>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
-  const [siteError, setSiteError] = useState(false);
-  const workDefaults = useMemo(() => getWorkTime(), []);
-  const [inT, setInT] = useState<string>(currentInTime?.slice(0, 5) || "");
-  const [outT, setOutT] = useState<string>(currentOutTime?.slice(0, 5) || "");
-  const [otHours, setOtHours] = useState<number>(Number(currentOvertimeHours) || 0);
-  const [timeError, setTimeError] = useState<string>("");
+  const [savingCode, setSavingCode] = useState<AttCode | null>(null);
+  const [otDialog, setOtDialog] = useState(false);
+  const [otHours, setOtHours] = useState<number>(currentOvertimeHours && currentOvertimeHours > 0 && currentOvertimeHours !== 4 && currentOvertimeHours !== 8 ? Number(currentOvertimeHours) : 2);
+  const [siteDialog, setSiteDialog] = useState(false);
+  const [pendingCode, setPendingCode] = useState<AttCode | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
-  useEffect(() => { setSel(currentStatus); }, [currentStatus, date]);
+  const workDefaults = useMemo(() => getWorkTime(), []);
+
+  useEffect(() => {
+    setCode(deriveCode(currentStatus, currentOvertimeHours, currentNotes));
+  }, [currentStatus, currentOvertimeHours, currentNotes, date]);
   useEffect(() => { setSite(worker.site_name || ""); }, [worker.site_name]);
-  useEffect(() => { setInT(currentInTime?.slice(0, 5) || ""); }, [currentInTime, date]);
-  useEffect(() => { setOutT(currentOutTime?.slice(0, 5) || ""); }, [currentOutTime, date]);
-  useEffect(() => { setOtHours(Number(currentOvertimeHours) || 0); }, [currentOvertimeHours, date]);
   useEffect(() => {
     const refresh = () => setSites(listSites());
     window.addEventListener("sites-updated", refresh);
     return () => window.removeEventListener("sites-updated", refresh);
   }, []);
 
-  // Whenever times/status/OT change, recompute & emit. Overtime is ALWAYS manual — never derived from IN/OUT.
-  useEffect(() => {
-    if (sel === "Absent") {
-      onTimesChange?.(worker.id, { in_time: null, out_time: null, total_hours: 0, overtime_hours: 0, invalid: false });
-      setTimeError("");
+  async function doSave(nextCode: AttCode, otVal?: number) {
+    const effectiveSite = (site || worker.site_name || "").trim();
+    if (!effectiveSite) {
+      setPendingCode(nextCode);
+      setSiteDialog(true);
       return;
     }
-    const total = calcHours(inT, outT);
-    const aMin = timeToMinutes(inT);
-    const bMin = timeToMinutes(outT);
-    let err = "";
-    if (sel && inT && outT && aMin != null && bMin != null && bMin <= aMin) {
-      err = "OUT समय IN के बाद होना चाहिए";
-    } else if (sel && (!inT || !outT)) {
-      err = "IN और OUT समय भरें";
+    const p = codeToPayload(nextCode, otVal ?? otHours, workDefaults.checkIn, workDefaults.checkOut);
+    setSavingCode(nextCode);
+    try {
+      await markAttendance({
+        worker_id: worker.id,
+        date,
+        status: p.status,
+        advance: 0,
+        site_name: effectiveSite,
+        notes: p.notes,
+        gps_status: gps ? "ON" : "OFF",
+        gps_lat: gps?.lat ?? null,
+        gps_lng: gps?.lng ?? null,
+        in_time: p.in_time,
+        out_time: p.out_time,
+        total_hours: p.total,
+        overtime_hours: p.ot,
+      } as any);
+      setCode(nextCode);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 1200);
+      toast({ title: `✓ ${worker.name} — ${CODES.find(c => c.code === nextCode)?.full}` });
+      onMarked();
+    } catch (e: any) {
+      toast({ title: "सेव नहीं हुआ", description: e?.message, variant: "destructive" });
+    } finally {
+      setSavingCode(null);
     }
-    setTimeError(err);
-    const invalid = !!sel && (!inT || !outT || total <= 0);
-    onTimesChange?.(worker.id, {
-      in_time: inT || null,
-      out_time: outT || null,
-      total_hours: total,
-      overtime_hours: otHours || 0,
-      invalid,
-    });
-  }, [sel, inT, outT, otHours, worker.id]);
+  }
 
-  /** Suggested OUT time given current IN and selected status. */
-  const suggestion = useMemo(() => {
-    if (!sel || sel === "Absent") return null;
-    const startStr = inT || workDefaults.checkIn || "09:00";
-    const startMin = timeToMinutes(startStr);
-    if (startMin == null) return null;
-    const addH = sel === "Half-Day" ? HALF_DAY_HOURS : STANDARD_HOURS;
-    const endMin = startMin + addH * 60;
-    const eh = Math.floor(endMin / 60) % 24;
-    const em = endMin % 60;
-    const endStr = `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
-    return { inStr: startStr, outStr: endStr, hours: addH };
-  }, [sel, inT, workDefaults.checkIn]);
-
-  const applySuggestion = () => {
-    if (!suggestion) return;
-    setInT(suggestion.inStr);
-    setOutT(suggestion.outStr);
-  };
-
-  const pickStatus = (status: AttendanceStatus) => {
-    // Toggle off if same status tapped
-    const next = sel === status ? undefined : status;
-    setSel(next);
-    onSelectionChange?.(worker.id, next);
-    if (next && !site) setSiteError(true);
-    else setSiteError(false);
-
-    // Auto-fill times based on status
-    if (next === "Present") {
-      if (!inT) setInT(workDefaults.checkIn);
-      if (!outT) setOutT(workDefaults.checkOut);
-    } else if (next === "Half-Day") {
-      const startMin = (() => {
-        const [h, m] = (workDefaults.checkIn || "08:00").split(":").map(Number);
-        return h * 60 + m;
-      })();
-      const endMin = startMin + HALF_DAY_HOURS * 60;
-      const eh = Math.floor(endMin / 60) % 24;
-      const em = endMin % 60;
-      if (!inT) setInT(workDefaults.checkIn);
-      if (!outT) setOutT(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
-    } else if (next === "Absent") {
-      setInT("");
-      setOutT("");
+  const pickCode = (c: AttCode) => {
+    if (c === "OT") {
+      setOtDialog(true);
+      return;
     }
+    void doSave(c);
   };
 
   const updateSite = (v: string) => {
@@ -204,7 +226,6 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     const val = v === "__none__" ? "" : v;
     setSite(val);
     onSiteChange?.(worker.id, val);
-    if (val) setSiteError(false);
   };
 
   const captureGps = () => {
@@ -219,13 +240,8 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         setGps(g);
         onGpsChange?.(worker.id, g);
         setGpsLoading(false);
-        if (mode === "gps") {
-          setSel("Present");
-          onSelectionChange?.(worker.id, "Present");
-          toast({ title: `✅ ${worker.name} — हाजिर (GPS लॉक)` });
-        } else {
-          toast({ title: `📍 GPS सेव हुआ` });
-        }
+        if (mode === "gps") void doSave("P");
+        else toast({ title: `📍 GPS सेव हुआ` });
       },
       (err) => {
         setGpsLoading(false);
@@ -235,16 +251,10 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
     );
   };
 
-  const isEdited = !!currentStatus && !!sel && sel !== currentStatus;
   const wasEdited = !!currentCreatedAt && !!currentUpdatedAt && Math.abs(new Date(currentUpdatedAt).getTime() - new Date(currentCreatedAt).getTime()) > 1000;
   const updatedLabel = currentUpdatedAt
     ? new Date(currentUpdatedAt).toLocaleString("hi-IN", { dateStyle: "short", timeStyle: "short" })
     : null;
-
-  const liveTotal = sel === "Absent" ? 0 : calcHours(inT, outT);
-  const liveOT = sel === "Absent" ? 0 : (otHours || 0);
-  const showTimes = sel !== "Absent";
-  const OT_OPTIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8];
 
   return (
     <motion.div
@@ -252,9 +262,9 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`scroll-mt-24 rounded-2xl bg-card border ${timeError ? "border-rose-500/60 ring-1 ring-rose-500/30" : isEdited ? "border-amber-500/60 ring-1 ring-amber-500/30" : "border-border/60"} shadow-sm overflow-hidden`}
+      className={`scroll-mt-24 rounded-2xl bg-card border ${justSaved ? "border-emerald-500/60 ring-1 ring-emerald-500/30" : "border-border/60"} shadow-sm overflow-hidden transition`}
     >
-      {/* Header: avatar + name + actions */}
+      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-3 pb-2">
         <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/30 to-primary/70 grid place-items-center text-primary-foreground text-base font-bold shrink-0 shadow-sm">
           {initials(worker.name)}
@@ -262,27 +272,24 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         <div className="flex-1 min-w-0">
           <div className="font-bold text-[15px] truncate flex items-center gap-1.5">
             {worker.name}
-            {(isEdited || wasEdited) && (
+            {wasEdited && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white">Edited</span>
+            )}
+            {justSaved && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white flex items-center gap-0.5">
+                <Check className="w-2.5 h-2.5" /> सेव
+              </span>
             )}
           </div>
           <div className="text-xs text-muted-foreground truncate">
             {worker.role} <span className="mx-1 opacity-50">•</span>
             <span className="font-semibold text-foreground">₹{worker.daily_rate.toLocaleString()}</span>/दिन
-          </div>
-          {liveTotal > 0 && showTimes && (
-            <div className="mt-0.5 text-[11px] flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 text-foreground/80 font-medium">
-                <Clock className="w-3 h-3" />
-                {fmt12(inT)} – {fmt12(outT)} ({fmtHours(liveTotal)})
+            {code === "OT" && Number(currentOvertimeHours) > 0 && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 text-purple-600 dark:text-purple-300 font-semibold">
+                <Timer className="w-3 h-3" /> {Number(currentOvertimeHours)}घं
               </span>
-              {liveOT > 0 && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-bold">
-                  <Timer className="w-2.5 h-2.5" /> OT {fmtHours(liveOT)}
-                </span>
-              )}
-            </div>
-          )}
+            )}
+          </div>
           {updatedLabel && (
             <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" /> {updatedLabel}
@@ -308,111 +315,41 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
         </button>
       </div>
 
-      {/* Attendance pill buttons row */}
-      <div className="px-4 pb-2 grid grid-cols-3 gap-2">
-        {STATUS_OPTIONS.map((opt) => {
-          const active = sel === opt.value;
+      {/* Code buttons — instant save on tap */}
+      <div className="px-3 pb-2 grid grid-cols-7 gap-1.5">
+        {CODES.map((c) => {
+          const active = code === c.code;
+          const busy = savingCode === c.code;
           return (
             <motion.button
-              key={opt.value}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => pickStatus(opt.value)}
-              className={`relative h-11 rounded-full font-bold text-sm flex items-center justify-center gap-1.5 transition-all duration-200 ${
-                active
-                  ? `${opt.activeBg} ${opt.activeText} shadow-md ring-2 ${opt.ring}`
-                  : `${opt.idleBg} ${opt.idleText} hover:brightness-95`
-              }`}
+              key={c.code}
+              whileTap={{ scale: 0.94 }}
+              onClick={() => pickCode(c.code)}
+              disabled={!!savingCode}
+              title={c.full}
+              className={`relative h-12 rounded-xl font-extrabold text-[13px] leading-none flex flex-col items-center justify-center gap-0.5 transition-all ${
+                active ? `${c.active} shadow-md` : c.idle
+              } ${savingCode && !busy ? "opacity-60" : ""}`}
               aria-pressed={active}
             >
-              <span className={`grid place-items-center rounded-full text-[11px] font-extrabold w-6 h-6 ${active ? "bg-white/25" : "bg-white/70 dark:bg-black/20"}`}>
-                {opt.label}
-              </span>
-              <span className="text-[12px]">{opt.full}</span>
+              {busy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span>{c.label}</span>
+                  <span className="text-[8px] font-semibold opacity-80 truncate max-w-full px-0.5">{c.full}</span>
+                </>
+              )}
             </motion.button>
           );
         })}
       </div>
 
-      {/* IN / OUT time pickers */}
-      <div className="px-4 pb-2">
-        <div className="grid grid-cols-2 gap-2">
-          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
-            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> IN समय
-            </span>
-            <Input
-              type="time"
-              value={inT}
-              disabled={sel === "Absent"}
-              onChange={(e) => setInT(e.target.value)}
-              className="h-9 mt-1 text-sm rounded-lg"
-            />
-          </label>
-          <label className={`block ${sel === "Absent" ? "opacity-50" : ""}`}>
-            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> OUT समय
-            </span>
-            <Input
-              type="time"
-              value={outT}
-              disabled={sel === "Absent"}
-              onChange={(e) => setOutT(e.target.value)}
-              className={`h-9 mt-1 text-sm rounded-lg ${timeError ? "border-rose-500 ring-1 ring-rose-500/40" : ""}`}
-            />
-          </label>
-        </div>
-        {timeError && (
-          <div className="mt-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1.5 space-y-1">
-            <p className="text-[11px] text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> {timeError}
-            </p>
-            {suggestion && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-muted-foreground leading-tight">
-                  सुझाव: {fmt12(suggestion.inStr)} – {fmt12(suggestion.outStr)} ({fmtHours(suggestion.hours)})
-                </span>
-                <button
-                  type="button"
-                  onClick={applySuggestion}
-                  className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary text-primary-foreground active:scale-95 transition shrink-0"
-                >
-                  लागू करें
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-
-      {/* Manual Overtime (never auto-calculated from IN/OUT) */}
-      {sel && sel !== "Absent" && (
-        <div className="px-4 pb-2">
-          <label className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-            <Timer className="w-3 h-3" /> ओवरटाइम (घंटे)
-          </label>
-          <Select value={String(otHours || 0)} onValueChange={(v) => setOtHours(Number(v))}>
-            <SelectTrigger className="h-10 mt-1 text-sm rounded-xl bg-background border-primary/30">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100] bg-popover max-h-64">
-              {OT_OPTIONS.map((h) => (
-                <SelectItem key={h} value={String(h)}>{h} घंटे</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-            ओवरटाइम मैन्युअली भरा जाता है — IN/OUT समय से अपने-आप नहीं जोड़ा जाता।
-          </p>
-        </div>
-      )}
-
-
       {/* Site dropdown */}
       <div className="px-4 pb-3 pt-1">
-        <label className="text-[11px] text-muted-foreground font-medium">साइट चुनें</label>
+        <label className="text-[11px] text-muted-foreground font-medium">साइट</label>
         <Select value={site || "__none__"} onValueChange={updateSite}>
-          <SelectTrigger className={`h-10 mt-1 text-sm rounded-xl bg-background ${siteError ? "border-rose-500 ring-1 ring-rose-500/40" : "border-primary/30"}`}>
+          <SelectTrigger className="h-9 mt-1 text-sm rounded-xl bg-background border-primary/30">
             <SelectValue placeholder="साइट चुनें" />
           </SelectTrigger>
           <SelectContent className="z-[100] bg-popover">
@@ -427,17 +364,139 @@ export default function AttendanceCard({ worker, date, currentStatus, currentCre
             </SelectItem>
           </SelectContent>
         </Select>
-        {siteError && (
-          <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> कृपया साइट चुनें
-          </p>
-        )}
       </div>
+
+      {/* OT Hours dialog */}
+      <Dialog open={otDialog} onOpenChange={setOtDialog}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">ओवरटाइम घंटे</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{worker.name} — कितने घंटे ओवरटाइम?</p>
+            <Input
+              type="number"
+              step="0.5"
+              min={0.5}
+              max={12}
+              inputMode="decimal"
+              value={otHours}
+              onChange={(e) => setOtHours(Math.max(0, Number(e.target.value) || 0))}
+              className="h-12 text-lg font-bold text-center"
+              autoFocus
+            />
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setOtHours(h)}
+                  className={`h-9 rounded-lg text-sm font-bold transition ${otHours === h ? "bg-purple-600 text-white" : "bg-muted"}`}
+                >
+                  {h}घं
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setOtDialog(false)}
+              className="flex-1 h-11 rounded-xl bg-muted font-bold"
+            >
+              रद्द
+            </button>
+            <button
+              onClick={() => {
+                if (otHours <= 0) {
+                  toast({ title: "घंटे भरें", variant: "destructive" });
+                  return;
+                }
+                setOtDialog(false);
+                void doSave("OT", otHours);
+              }}
+              className="flex-1 h-11 rounded-xl bg-purple-600 text-white font-bold"
+            >
+              सेव करें
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Site required dialog */}
+      <Dialog open={siteDialog} onOpenChange={setSiteDialog}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">पहले साइट चुनें</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">इस मजदूर के लिए कोई साइट सेट नहीं है।</p>
+            <Select
+              onValueChange={(v) => {
+                if (v === "__add__") {
+                  const name = window.prompt("नई साइट का नाम लिखें:")?.trim();
+                  if (!name) return;
+                  const created = createSite({ name });
+                  if (!created) return;
+                  setSites(listSites());
+                  v = created.name;
+                }
+                setSite(v);
+                onSiteChange?.(worker.id, v);
+                setSiteDialog(false);
+                if (pendingCode) {
+                  const c = pendingCode;
+                  setPendingCode(null);
+                  // Save now with newly-picked site (state might be async; pass via override)
+                  setTimeout(() => {
+                    const p = codeToPayload(c, otHours, workDefaults.checkIn, workDefaults.checkOut);
+                    setSavingCode(c);
+                    markAttendance({
+                      worker_id: worker.id,
+                      date,
+                      status: p.status,
+                      advance: 0,
+                      site_name: v,
+                      notes: p.notes,
+                      gps_status: gps ? "ON" : "OFF",
+                      gps_lat: gps?.lat ?? null,
+                      gps_lng: gps?.lng ?? null,
+                      in_time: p.in_time,
+                      out_time: p.out_time,
+                      total_hours: p.total,
+                      overtime_hours: p.ot,
+                    } as any)
+                      .then(() => {
+                        setCode(c);
+                        setJustSaved(true);
+                        setTimeout(() => setJustSaved(false), 1200);
+                        toast({ title: `✓ ${worker.name} — ${CODES.find(x => x.code === c)?.full}` });
+                        onMarked();
+                      })
+                      .catch((e: any) => toast({ title: "सेव नहीं हुआ", description: e?.message, variant: "destructive" }))
+                      .finally(() => setSavingCode(null));
+                  }, 0);
+                }
+              }}
+            >
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue placeholder="साइट चुनें" />
+              </SelectTrigger>
+              <SelectContent className="z-[200] bg-popover">
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                ))}
+                <SelectItem value="__add__" className="text-primary font-medium">➕ नई साइट जोड़ें</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <WorkerCalendarDialog open={calOpen} onOpenChange={setCalOpen} worker={worker} onSaved={onMarked} />
     </motion.div>
   );
 }
+
+/* ---------------- Worker calendar dialog (unchanged behaviour) ---------------- */
 
 type CalendarAttendance = {
   status: AttendanceStatus;
@@ -459,7 +518,7 @@ function WorkerCalendarDialog({ open, onOpenChange, worker, onSaved }: { open: b
   const month = cursor.getMonth();
   const firstDow = weekdayOfISO(year, month, 1);
   const monthDays = daysInMonth(year, month);
-  const todayIso =toISODate(new Date());
+  const todayIso = toISODate(new Date());
 
   const fetchMonth = async () => {
     setLoading(true);
