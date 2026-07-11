@@ -69,8 +69,10 @@ export default function AttendancePage() {
           out_time: r.out_time ?? null,
           total_hours: Number(r.total_hours) || 0,
           overtime_hours: Number(r.overtime_hours) || 0,
+          notes: r.notes ?? null,
         };
       });
+
       setAttendance(map);
       setSelections({});
       setTimesMap({});
