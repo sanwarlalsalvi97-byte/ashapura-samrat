@@ -643,10 +643,10 @@ function SiteWiseReport({
   );
 }
 
-function Row({ label, value, bold, tone }: { label: string; value: string | number; bold?: boolean; tone?: string }) {
+function Row({ label, value, bold, tone, muted }: { label: string; value: string | number; bold?: boolean; tone?: string; muted?: boolean }) {
   return (
     <div className="flex justify-between">
-      <span className="text-muted-foreground">{label}</span>
+      <span className={muted ? "text-muted-foreground/70 text-xs" : "text-muted-foreground"}>{label}</span>
       <span className={`tabular-nums ${bold ? "font-bold" : "font-medium"} ${tone || ""}`}>{value}</span>
     </div>
   );
