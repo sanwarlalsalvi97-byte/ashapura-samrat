@@ -1,4 +1,4 @@
-import { monthBoundsISO, parseISODate, toISODate } from "@/lib/date-utils";
+import { monthBoundsISO, parseISODate, todayISO, toISODate } from "@/lib/date-utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getWorkers, markAttendance, type Worker } from "@/lib/supabase-helpers";
@@ -24,7 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, ChevronLeft, ChevronRight, Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import {
+  CalendarIcon, ChevronLeft, ChevronRight, Filter, Pencil, Plus, Trash2, Wallet, X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -50,13 +52,8 @@ function fmt(d: string) {
 
 export default function AdvancePage() {
   const now = new Date();
-  const [cursor, setCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
-  const { startISO: monthStartISO, endISO: monthEndISO } = useMemo(
-    () => monthBoundsISO(cursor.getFullYear(), cursor.getMonth()),
-    [cursor],
-  );
-  const goPrevMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
-  const goNextMonth = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+  // Month filter is OPTIONAL. null = All Time.
+  const [monthFilter, setMonthFilter] = useState<{ y: number; m: number } | null>(null);
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [entries, setEntries] = useState<AdvEntry[]>([]);
@@ -74,8 +71,6 @@ export default function AdvancePage() {
         supabase
           .from("attendance")
           .select("id,worker_id,date,advance,notes,site_name,status,workers(name)")
-          .gte("date", monthStartISO)
-          .lte("date", monthEndISO)
           .gt("advance", 0)
           .order("date", { ascending: false }),
       ]);
@@ -86,8 +81,7 @@ export default function AdvancePage() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthStartISO, monthEndISO]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -98,11 +92,31 @@ export default function AdvancePage() {
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
-  const total = entries.reduce((s, e) => s + (e.advance || 0), 0);
+  const today = todayISO();
+  const thisMonth = useMemo(() => monthBoundsISO(now.getFullYear(), now.getMonth()), []);
+
+  const totals = useMemo(() => {
+    let td = 0, mo = 0, all = 0;
+    entries.forEach((e) => {
+      const amt = e.advance || 0;
+      all += amt;
+      if (e.date === today) td += amt;
+      if (e.date >= thisMonth.startISO && e.date <= thisMonth.endISO) mo += amt;
+    });
+    return { td, mo, all };
+  }, [entries, today, thisMonth]);
+
+  const filtered = useMemo(() => {
+    if (!monthFilter) return entries;
+    const { startISO, endISO } = monthBoundsISO(monthFilter.y, monthFilter.m);
+    return entries.filter((e) => e.date >= startISO && e.date <= endISO);
+  }, [entries, monthFilter]);
+
+  const filteredTotal = filtered.reduce((s, e) => s + (e.advance || 0), 0);
 
   const workerWise = useMemo(() => {
     const map = new Map<string, { name: string; amount: number; count: number }>();
-    entries.forEach((e) => {
+    filtered.forEach((e) => {
       const name = e.workers?.name || "मजदूर";
       const cur = map.get(e.worker_id) || { name, amount: 0, count: 0 };
       cur.amount += e.advance || 0;
@@ -110,15 +124,25 @@ export default function AdvancePage() {
       map.set(e.worker_id, cur);
     });
     return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
-  }, [entries]);
+  }, [filtered]);
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (e: AdvEntry) => { setEditing(e); setFormOpen(true); };
 
+  const goPrevMonth = () => {
+    const cur = monthFilter || { y: now.getFullYear(), m: now.getMonth() };
+    const d = new Date(cur.y, cur.m - 1, 1);
+    setMonthFilter({ y: d.getFullYear(), m: d.getMonth() });
+  };
+  const goNextMonth = () => {
+    const cur = monthFilter || { y: now.getFullYear(), m: now.getMonth() };
+    const d = new Date(cur.y, cur.m + 1, 1);
+    setMonthFilter({ y: d.getFullYear(), m: d.getMonth() });
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      // Preserve attendance status/date, clear only the advance amount.
       const w = workers.find((x) => x.id === deleteTarget.worker_id);
       await markAttendance({
         worker_id: deleteTarget.worker_id,
@@ -141,66 +165,99 @@ export default function AdvancePage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold flex items-center gap-2">
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white grid place-items-center shadow-sm">
+          <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white grid place-items-center shadow-sm">
             <Wallet className="w-5 h-5" />
           </span>
-          एडवांस
+          एडवांस लेजर
         </h1>
         <Button
           onClick={openAdd}
-          className="bg-orange-600 hover:bg-orange-700 text-white gap-1 rounded-xl shadow-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-2xl shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          नया एडवांस
+          नया
         </Button>
       </div>
 
-      {/* Month selector */}
-      <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-2 py-2 shadow-sm">
-        <button
-          onClick={goPrevMonth}
-          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
-          aria-label="पिछला महीना"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <div className="text-center leading-tight">
-          <div className="text-[10px] text-muted-foreground font-semibold">महीना</div>
-          <div className="text-sm font-extrabold tracking-tight">
-            {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
+      {/* Hero summary card */}
+      <div className="rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-5 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.55)]">
+        <div className="text-[11px] font-bold uppercase tracking-widest opacity-90">कुल एडवांस (All Time)</div>
+        <div className="text-4xl font-extrabold tabular-nums mt-1">₹{totals.all.toLocaleString("hi-IN")}</div>
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="rounded-2xl bg-white/15 backdrop-blur p-3">
+            <div className="text-[10px] font-bold uppercase opacity-90">आज</div>
+            <div className="text-lg font-extrabold tabular-nums">₹{totals.td.toLocaleString("hi-IN")}</div>
+          </div>
+          <div className="rounded-2xl bg-white/15 backdrop-blur p-3">
+            <div className="text-[10px] font-bold uppercase opacity-90">इस महीने</div>
+            <div className="text-lg font-extrabold tabular-nums">₹{totals.mo.toLocaleString("hi-IN")}</div>
           </div>
         </div>
-        <button
-          onClick={goNextMonth}
-          className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
-          aria-label="अगला महीना"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
 
-      {/* Summary card */}
-      <div className="rounded-[20px] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-orange-200/70 dark:border-orange-900/40 p-4 shadow-[0_4px_14px_-6px_rgba(234,88,12,0.35)]">
-        <div className="text-xs font-bold text-orange-700/80 dark:text-orange-400/80">
-          कुल एडवांस दिया — {HINDI_MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
-        </div>
-        <div className="text-3xl font-extrabold tabular-nums text-orange-700 dark:text-orange-300 mt-1">
-          ₹{total.toLocaleString("hi-IN")}
-        </div>
-        <div className="text-[11px] font-semibold text-orange-700/80 dark:text-orange-400/80 mt-1">
-          {entries.length} बार एडवांस दिया गया
-        </div>
+      {/* Month filter (optional) */}
+      <div className="flex items-center gap-2 bg-card rounded-2xl border border-border/60 px-2 py-2 shadow-sm">
+        {monthFilter ? (
+          <>
+            <button
+              onClick={goPrevMonth}
+              className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1 text-center leading-tight">
+              <div className="text-[10px] text-muted-foreground font-semibold">फ़िल्टर</div>
+              <div className="text-sm font-extrabold tracking-tight">
+                {HINDI_MONTHS[monthFilter.m]} {monthFilter.y}
+              </div>
+            </div>
+            <button
+              onClick={goNextMonth}
+              className="w-9 h-9 rounded-xl grid place-items-center hover:bg-muted active:scale-95"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setMonthFilter(null)}
+              className="w-9 h-9 rounded-xl grid place-items-center hover:bg-destructive/10 text-destructive active:scale-95"
+              aria-label="फ़िल्टर हटाएं"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setMonthFilter({ y: now.getFullYear(), m: now.getMonth() })}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground py-1.5 rounded-xl hover:bg-muted"
+          >
+            <Filter className="w-4 h-4" /> महीने से फ़िल्टर करें (सभी दिखाए जा रहे हैं)
+          </button>
+        )}
       </div>
+
+      {monthFilter && (
+        <div className="rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-bold uppercase text-orange-700 dark:text-orange-400">इस फ़िल्टर का कुल</div>
+            <div className="text-xl font-extrabold tabular-nums text-orange-600 dark:text-orange-300">
+              ₹{filteredTotal.toLocaleString("hi-IN")}
+            </div>
+          </div>
+          <div className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+            {filtered.length} एंट्री
+          </div>
+        </div>
+      )}
 
       {/* Worker-wise */}
       {workerWise.length > 0 && (
         <section>
-          <h2 className="text-base font-extrabold mb-2 px-1">मजदूर वाइज एडवांस</h2>
+          <h2 className="text-base font-extrabold mb-2 px-1">मजदूर वाइज</h2>
           <div className="space-y-2">
             {workerWise.map((r) => (
               <div
                 key={r.name}
-                className="rounded-[20px] bg-card border border-border/60 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] px-4 py-3 flex items-center justify-between"
+                className="rounded-2xl bg-card border border-border/60 shadow-sm px-4 py-3 flex items-center justify-between"
               >
                 <div className="min-w-0">
                   <div className="text-sm font-bold truncate">{r.name}</div>
@@ -217,25 +274,28 @@ export default function AdvancePage() {
 
       {/* All entries */}
       <section>
-        <h2 className="text-base font-extrabold mb-2 px-1">सभी एडवांस एंट्री</h2>
+        <h2 className="text-base font-extrabold mb-2 px-1">
+          {monthFilter ? "फ़िल्टर की एंट्री" : "सभी एडवांस एंट्री"}
+        </h2>
         {loading ? (
           <div className="text-center py-8 text-sm text-muted-foreground">लोड हो रहा है...</div>
-        ) : entries.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-10 text-muted-foreground">
             <p className="text-sm font-medium">कोई एडवांस नहीं मिला</p>
-            <p className="text-xs mt-1">ऊपर "+ नया एडवांस" से जोड़ें</p>
+            <p className="text-xs mt-1">ऊपर "+ नया" से जोड़ें</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.map((e) => (
+            {filtered.map((e) => (
               <motion.div
                 key={e.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.18 }}
               >
-                <Card className="rounded-[20px] border-border/60 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)]">
+                <Card className="rounded-2xl border-border/60 shadow-sm">
                   <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-1 self-stretch rounded-full bg-emerald-500" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold truncate">
                         {e.workers?.name || "मजदूर"}
@@ -256,17 +316,17 @@ export default function AdvancePage() {
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <button
                           onClick={() => openEdit(e)}
-                          className="w-7 h-7 rounded-lg grid place-items-center hover:bg-muted active:scale-95 transition text-primary"
+                          className="w-8 h-8 rounded-xl grid place-items-center hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:scale-95 transition text-emerald-700 dark:text-emerald-400"
                           aria-label="एडिट"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(e)}
-                          className="w-7 h-7 rounded-lg grid place-items-center hover:bg-destructive/10 active:scale-95 transition text-destructive"
+                          className="w-8 h-8 rounded-xl grid place-items-center hover:bg-destructive/10 active:scale-95 transition text-destructive"
                           aria-label="हटाएं"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -295,7 +355,7 @@ export default function AdvancePage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>रद्द करें</AlertDialogCancel>
+            <AlertDialogCancel>रद्द</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -348,7 +408,6 @@ function AdvanceFormDialog({
     setSaving(true);
     try {
       const w = workers.find((x) => x.id === workerId);
-      // Read existing attendance for same worker+date to preserve status
       const { data: existing } = await supabase
         .from("attendance")
         .select("status,site_name,notes")
@@ -438,20 +497,20 @@ function AdvanceFormDialog({
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="जैसे: दवाई के लिए"
+              placeholder="जैसे — किराए के लिए"
               className="mt-1 h-10"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>रद्द करें</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>रद्द</Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
-            {saving ? "सेव..." : editing ? "अपडेट करें" : "सेव करें"}
+            {saving ? "सहेज रहा है..." : (editing ? "अपडेट करें" : "जोड़ें")}
           </Button>
         </DialogFooter>
       </DialogContent>
