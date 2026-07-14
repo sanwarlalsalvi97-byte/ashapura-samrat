@@ -244,3 +244,142 @@ export function subscribePaymentSources(onChange: () => void) {
 export function monthBoundsISO(year: number, monthIndex0: number) {
   return getMonthBoundsISO(year, monthIndex0);
 }
+
+// ============================================================
+// WORKER LEDGER — carry-forward aware payroll model.
+// ============================================================
+
+export type WorkerLedger = {
+  worker: WorkerLite;
+  previousBalance: number;
+  presentDays: number;
+  halfDays: number;
+  absentDays: number;
+  currentEarnings: number;
+  currentAdvance: number;
+  currentExpenses: number;
+  currentPaid: number;
+  totalAdvanceLifetime: number;
+  netPayable: number;
+  remainingBalance: number;
+};
+
+export type LedgerResult = {
+  rows: WorkerLedger[];
+  totals: {
+    previousBalance: number;
+    currentEarnings: number;
+    currentAdvance: number;
+    totalAdvanceLifetime: number;
+    currentPaid: number;
+    netPayable: number;
+    remainingBalance: number;
+  };
+};
+
+function earningsFromAtt(status: string | null, rate: number, ot: number | null) {
+  const otRate = rate / 8;
+  let base = 0;
+  if (status === "Present") base = rate;
+  else if (status === "Half-Day") base = rate * 0.5;
+  return base + (ot || 0) * otRate;
+}
+
+export async function computeWorkerLedger(opts: {
+  year: number;
+  monthIndex0: number;
+  siteFilter?: string | null;
+}): Promise<LedgerResult> {
+  const { year, monthIndex0 } = opts;
+  const { startISO, endISO } = getMonthBoundsISO(year, monthIndex0);
+  const site = (opts.siteFilter || "").trim();
+  const matchesSite = (s: string | null | undefined) =>
+    !site || (s || "").trim() === site;
+
+  const [wRes, aRes, eRes, pRes] = await Promise.all([
+    supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name").eq("is_active", true),
+    supabase.from("attendance").select("worker_id,status,advance,overtime_hours,site_name,date").lte("date", endISO),
+    supabase.from("worker_expenses").select("worker_id,amount,site_name,date").lte("date", endISO),
+    supabase.from("payment_history").select("worker_id,amount,site_name,payment_date").lte("payment_date", endISO),
+  ]);
+
+  const workers = (wRes.data || []) as WorkerLite[];
+  const byId = new Map(workers.map((w) => [w.id, w]));
+
+  const init = (w: WorkerLite): WorkerLedger => ({
+    worker: w,
+    previousBalance: 0,
+    presentDays: 0, halfDays: 0, absentDays: 0,
+    currentEarnings: 0, currentAdvance: 0, currentExpenses: 0, currentPaid: 0,
+    totalAdvanceLifetime: 0,
+    netPayable: 0, remainingBalance: 0,
+  });
+
+  const acc = new Map<string, WorkerLedger>();
+  workers.forEach((w) => acc.set(w.id, init(w)));
+
+  (aRes.data || []).forEach((r: any) => {
+    if (!matchesSite(r.site_name)) return;
+    const w = byId.get(r.worker_id); if (!w) return;
+    const row = acc.get(w.id)!;
+    const rate = w.daily_rate || 0;
+    const earned = earningsFromAtt(r.status, rate, r.overtime_hours);
+    const adv = Number(r.advance) || 0;
+    const inMonth = r.date >= startISO && r.date <= endISO;
+    row.totalAdvanceLifetime += adv;
+    if (inMonth) {
+      if (r.status === "Present") row.presentDays += 1;
+      else if (r.status === "Half-Day") row.halfDays += 1;
+      else if (r.status === "Absent") row.absentDays += 1;
+      row.currentEarnings += earned;
+      row.currentAdvance += adv;
+    } else {
+      row.previousBalance += earned - adv;
+    }
+  });
+
+  (eRes.data || []).forEach((r: any) => {
+    if (!matchesSite(r.site_name)) return;
+    const row = acc.get(r.worker_id); if (!row) return;
+    const amt = Number(r.amount) || 0;
+    if (r.date >= startISO && r.date <= endISO) row.currentExpenses += amt;
+    else row.previousBalance += amt;
+  });
+
+  (pRes.data || []).forEach((r: any) => {
+    if (!matchesSite(r.site_name)) return;
+    const row = acc.get(r.worker_id); if (!row) return;
+    const amt = Number(r.amount) || 0;
+    if (r.payment_date >= startISO && r.payment_date <= endISO) row.currentPaid += amt;
+    else row.previousBalance -= amt;
+  });
+
+  const rows: WorkerLedger[] = [];
+  acc.forEach((row) => {
+    row.netPayable = row.currentEarnings + row.previousBalance - row.currentAdvance;
+    row.remainingBalance = row.netPayable + row.currentExpenses - row.currentPaid;
+    const hasActivity =
+      row.presentDays + row.halfDays + row.absentDays > 0 ||
+      row.currentAdvance !== 0 || row.currentEarnings !== 0 ||
+      row.currentExpenses !== 0 || row.currentPaid !== 0 ||
+      Math.abs(row.previousBalance) > 0.01;
+    if (hasActivity) rows.push(row);
+  });
+  rows.sort((a, b) => b.remainingBalance - a.remainingBalance);
+
+  const totals = rows.reduce(
+    (t, r) => {
+      t.previousBalance += r.previousBalance;
+      t.currentEarnings += r.currentEarnings;
+      t.currentAdvance += r.currentAdvance;
+      t.totalAdvanceLifetime += r.totalAdvanceLifetime;
+      t.currentPaid += r.currentPaid;
+      t.netPayable += r.netPayable;
+      t.remainingBalance += r.remainingBalance;
+      return t;
+    },
+    { previousBalance: 0, currentEarnings: 0, currentAdvance: 0, totalAdvanceLifetime: 0, currentPaid: 0, netPayable: 0, remainingBalance: 0 },
+  );
+
+  return { rows, totals };
+}
