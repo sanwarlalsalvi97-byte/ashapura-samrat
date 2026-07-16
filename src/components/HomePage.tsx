@@ -24,7 +24,7 @@ import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
 import PanchangCard from "./PanchangCard";
-import { computeWorkerPayments } from "@/lib/payment-engine";
+import { computePendingOutstandingTotal } from "@/lib/payment-engine";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -129,9 +129,9 @@ export default function HomePage({ onNavigate }: Props) {
   const [pendingOutstanding, setPendingOutstanding] = useState(0);
   useEffect(() => {
     let alive = true;
-    computeWorkerPayments({ startISO, endISO }).then((res) => {
+    computePendingOutstandingTotal({ startISO, endISO }).then((total) => {
       if (!alive) return;
-      setPendingOutstanding(res.totals.outstanding);
+      setPendingOutstanding(total);
     });
     return () => { alive = false; };
   }, [startISO, endISO, advances, monthExp, monthPay, workersList]);
