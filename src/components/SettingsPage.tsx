@@ -714,7 +714,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           <div className="grid grid-cols-2 gap-2">
             <Button
               size="sm"
-              disabled={busy !== null || backupPassword.length < 6}
+              disabled={busy !== null}
               onClick={async () => {
                 setBusy("backup");
                 try {
