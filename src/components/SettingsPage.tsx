@@ -763,7 +763,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
             <Button
               size="sm"
               variant="secondary"
-              disabled={busy !== null || backupPassword.length < 6}
+              disabled={busy !== null}
               onClick={async () => {
                 setBusy("drive-backup");
                 try {
