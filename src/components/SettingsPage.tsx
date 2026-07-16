@@ -70,7 +70,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [newPin, setNewPin] = useState("");
 
   // Backup / Restore
-  const [backupPassword, setBackupPassword] = useState(() => getAutoBackupPassword());
+  // Backup password removed — backups are passwordless. Legacy state kept only for restore-password of old encrypted backups.
   const [busy, setBusy] = useState<null | "backup" | "restore" | "drive-backup" | "drive-restore">(null);
   const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
   const [restoreFileName, setRestoreFileName] = useState<string>("");
