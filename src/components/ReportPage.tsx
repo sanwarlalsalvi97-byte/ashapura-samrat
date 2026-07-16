@@ -440,7 +440,7 @@ function PaySalaryDialog({
         site_name: target.worker.site_name || null,
       });
       if (error) throw error;
-      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए` });
+      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए`, description: "कैशबुक में स्वतः जुड़ गया" });
       onSaved();
     } catch (err: any) {
       toast({ title: "गलती", description: err.message, variant: "destructive" });
