@@ -291,7 +291,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
   const createEncryptedBackup = async () => {
     const p = await buildBackup();
-    const text = await encryptBackup(p, backupPassword);
+    const text = await encryptBackup(p);
     const name = backupFilename();
     const now = new Date().toISOString();
     localStorage.setItem("last-backup-at", now);
