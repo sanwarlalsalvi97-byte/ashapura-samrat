@@ -705,22 +705,11 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
             {t(
-              "एन्क्रिप्टेड JSON बैकअप डाउनलोड करें (Workers, Attendance, Advances, Cashbook, Reports, Settings)। Google Drive में सुरक्षित रखें।",
-              "Download an encrypted JSON backup (Workers, Attendance, Advances, Cashbook, Reports, Settings). Save it to Google Drive for safety."
+              "JSON बैकअप डाउनलोड करें (Workers, Attendance, Advances, Cashbook, Reports, Settings) — बिना पासवर्ड के, कहीं भी सुरक्षित रखें।",
+              "Download a JSON backup (Workers, Attendance, Advances, Cashbook, Reports, Settings) — no password, save anywhere safe."
             )}
           </p>
 
-          <div>
-            <Label className="text-xs">{t("बैकअप पासवर्ड", "Backup password")}</Label>
-            <Input
-              type="password"
-              value={backupPassword}
-              onChange={(e) => setBackupPassword(e.target.value)}
-              onBlur={(e) => setAutoBackupPassword(e.target.value)}
-              placeholder={t("मजबूत पासवर्ड", "Strong password")}
-              className="mt-1"
-            />
-          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <Button
