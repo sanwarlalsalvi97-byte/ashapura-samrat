@@ -33,7 +33,7 @@ import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/l
 import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
 import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
 import { downloadLatestBackupFromGoogleDrive, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
-import { AUTO_BACKUP_FREQ_KEY, dispatchAutoBackupSettingsChanged, getAutoBackupPassword, setAutoBackupPassword } from "@/hooks/use-auto-backup";
+import { AUTO_BACKUP_FREQ_KEY, dispatchAutoBackupSettingsChanged } from "@/hooks/use-auto-backup";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
