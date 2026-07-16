@@ -2,7 +2,13 @@ import { monthBoundsISO } from "@/lib/date-utils";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import PendingPaymentsCard from "./PendingPaymentsCard";
+import WorkerReconciliationTable from "./WorkerReconciliationTable";
 import { listSites, subscribeSites, getSitesVersion } from "@/lib/sites";
+import {
+  computeWorkerLedger,
+  subscribePaymentSources,
+  type LedgerResult,
+} from "@/lib/payment-engine";
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
@@ -22,6 +28,32 @@ export default function PendingPaymentsPage() {
     [cursor],
   );
   const label = `${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
+
+  const [ledger, setLedger] = useState<LedgerResult>({
+    rows: [],
+    totals: {
+      previousBalance: 0, currentEarnings: 0, currentAdvance: 0,
+      totalAdvanceLifetime: 0, currentPaid: 0, netPayable: 0, remainingBalance: 0,
+    },
+  });
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await computeWorkerLedger({
+          year: cursor.getFullYear(),
+          monthIndex0: cursor.getMonth(),
+          siteFilter: site === "__all__" ? null : site,
+        });
+        if (alive) setLedger(res);
+      } catch {}
+    };
+    load();
+    const unsub = subscribePaymentSources(load);
+    return () => { alive = false; unsub(); };
+  }, [cursor, site]);
+
 
   return (
     <div className="space-y-4 animate-fade-in pb-24">
@@ -68,6 +100,13 @@ export default function PendingPaymentsPage() {
         endISO={endISO}
         monthLabel={label}
         siteFilter={site === "__all__" ? null : site}
+      />
+
+      <WorkerReconciliationTable
+        rows={ledger.rows}
+        totals={ledger.totals}
+        title={`हिसाब मिलान — ${label}`}
+        defaultCollapsed={false}
       />
     </div>
   );

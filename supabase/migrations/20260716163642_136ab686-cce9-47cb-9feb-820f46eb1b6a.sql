@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.sync_payment_to_cashbook() FROM PUBLIC, anon, authenticated;

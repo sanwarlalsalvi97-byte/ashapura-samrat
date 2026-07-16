@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
 import { computeWorkerLedger, type WorkerLedger, subscribePaymentSources } from "@/lib/payment-engine";
+import WorkerReconciliationTable from "./WorkerReconciliationTable";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -215,6 +216,13 @@ export default function ReportPage() {
           </div>
         </div>
       </section>
+
+      {/* === मजदूर-वार हिसाब मिलान (Reconciliation) === */}
+      <WorkerReconciliationTable
+        rows={ledger}
+        totals={ledgerTotals}
+        defaultCollapsed={false}
+      />
 
       {/* === साइट-वाइज मासिक रिपोर्ट === */}
       <SiteWiseReport
@@ -432,7 +440,7 @@ function PaySalaryDialog({
         site_name: target.worker.site_name || null,
       });
       if (error) throw error;
-      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए` });
+      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए`, description: "कैशबुक में स्वतः जुड़ गया" });
       onSaved();
     } catch (err: any) {
       toast({ title: "गलती", description: err.message, variant: "destructive" });

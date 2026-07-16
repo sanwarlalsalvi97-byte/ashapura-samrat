@@ -129,10 +129,12 @@ export type Database = {
           date: string
           id: string
           notes: string | null
+          payment_id: string | null
           site_name: string | null
           type: Database["public"]["Enums"]["cashbook_type"]
           updated_at: string
           user_id: string
+          worker_id: string | null
         }
         Insert: {
           amount?: number
@@ -141,10 +143,12 @@ export type Database = {
           date?: string
           id?: string
           notes?: string | null
+          payment_id?: string | null
           site_name?: string | null
           type: Database["public"]["Enums"]["cashbook_type"]
           updated_at?: string
           user_id: string
+          worker_id?: string | null
         }
         Update: {
           amount?: number
@@ -153,12 +157,29 @@ export type Database = {
           date?: string
           id?: string
           notes?: string | null
+          payment_id?: string | null
           site_name?: string | null
           type?: Database["public"]["Enums"]["cashbook_type"]
           updated_at?: string
           user_id?: string
+          worker_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cashbook_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashbook_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contractors: {
         Row: {
