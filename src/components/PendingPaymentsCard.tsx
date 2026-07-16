@@ -62,7 +62,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     if (error) {
       toast.error("भुगतान दर्ज करने में विफल: " + error.message);
     } else {
-      toast.success(`${r.worker.name} का ₹${amount.toLocaleString("hi-IN")} भुगतान दर्ज हुआ`);
+      toast.success(`${r.worker.name} का ₹${amount.toLocaleString("hi-IN")} भुगतान दर्ज हुआ · कैशबुक में जुड़ गया`);
     }
   };
 
