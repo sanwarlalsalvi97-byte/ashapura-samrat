@@ -217,6 +217,13 @@ export default function ReportPage() {
         </div>
       </section>
 
+      {/* === मजदूर-वार हिसाब मिलान (Reconciliation) === */}
+      <WorkerReconciliationTable
+        rows={ledger}
+        totals={ledgerTotals}
+        defaultCollapsed={false}
+      />
+
       {/* === साइट-वाइज मासिक रिपोर्ट === */}
       <SiteWiseReport
         att={siteAtt}
