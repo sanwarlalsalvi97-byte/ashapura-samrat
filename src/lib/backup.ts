@@ -139,6 +139,9 @@ export async function decryptBackup(fileText: string, password: string = ""): Pr
 export function previewEnvelope(fileText: string): { createdAt?: string; counts?: Record<string, number>; encrypted: boolean } {
   try {
     const env = JSON.parse(fileText);
+    if (env?.format === "AshapuraSamrat-Backup-v1") {
+      return { createdAt: env.createdAt, counts: env.counts, encrypted: false };
+    }
     if (env?.format === "AshapuraSamrat-EncryptedBackup-v1") {
       return { createdAt: env.createdAt, counts: env.counts, encrypted: true };
     }
