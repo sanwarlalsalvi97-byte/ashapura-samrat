@@ -101,6 +101,13 @@ export default function PendingPaymentsPage() {
         monthLabel={label}
         siteFilter={site === "__all__" ? null : site}
       />
+
+      <WorkerReconciliationTable
+        rows={ledger.rows}
+        totals={ledger.totals}
+        title={`हिसाब मिलान — ${label}`}
+        defaultCollapsed={false}
+      />
     </div>
   );
 }
