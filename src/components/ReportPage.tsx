@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
 import { computeWorkerLedger, type WorkerLedger, subscribePaymentSources } from "@/lib/payment-engine";
+import WorkerReconciliationTable from "./WorkerReconciliationTable";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
