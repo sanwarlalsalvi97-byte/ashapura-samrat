@@ -204,15 +204,23 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
 }
 
 export function downloadText(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  // On native (Android app), route through Filesystem + share sheet.
+  // Import lazily so web bundle isn't affected.
+  import("./native").then(({ isNative, saveTextFile }) => {
+    if (isNative()) {
+      void saveTextFile(filename, text, "application/json");
+      return;
+    }
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 }
 
 /* ---------------- Local backup queue (offline → auto-upload) ---------------- */

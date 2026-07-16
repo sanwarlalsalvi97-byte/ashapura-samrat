@@ -2,6 +2,8 @@
 // intent:// fallback that works reliably in Android Chrome / installed PWA
 // / Samsung Internet, and detects whether an app is likely to open.
 
+import { isAndroidNative, openExternalUrl } from "./native";
+
 export interface UpiPayParams {
   payeeVpa: string;   // e.g. 9876543210@upi
   payeeName: string;  // shown in the UPI app
@@ -84,7 +86,12 @@ export function launchUpi(p: UpiPayParams): Promise<boolean> {
     }, 1500);
 
     try {
-      if (isAndroid()) {
+      if (isAndroidNative()) {
+        // Native Android WebView: use the OS URL handler so the UPI intent
+        // resolves against the real Android chooser.
+        openExternalUrl(intentUrl);
+        window.setTimeout(() => { if (!done) openExternalUrl(upiUrl); }, 300);
+      } else if (isAndroid()) {
         // Prefer intent:// on Android — works in Chrome, Samsung, PWA.
         window.location.href = intentUrl;
         // Also queue upi:// as a backup for browsers that don't honour intent://
