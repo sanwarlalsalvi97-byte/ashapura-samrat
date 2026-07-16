@@ -114,12 +114,11 @@ export default function HomePage({ onNavigate }: Props) {
   const totalAdvance = advances.reduce((s, a) => s + (a.advance || 0), 0);
   const advanceCount = advances.length;
 
-  // Summary numbers — logic unchanged
+  // Dashboard financials — Cashbook is the SINGLE source of truth for expenses.
+  // Salary payments auto-sync into cashbook via DB trigger, so counting cashbook
+  // rows alone avoids double-counting and stays consistent with the Cashbook page.
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
-  const cashbookExpense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
-  const totalWorkerExp = monthExp.reduce((s, x) => s + (x.amount || 0), 0);
-  const totalSalaryPaid = monthPay.reduce((s, x) => s + (x.amount || 0), 0);
-  const expense = cashbookExpense + totalWorkerExp + totalSalaryPaid;
+  const expense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
   const balance = income - expense;
 
   const presentToday = todayAtt.filter((x) => x.status === "Present").length;
