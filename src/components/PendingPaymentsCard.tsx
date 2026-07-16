@@ -37,10 +37,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     return () => { alive = false; unsub(); };
   }, [startISO, endISO, siteFilter]);
 
-  const total = useMemo(
-    () => rows.reduce((s, r) => s + Math.round(r.outstanding), 0),
-    [rows],
-  );
+  const total = useMemo(() => sumPendingOutstanding(rows), [rows]);
 
   const handleMarkAsPaid = async (r: WorkerPayment) => {
     const { data: { user } } = await supabase.auth.getUser();
