@@ -29,6 +29,32 @@ export default function PendingPaymentsPage() {
   );
   const label = `${HINDI_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
 
+  const [ledger, setLedger] = useState<LedgerResult>({
+    rows: [],
+    totals: {
+      previousBalance: 0, currentEarnings: 0, currentAdvance: 0,
+      totalAdvanceLifetime: 0, currentPaid: 0, netPayable: 0, remainingBalance: 0,
+    },
+  });
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await computeWorkerLedger({
+          year: cursor.getFullYear(),
+          monthIndex0: cursor.getMonth(),
+          siteFilter: site === "__all__" ? null : site,
+        });
+        if (alive) setLedger(res);
+      } catch {}
+    };
+    load();
+    const unsub = subscribePaymentSources(load);
+    return () => { alive = false; unsub(); };
+  }, [cursor, site]);
+
+
   return (
     <div className="space-y-4 animate-fade-in pb-24">
       <div className="flex items-center justify-between bg-card rounded-2xl border border-border/60 px-3 py-2.5 shadow-sm">
