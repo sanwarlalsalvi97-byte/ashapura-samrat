@@ -5,6 +5,7 @@ import UpiPayDialog from "./UpiPayDialog";
 import {
   computeWorkerPayments,
   subscribePaymentSources,
+  sumPendingOutstanding,
   type WorkerPayment,
 } from "@/lib/payment-engine";
 import { supabase } from "@/integrations/supabase/client";
