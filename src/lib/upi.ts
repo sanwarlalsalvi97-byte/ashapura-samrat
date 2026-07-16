@@ -2,6 +2,8 @@
 // intent:// fallback that works reliably in Android Chrome / installed PWA
 // / Samsung Internet, and detects whether an app is likely to open.
 
+import { isAndroidNative, openExternalUrl } from "./native";
+
 export interface UpiPayParams {
   payeeVpa: string;   // e.g. 9876543210@upi
   payeeName: string;  // shown in the UPI app
