@@ -86,7 +86,12 @@ export function launchUpi(p: UpiPayParams): Promise<boolean> {
     }, 1500);
 
     try {
-      if (isAndroid()) {
+      if (isAndroidNative()) {
+        // Native Android WebView: use the OS URL handler so the UPI intent
+        // resolves against the real Android chooser.
+        openExternalUrl(intentUrl);
+        window.setTimeout(() => { if (!done) openExternalUrl(upiUrl); }, 300);
+      } else if (isAndroid()) {
         // Prefer intent:// on Android — works in Chrome, Samsung, PWA.
         window.location.href = intentUrl;
         // Also queue upi:// as a backup for browsers that don't honour intent://
