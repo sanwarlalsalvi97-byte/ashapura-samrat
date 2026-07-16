@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText, List, CalendarDays, Search, Hand, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarIcon, Bell, Clock, WifiOff, CloudUpload, Check, FileDown, FileText, List, CalendarDays, Search, Hand, MapPin, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWorkTime, formatTime12h } from "@/lib/work-time";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
@@ -414,9 +414,26 @@ export default function AttendancePage() {
             />
           </PopoverContent>
         </Popover>
-        <Button variant="ghost" size="icon" onClick={() => changeDate(1)}>
-          <ChevronRight className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={() => changeDate(1)}>
+            <ChevronRight className="w-5 h-5" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="और विकल्प">
+                <MoreVertical className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => exportToday("csv")}>
+                <FileDown className="w-4 h-4 mr-2" /> आज की हाजिरी — CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToday("pdf")}>
+                <FileText className="w-4 h-4 mr-2" /> आज की हाजिरी — PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* View toggle: List / Calendar */}
@@ -479,22 +496,6 @@ export default function AttendancePage() {
                   className="pl-9 rounded-xl"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full gap-2">
-                    <FileDown className="w-4 h-4" />
-                    आज की हाजिरी एक्सपोर्ट करें
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => exportToday("csv")}>
-                    <FileDown className="w-4 h-4 mr-2" /> CSV डाउनलोड करें
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportToday("pdf")}>
-                    <FileText className="w-4 h-4 mr-2" /> PDF (प्रिंट) करें
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </>
           )}
 

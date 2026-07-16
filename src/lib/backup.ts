@@ -86,49 +86,62 @@ function fromB64(b64: string): Uint8Array {
   return a;
 }
 
-export async function encryptBackup(payload: BackupPayload, password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt);
-  const plaintext = new TextEncoder().encode(JSON.stringify(payload));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, plaintext));
+/**
+ * Passwordless backup: writes plain JSON with a stable envelope so future
+ * versions can add encryption without breaking existing files. Legacy
+ * encrypted files are still readable via `decryptBackup`.
+ */
+export async function encryptBackup(payload: BackupPayload, _password?: string): Promise<string> {
   const envelope = {
-    format: "AshapuraSamrat-EncryptedBackup-v1",
+    format: "AshapuraSamrat-Backup-v1",
     createdAt: payload.createdAt,
     counts: Object.fromEntries(Object.entries(payload.data).map(([k, v]) => [k, v.length])),
-    salt: toB64(salt),
-    iv: toB64(iv),
-    ciphertext: toB64(ct),
+    encrypted: false,
+    payload,
   };
   return JSON.stringify(envelope, null, 2);
 }
 
-export async function decryptBackup(fileText: string, password: string): Promise<BackupPayload> {
+export async function decryptBackup(fileText: string, password: string = ""): Promise<BackupPayload> {
   const env = JSON.parse(fileText);
-  if (!env || env.format !== "AshapuraSamrat-EncryptedBackup-v1") {
-    // Try un-encrypted (legacy / plain JSON export)
-    const p = JSON.parse(fileText);
-    if (p?.app === "AshapuraSamrat" && p?.version === 1) return p as BackupPayload;
-    throw new Error("Invalid backup file");
+  if (!env) throw new Error("Invalid backup file");
+
+  // New passwordless envelope
+  if (env.format === "AshapuraSamrat-Backup-v1" && env.payload?.app === "AshapuraSamrat") {
+    return env.payload as BackupPayload;
   }
-  const salt = fromB64(env.salt);
-  const iv = fromB64(env.iv);
-  const ct = fromB64(env.ciphertext);
-  const key = await deriveKey(password, salt);
-  try {
-    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, ct as BufferSource);
-    const text = new TextDecoder().decode(pt);
-    const payload = JSON.parse(text) as BackupPayload;
-    if (payload?.app !== "AshapuraSamrat") throw new Error("Corrupt backup");
-    return payload;
-  } catch {
-    throw new Error("गलत पासवर्ड या फ़ाइल खराब है / Wrong password or corrupted file");
+
+  // Plain legacy dump
+  if (env.app === "AshapuraSamrat" && env.version === 1) {
+    return env as BackupPayload;
   }
+
+  // Legacy AES-GCM encrypted backup
+  if (env.format === "AshapuraSamrat-EncryptedBackup-v1") {
+    if (!password) throw new Error("यह पुराना एन्क्रिप्टेड बैकअप है — पासवर्ड ज़रूरी है / Legacy encrypted backup — password required");
+    const salt = fromB64(env.salt);
+    const iv = fromB64(env.iv);
+    const ct = fromB64(env.ciphertext);
+    const key = await deriveKey(password, salt);
+    try {
+      const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, ct as BufferSource);
+      const text = new TextDecoder().decode(pt);
+      const payload = JSON.parse(text) as BackupPayload;
+      if (payload?.app !== "AshapuraSamrat") throw new Error("Corrupt backup");
+      return payload;
+    } catch {
+      throw new Error("गलत पासवर्ड या फ़ाइल खराब है / Wrong password or corrupted file");
+    }
+  }
+  throw new Error("Invalid backup file");
 }
 
 export function previewEnvelope(fileText: string): { createdAt?: string; counts?: Record<string, number>; encrypted: boolean } {
   try {
     const env = JSON.parse(fileText);
+    if (env?.format === "AshapuraSamrat-Backup-v1") {
+      return { createdAt: env.createdAt, counts: env.counts, encrypted: false };
+    }
     if (env?.format === "AshapuraSamrat-EncryptedBackup-v1") {
       return { createdAt: env.createdAt, counts: env.counts, encrypted: true };
     }

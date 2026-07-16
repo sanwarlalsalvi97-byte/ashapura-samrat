@@ -33,7 +33,7 @@ import { isPinEnabled, setPin as savePin, removePin, lock as lockApp } from "@/l
 import { buildBackup, encryptBackup, decryptBackup, previewEnvelope, restoreBackup, backupFilename, downloadText, savePendingBackup, readPendingBackup, clearPendingBackup, type BackupPayload } from "@/lib/backup";
 import { clearAllCaches, resetAllUserData } from "@/lib/reset-app";
 import { downloadLatestBackupFromGoogleDrive, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
-import { AUTO_BACKUP_FREQ_KEY, dispatchAutoBackupSettingsChanged, getAutoBackupPassword, setAutoBackupPassword } from "@/hooks/use-auto-backup";
+import { AUTO_BACKUP_FREQ_KEY, dispatchAutoBackupSettingsChanged } from "@/hooks/use-auto-backup";
 
 interface SettingsPageProps {
   onNavigate?: (tab: TabId) => void;
@@ -70,7 +70,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [newPin, setNewPin] = useState("");
 
   // Backup / Restore
-  const [backupPassword, setBackupPassword] = useState(() => getAutoBackupPassword());
+  // Backup password removed — backups are passwordless. Legacy state kept only for restore-password of old encrypted backups.
   const [busy, setBusy] = useState<null | "backup" | "restore" | "drive-backup" | "drive-restore">(null);
   const [restoreFileText, setRestoreFileText] = useState<string | null>(null);
   const [restoreFileName, setRestoreFileName] = useState<string>("");
@@ -291,7 +291,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
   const createEncryptedBackup = async () => {
     const p = await buildBackup();
-    const text = await encryptBackup(p, backupPassword);
+    const text = await encryptBackup(p);
     const name = backupFilename();
     const now = new Date().toISOString();
     localStorage.setItem("last-backup-at", now);
@@ -705,27 +705,16 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
             {t(
-              "एन्क्रिप्टेड JSON बैकअप डाउनलोड करें (Workers, Attendance, Advances, Cashbook, Reports, Settings)। Google Drive में सुरक्षित रखें।",
-              "Download an encrypted JSON backup (Workers, Attendance, Advances, Cashbook, Reports, Settings). Save it to Google Drive for safety."
+              "JSON बैकअप डाउनलोड करें (Workers, Attendance, Advances, Cashbook, Reports, Settings) — बिना पासवर्ड के, कहीं भी सुरक्षित रखें।",
+              "Download a JSON backup (Workers, Attendance, Advances, Cashbook, Reports, Settings) — no password, save anywhere safe."
             )}
           </p>
 
-          <div>
-            <Label className="text-xs">{t("बैकअप पासवर्ड", "Backup password")}</Label>
-            <Input
-              type="password"
-              value={backupPassword}
-              onChange={(e) => setBackupPassword(e.target.value)}
-              onBlur={(e) => setAutoBackupPassword(e.target.value)}
-              placeholder={t("मजबूत पासवर्ड", "Strong password")}
-              className="mt-1"
-            />
-          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <Button
               size="sm"
-              disabled={busy !== null || backupPassword.length < 6}
+              disabled={busy !== null}
               onClick={async () => {
                 setBusy("backup");
                 try {
@@ -774,7 +763,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
             <Button
               size="sm"
               variant="secondary"
-              disabled={busy !== null || backupPassword.length < 6}
+              disabled={busy !== null}
               onClick={async () => {
                 setBusy("drive-backup");
                 try {

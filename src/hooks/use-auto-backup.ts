@@ -66,7 +66,6 @@ export function isAutoBackupDue(freq: AutoBackupFreq, now = new Date(), lastRunR
 
 export function useAutoBackup(enabled: boolean) {
   const runningRef = useRef(false);
-  const passwordNoticeAtRef = useRef(0);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
@@ -88,24 +87,10 @@ export function useAutoBackup(enabled: boolean) {
       const lastRun = readStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY) || readStorage(window.localStorage, LAST_BACKUP_KEY);
       if (!isAutoBackupDue(freq, new Date(), lastRun)) return;
 
-      const password = getAutoBackupPassword();
-      if (password.length < 6) {
-        const now = Date.now();
-        if (now - passwordNoticeAtRef.current > DAY_MS) {
-          passwordNoticeAtRef.current = now;
-          toast({
-            title: "Auto backup password required",
-            description: "Settings में backup password भरें ताकि scheduled backup बन सके।",
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
       runningRef.current = true;
       try {
         const payload = await buildBackup();
-        const text = await encryptBackup(payload, password);
+        const text = await encryptBackup(payload);
         const name = backupFilename();
         if (navigator.onLine) {
           downloadText(name, text);

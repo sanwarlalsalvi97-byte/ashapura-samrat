@@ -4,8 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Smartphone, Copy, Check } from "lucide-react";
-import { buildUpiLink, isValidUpiId } from "@/lib/upi";
+import { Smartphone, Copy, Check, ExternalLink, AlertTriangle } from "lucide-react";
+import { buildUpiLink, isValidUpiId, launchUpi, isAndroid, isStandalonePWA } from "@/lib/upi";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
@@ -22,36 +22,58 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
   const [note, setNote] = useState(defaultNote || `${payeeName} - पेमेंट`);
   const [qrUrl, setQrUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     if (open) {
       setAmount(defaultAmount ? String(defaultAmount) : "");
       setNote(defaultNote || `${payeeName} - पेमेंट`);
       setCopied(false);
+      setShowFallback(false);
     }
   }, [open, defaultAmount, defaultNote, payeeName]);
 
   const validVpa = !!payeeVpa && isValidUpiId(payeeVpa);
+  const pwa = isStandalonePWA();
+  const android = isAndroid();
 
-  const link = useMemo(() => {
-    if (!validVpa) return "";
-    return buildUpiLink({
+  const params = useMemo(() => (
+    validVpa ? {
       payeeVpa: payeeVpa!,
       payeeName,
       amount: parseInt(amount) || undefined,
       note,
-    });
-  }, [validVpa, payeeVpa, payeeName, amount, note]);
+    } : null
+  ), [validVpa, payeeVpa, payeeName, amount, note]);
+
+  const link = useMemo(() => params ? buildUpiLink(params) : "", [params]);
 
   useEffect(() => {
     if (!link) { setQrUrl(""); return; }
     QRCode.toDataURL(link, { width: 280, margin: 1 }).then(setQrUrl).catch(() => setQrUrl(""));
   }, [link]);
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (!params) return;
+    setLaunching(true);
+    setShowFallback(false);
+    const opened = await launchUpi(params);
+    setLaunching(false);
+    if (!opened) {
+      setShowFallback(true);
+      toast({
+        title: "कोई UPI ऐप नहीं मिला",
+        description: "कृपया Google Pay, PhonePe, Paytm या BHIM इंस्टॉल करें, या QR स्कैन करें।",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openInBrowser = () => {
     if (!link) return;
-    // Opens UPI app on mobile; on desktop browser will likely fail silently
-    window.location.href = link;
+    // Opens outside the PWA so Chrome/Samsung's app chooser can kick in.
+    window.open(link, "_blank");
   };
 
   const copyVpa = async () => {
@@ -80,7 +102,7 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
           <div className="space-y-3">
             <div className="flex items-center justify-between bg-muted rounded-md px-3 py-2">
               <span className="text-sm font-mono truncate">{payeeVpa}</span>
-              <button onClick={copyVpa} className="p-1.5 rounded hover:bg-background">
+              <button onClick={copyVpa} className="p-1.5 rounded hover:bg-background" aria-label="Copy UPI ID">
                 {copied ? <Check className="w-4 h-4 text-accent" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
@@ -101,14 +123,35 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
                 <p className="text-[10px] text-muted-foreground mt-1">किसी भी UPI ऐप से QR स्कैन करें</p>
               </div>
             )}
+
+            {showFallback && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="w-4 h-4" /> UPI ऐप नहीं खुला
+                </div>
+                <p className="text-muted-foreground">
+                  {android && pwa
+                    ? "इंस्टॉल किए गए ऐप से UPI ऐप कभी-कभी नहीं खुलता। ब्राउज़र में खोलें या QR स्कैन करें।"
+                    : "कृपया GPay / PhonePe / Paytm / BHIM में से कोई ऐप इंस्टॉल करें, या नीचे QR स्कैन करें।"}
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={openInBrowser} className="flex-1 gap-1">
+                    <ExternalLink className="w-3 h-3" /> Browser में खोलें
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={copyVpa} className="flex-1 gap-1">
+                    <Copy className="w-3 h-3" /> UPI ID कॉपी
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>बंद करें</Button>
           {validVpa && (
-            <Button onClick={handlePay} className="gap-2">
-              <Smartphone className="w-4 h-4" /> UPI ऐप खोलें
+            <Button onClick={handlePay} disabled={launching} className="gap-2">
+              <Smartphone className="w-4 h-4" /> {launching ? "खोल रहा है…" : "UPI ऐप खोलें"}
             </Button>
           )}
         </DialogFooter>
