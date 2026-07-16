@@ -118,7 +118,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 export async function openExternalUrl(url: string): Promise<boolean> {
   if (isNative()) {
     try {
-      await CapApp.openUrl({ url });
+      // Use Browser plugin-less approach: window.open triggers Android intent handling.
+      window.open(url, "_system");
       return true;
     } catch {
       return false;
