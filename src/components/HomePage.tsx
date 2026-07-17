@@ -24,7 +24,7 @@ import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
 import PanchangCard from "./PanchangCard";
-import { computePendingOutstandingTotal, computeWorkerPayments, sumPendingOutstanding } from "@/lib/payment-engine";
+import { computeWorkerPayments, sumPendingOutstanding } from "@/lib/payment-engine";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
