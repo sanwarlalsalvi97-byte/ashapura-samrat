@@ -114,11 +114,17 @@ export default function HomePage({ onNavigate }: Props) {
   const totalAdvance = advances.reduce((s, a) => s + (a.advance || 0), 0);
   const advanceCount = advances.length;
 
-  // Dashboard financials — Cashbook is the SINGLE source of truth for expenses.
-  // Salary payments auto-sync into cashbook via DB trigger, so counting cashbook
-  // rows alone avoids double-counting and stays consistent with the Cashbook page.
+  // Dashboard financials — business cashflow only.
+  //   Income   = Cashbook income entries
+  //   Expense  = Manual Cashbook expense entries + Worker Expenses (food/tea/tools…)
+  //   Balance  = Income − Expense
+  // Salary payments, advances, attendance earnings and pending salary belong to
+  // the Labour ledger (Reports / Pending / Payment History) and are NOT counted
+  // here — otherwise they'd double-count against real business cash.
   const income = monthCash.filter((x) => x.type === "income").reduce((s, x) => s + (x.amount || 0), 0);
-  const expense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const cashbookExpense = monthCash.filter((x) => x.type === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+  const workerExpensesTotal = monthExp.reduce((s, x) => s + (x.amount || 0), 0);
+  const expense = cashbookExpense + workerExpensesTotal;
   const balance = income - expense;
 
   const presentToday = todayAtt.filter((x) => x.status === "Present").length;
