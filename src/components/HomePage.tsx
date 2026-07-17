@@ -132,11 +132,18 @@ export default function HomePage({ onNavigate }: Props) {
   const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
 
   const [pendingOutstanding, setPendingOutstanding] = useState(0);
+  const [labour, setLabour] = useState({ earned: 0, advance: 0, paid: 0, outstanding: 0 });
   useEffect(() => {
     let alive = true;
-    computePendingOutstandingTotal({ startISO, endISO }).then((total) => {
+    computeWorkerPayments({ startISO, endISO }).then((res) => {
       if (!alive) return;
-      setPendingOutstanding(total);
+      setPendingOutstanding(sumPendingOutstanding(res.rows));
+      setLabour({
+        earned: Math.round(res.totals.earned),
+        advance: Math.round(res.totals.advance),
+        paid: Math.round(res.totals.paidAmount),
+        outstanding: sumPendingOutstanding(res.rows),
+      });
     });
     return () => { alive = false; };
   }, [startISO, endISO, advances, monthExp, monthPay, workersList]);
