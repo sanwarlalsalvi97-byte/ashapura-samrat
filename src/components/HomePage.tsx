@@ -24,7 +24,7 @@ import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
 import { useSyncExternalStore } from "react";
 import PanchangCard from "./PanchangCard";
-import { computePendingOutstandingTotal } from "@/lib/payment-engine";
+import { computeWorkerPayments, sumPendingOutstanding } from "@/lib/payment-engine";
 
 interface Props {
   onNavigate: (tab: TabId) => void;
@@ -132,11 +132,18 @@ export default function HomePage({ onNavigate }: Props) {
   const absentToday = Math.max(0, workersList.length - presentToday - halfToday);
 
   const [pendingOutstanding, setPendingOutstanding] = useState(0);
+  const [labour, setLabour] = useState({ earned: 0, advance: 0, paid: 0, outstanding: 0 });
   useEffect(() => {
     let alive = true;
-    computePendingOutstandingTotal({ startISO, endISO }).then((total) => {
+    computeWorkerPayments({ startISO, endISO }).then((res) => {
       if (!alive) return;
-      setPendingOutstanding(total);
+      setPendingOutstanding(sumPendingOutstanding(res.rows));
+      setLabour({
+        earned: Math.round(res.totals.earned),
+        advance: Math.round(res.totals.advance),
+        paid: Math.round(res.totals.paidAmount),
+        outstanding: sumPendingOutstanding(res.rows),
+      });
     });
     return () => { alive = false; };
   }, [startISO, endISO, advances, monthExp, monthPay, workersList]);
@@ -183,13 +190,33 @@ export default function HomePage({ onNavigate }: Props) {
       {/* Full Panchang */}
       <PanchangCard />
 
-      {/* Summary Cards: Income, Expense, Balance, Workers */}
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryCard tone="green" icon={TrendingUp} label="कुल आय" value={`₹${shortInr(income)}`} />
-        <SummaryCard tone="red" icon={TrendingDown} label="कुल खर्च" value={`₹${shortInr(expense)}`} />
-        <SummaryCard tone="blue" icon={Wallet} label="कुल बैलेंस" value={`₹${shortInr(balance)}`} />
-        <SummaryCard tone="orange" icon={Users} label="कुल मजदूर" value={String(workersList.length)} />
-      </div>
+      {/* Cashbook Summary — real business cashflow only (no salary/advance) */}
+      <section>
+        <div className="flex items-center gap-1.5 mb-1.5 px-1">
+          <Wallet className="w-3.5 h-3.5 text-primary" />
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">कैशबुक सारांश</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard tone="green" icon={TrendingUp} label="कुल आय" value={`₹${shortInr(income)}`} />
+          <SummaryCard tone="red" icon={TrendingDown} label="कुल खर्च" value={`₹${shortInr(expense)}`} />
+          <SummaryCard tone="blue" icon={Wallet} label="कैश बैलेंस" value={`₹${shortInr(balance)}`} />
+          <SummaryCard tone="orange" icon={Users} label="कुल मजदूर" value={String(workersList.length)} />
+        </div>
+      </section>
+
+      {/* Labour Summary — kept fully separate from Cashbook */}
+      <section>
+        <div className="flex items-center gap-1.5 mb-1.5 px-1">
+          <HardHat className="w-3.5 h-3.5 text-primary" />
+          <h2 className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">मजदूरी सारांश</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard tone="green" icon={TrendingUp} label="कुल मजदूरी (कमाई)" value={`₹${shortInr(labour.earned)}`} />
+          <SummaryCard tone="blue" icon={Wallet} label="कुल सैलरी भुगतान" value={`₹${shortInr(labour.paid)}`} />
+          <SummaryCard tone="orange" icon={Wallet} label="कुल एडवांस" value={`₹${shortInr(labour.advance)}`} />
+          <SummaryCard tone="red" icon={TrendingDown} label="बकाया सैलरी" value={`₹${shortInr(labour.outstanding)}`} />
+        </div>
+      </section>
 
       {/* Today's attendance */}
       <section className="bg-card rounded-[20px] border border-border/60 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.12)] p-3">
