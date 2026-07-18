@@ -73,7 +73,9 @@ ensure these are present inside `<manifest>`:
 <uses-permission android:name="android.permission.VIBRATE" />
 ```
 
-For UPI intent resolution on Android 11+ add inside `<manifest>`:
+For UPI intent resolution on Android 11+ (**required** — without this
+`@capacitor/app-launcher` cannot see installed UPI apps) add inside
+`<manifest>`, as a sibling of `<application>`:
 
 ```xml
 <queries>
@@ -81,6 +83,13 @@ For UPI intent resolution on Android 11+ add inside `<manifest>`:
     <action android:name="android.intent.action.VIEW" />
     <data android:scheme="upi" />
   </intent>
+
+  <!-- Explicit packages so canOpenUrl/openUrl resolves even when the
+       intent filter above is not enough on some OEMs. -->
+  <package android:name="com.google.android.apps.nbu.paisa.user" /> <!-- Google Pay -->
+  <package android:name="com.phonepe.app" />                        <!-- PhonePe -->
+  <package android:name="net.one97.paytm" />                        <!-- Paytm -->
+  <package android:name="in.org.npci.upiapp" />                     <!-- BHIM -->
 </queries>
 ```
 

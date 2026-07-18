@@ -1,8 +1,9 @@
-// UPI deep-link helper. Generates the standard upi:// URI plus an
-// intent:// fallback that works reliably in Android Chrome / installed PWA
-// / Samsung Internet, and detects whether an app is likely to open.
+// UPI deep-link helper. On Capacitor Android we use @capacitor/app-launcher
+// to open the UPI intent directly through the OS (no WebView / browser hop).
+// On web/PWA we fall back to the existing intent:// + upi:// browser flow.
 
-import { isAndroidNative, openExternalUrl } from "./native";
+import { AppLauncher } from "@capacitor/app-launcher";
+import { isAndroidNative } from "./native";
 
 export interface UpiPayParams {
   payeeVpa: string;   // e.g. 9876543210@upi
@@ -12,18 +13,33 @@ export interface UpiPayParams {
   txnRef?: string;    // transaction ref id
 }
 
+export interface UpiLaunchResult {
+  opened: boolean;
+  platform: "android-native" | "android-web" | "web";
+  fallbackUsed: "none" | "upi-scheme" | "intent-scheme" | "app-launcher-failed";
+  error?: string;
+}
+
 export function isValidUpiId(vpa: string): boolean {
   return /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(vpa.trim());
 }
 
+export function validateUpiParams(p: UpiPayParams): string | null {
+  if (!p.payeeVpa || !isValidUpiId(p.payeeVpa)) return "Invalid UPI ID";
+  if (!p.payeeName || !p.payeeName.trim()) return "Payee name is required";
+  if (p.amount !== undefined && !(p.amount > 0)) return "Amount must be greater than 0";
+  return null;
+}
+
 function buildQuery(p: UpiPayParams): string {
+  // URLSearchParams encodes each value with encodeURIComponent semantics.
   const params = new URLSearchParams();
   params.set("pa", p.payeeVpa.trim());
-  params.set("pn", p.payeeName);
-  params.set("cu", "INR");
+  params.set("pn", p.payeeName.trim());
   if (p.amount && p.amount > 0) params.set("am", p.amount.toFixed(2));
   if (p.note) params.set("tn", p.note.slice(0, 80));
   if (p.txnRef) params.set("tr", p.txnRef);
+  params.set("cu", "INR");
   return params.toString();
 }
 
@@ -31,7 +47,7 @@ export function buildUpiLink(p: UpiPayParams): string {
   return `upi://pay?${buildQuery(p)}`;
 }
 
-/** Android intent:// fallback that opens the UPI chooser reliably. */
+/** Android intent:// fallback for browser/PWA contexts. */
 export function buildUpiIntentLink(p: UpiPayParams): string {
   const q = buildQuery(p);
   return `intent://pay?${q}#Intent;scheme=upi;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
@@ -45,25 +61,53 @@ export function isAndroid(): boolean {
 export function isStandalonePWA(): boolean {
   if (typeof window === "undefined") return false;
   const mq = window.matchMedia?.("(display-mode: standalone)").matches;
-  // iOS Safari legacy
-  const ios = (navigator as any).standalone === true;
+  const ios = (navigator as unknown as { standalone?: boolean }).standalone === true;
   return !!(mq || ios);
 }
 
 /**
- * Try to launch a UPI app.
- * Returns a promise that resolves with `true` if the browser appears to
- * have switched context (likely opened a UPI app) and `false` if nothing
- * happened after ~1.5s (user should be shown the fallback UI).
+ * Launch the installed UPI app.
+ * - Capacitor Android: uses AppLauncher.openUrl (OS-level intent, no WebView).
+ * - Web/PWA: uses intent:// then upi:// with visibility heuristics.
  */
-export function launchUpi(p: UpiPayParams): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window === "undefined") { resolve(false); return; }
+export async function launchUpi(p: UpiPayParams): Promise<UpiLaunchResult> {
+  const err = validateUpiParams(p);
+  if (err) {
+    console.warn("[UPI] validation failed:", err);
+    return { opened: false, platform: isAndroidNative() ? "android-native" : (isAndroid() ? "android-web" : "web"), fallbackUsed: "none", error: err };
+  }
 
-    const upiUrl = buildUpiLink(p);
-    const intentUrl = buildUpiIntentLink(p);
+  const upiUrl = buildUpiLink(p);
+
+  // ---- Native Android (Capacitor) ----
+  if (isAndroidNative()) {
+    console.log("[UPI] platform=android-native uri=", upiUrl);
+    try {
+      const canOpen = await AppLauncher.canOpenUrl({ url: upiUrl }).catch(() => ({ value: true }));
+      console.log("[UPI] canOpenUrl=", canOpen);
+      const res = await AppLauncher.openUrl({ url: upiUrl });
+      console.log("[UPI] AppLauncher.openUrl result=", res);
+      if (res?.completed) {
+        return { opened: true, platform: "android-native", fallbackUsed: "none" };
+      }
+      return { opened: false, platform: "android-native", fallbackUsed: "app-launcher-failed", error: "No UPI app handled the intent" };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[UPI] AppLauncher exception:", msg);
+      return { opened: false, platform: "android-native", fallbackUsed: "app-launcher-failed", error: msg };
+    }
+  }
+
+  // ---- Web / Android Chrome / PWA ----
+  const platform: UpiLaunchResult["platform"] = isAndroid() ? "android-web" : "web";
+  const intentUrl = buildUpiIntentLink(p);
+  console.log("[UPI] platform=", platform, "uri=", upiUrl);
+
+  return await new Promise<UpiLaunchResult>((resolve) => {
+    if (typeof window === "undefined") { resolve({ opened: false, platform, fallbackUsed: "none" }); return; }
     const started = Date.now();
     let done = false;
+    let fallback: UpiLaunchResult["fallbackUsed"] = "upi-scheme";
 
     const finish = (opened: boolean) => {
       if (done) return;
@@ -71,35 +115,27 @@ export function launchUpi(p: UpiPayParams): Promise<boolean> {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("blur", onHide);
-      resolve(opened);
+      console.log("[UPI] web finish opened=", opened, "fallback=", fallback);
+      resolve({ opened, platform, fallbackUsed: fallback });
     };
-
     const onVis = () => { if (document.hidden) finish(true); };
     const onHide = () => finish(true);
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pagehide", onHide);
     window.addEventListener("blur", onHide);
 
-    // If the page is still here after 1500ms and we never hid, assume nothing opened.
-    window.setTimeout(() => {
-      if (Date.now() - started >= 1400) finish(false);
-    }, 1500);
+    window.setTimeout(() => { if (Date.now() - started >= 1400) finish(false); }, 1500);
 
     try {
-      if (isAndroidNative()) {
-        // Native Android WebView: use the OS URL handler so the UPI intent
-        // resolves against the real Android chooser.
-        openExternalUrl(intentUrl);
-        window.setTimeout(() => { if (!done) openExternalUrl(upiUrl); }, 300);
-      } else if (isAndroid()) {
-        // Prefer intent:// on Android — works in Chrome, Samsung, PWA.
+      if (isAndroid()) {
+        fallback = "intent-scheme";
         window.location.href = intentUrl;
-        // Also queue upi:// as a backup for browsers that don't honour intent://
-        window.setTimeout(() => { if (!done) window.location.href = upiUrl; }, 250);
+        window.setTimeout(() => { if (!done) { fallback = "upi-scheme"; window.location.href = upiUrl; } }, 250);
       } else {
         window.location.href = upiUrl;
       }
-    } catch {
+    } catch (e) {
+      console.error("[UPI] web launch exception:", e);
       finish(false);
     }
   });
