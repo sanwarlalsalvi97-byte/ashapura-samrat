@@ -56,15 +56,25 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
 
   const handlePay = async () => {
     if (!params) return;
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) {
+      toast({ title: "राशि डालें", description: "कृपया 0 से बड़ी राशि डालें।", variant: "destructive" });
+      return;
+    }
+    if (!payeeName?.trim()) {
+      toast({ title: "नाम आवश्यक है", variant: "destructive" });
+      return;
+    }
     setLaunching(true);
     setShowFallback(false);
-    const opened = await launchUpi(params);
+    const result = await launchUpi({ ...params, amount: amt });
     setLaunching(false);
-    if (!opened) {
+    console.log("[UpiPayDialog] launch result:", result);
+    if (!result.opened) {
       setShowFallback(true);
       toast({
         title: "कोई UPI ऐप नहीं मिला",
-        description: "कृपया Google Pay, PhonePe, Paytm या BHIM इंस्टॉल करें, या QR स्कैन करें।",
+        description: result.error || "कृपया Google Pay, PhonePe, Paytm या BHIM इंस्टॉल करें, या QR स्कैन करें।",
         variant: "destructive",
       });
     }
