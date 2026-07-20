@@ -116,8 +116,27 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">मजदूरों की सूची ({workers.length})</h2>
-        <AddWorkerDialog onAdded={load} />
+        {blocked ? (
+          <Button size="sm" onClick={() => setShowUpgrade(true)} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white">
+            <Crown className="w-4 h-4" /> Premium लें
+          </Button>
+        ) : (
+          <AddWorkerDialog onAdded={load} />
+        )}
       </div>
+
+      {!premium && (
+        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2">
+          Free Plan: {workers.length}/{FREE_WORKER_LIMIT} मजदूर
+        </div>
+      )}
+
+      <PremiumUpgradeDialog
+        open={showUpgrade}
+        onOpenChange={setShowUpgrade}
+        onUpgrade={() => { setShowUpgrade(false); onNavigate?.("subscription"); }}
+      />
+
 
       {workers.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
