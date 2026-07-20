@@ -6,7 +6,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const useLiveReload = process.env.CAP_LIVE_RELOAD === '1';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.346ff4aba1fe4e49a9bbd6312b10ff9f',
+  appId:'com.ashapurasamrat.app',
   appName: 'Ashapura Samrat',
   webDir: 'dist',
   backgroundColor: '#0E7A3A',
