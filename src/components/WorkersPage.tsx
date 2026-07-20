@@ -6,11 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
 import UpiPayDialog from "./UpiPayDialog";
-import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
+import PremiumUpgradeDialog from "./PremiumUpgradeDialog";
+import { Button } from "@/components/ui/button";
+import { Phone, Trash2, Smartphone, Building2, UserPlus, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
 import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
+import { canAddWorker, isPremium, FREE_WORKER_LIMIT } from "@/lib/premium";
 
 import {
   AlertDialog,
