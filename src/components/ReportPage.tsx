@@ -540,15 +540,42 @@ function PaySalaryDialog({
             </div>
           </div>
         )}
+        {awaitingUpi && target && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs space-y-2">
+            <div className="font-semibold text-amber-700 dark:text-amber-300">
+              UPI ऐप खोला गया — पेमेंट पूरा हुआ?
+            </div>
+            <p className="text-muted-foreground">
+              पेमेंट सफल होने पर ही "हाँ, पूरा हुआ" दबाएं। रद्द करने पर कोई एंट्री नहीं जुड़ेगी।
+            </p>
+          </div>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>रद्द</Button>
-          <Button
-            onClick={handlePay}
-            disabled={saving}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-          >
-            <BadgeIndianRupee className="w-4 h-4" /> {saving ? "सहेज रहा है..." : "चुकाएं"}
-          </Button>
+          {awaitingUpi ? (
+            <>
+              <Button variant="outline" onClick={() => handleUpiConfirm(false)} disabled={saving}>
+                रद्द / असफल
+              </Button>
+              <Button
+                onClick={() => handleUpiConfirm(true)}
+                disabled={saving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              >
+                <BadgeIndianRupee className="w-4 h-4" /> {saving ? "सहेज रहा है..." : "हाँ, पूरा हुआ"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onClose}>रद्द</Button>
+              <Button
+                onClick={handlePay}
+                disabled={saving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              >
+                <BadgeIndianRupee className="w-4 h-4" /> {saving ? "सहेज रहा है..." : (mode === "upi" ? "UPI ऐप खोलें" : "चुकाएं")}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
