@@ -1,12 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// Toggle hot-reload against the Lovable sandbox by setting
-// CAP_LIVE_RELOAD=1 in your shell before running `npx cap sync`.
-// For Play Store release builds, leave it unset so the app loads from `dist/`.
-const useLiveReload = process.env.CAP_LIVE_RELOAD === '1';
-
 const config: CapacitorConfig = {
-  appId:'com.ashapurasamrat.app',
+  appId: 'com.ashapurasamrat.app',
   appName: 'Ashapura Samrat',
   webDir: 'dist',
   backgroundColor: '#0E7A3A',
@@ -15,14 +10,6 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: false,
   },
-  ...(useLiveReload
-    ? {
-        server: {
-          url: 'https://346ff4ab-a1fe-4e49-a9bb-d6312b10ff9f.lovableproject.com?forceHideBadge=true',
-          cleartext: true,
-        },
-      }
-    : {}),
   plugins: {
     SplashScreen: {
       launchShowDuration: 1500,
