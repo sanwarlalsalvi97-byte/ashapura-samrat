@@ -6,11 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AddWorkerDialog from "./AddWorkerDialog";
 import EditWorkerDialog from "./EditWorkerDialog";
 import UpiPayDialog from "./UpiPayDialog";
-import { Phone, Trash2, Smartphone, Building2 } from "lucide-react";
+import PremiumUpgradeDialog from "./PremiumUpgradeDialog";
+import { Button } from "@/components/ui/button";
+import { Phone, Trash2, Smartphone, Building2, UserPlus, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
 import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
+import { canAddWorker, isPremium, FREE_WORKER_LIMIT } from "@/lib/premium";
 
 import {
   AlertDialog,
@@ -31,11 +34,14 @@ const roleColors: Record<string, string> = {
   "ठेकेदार": "bg-destructive/15 text-destructive",
 };
 
-export default function WorkersPage() {
+export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) => void } = {}) {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const premium = isPremium();
+  const blocked = !canAddWorker(workers.length);
 
   const load = async () => {
     try {
@@ -110,8 +116,27 @@ export default function WorkersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">मजदूरों की सूची ({workers.length})</h2>
-        <AddWorkerDialog onAdded={load} />
+        {blocked ? (
+          <Button size="sm" onClick={() => setShowUpgrade(true)} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white">
+            <Crown className="w-4 h-4" /> Premium लें
+          </Button>
+        ) : (
+          <AddWorkerDialog onAdded={load} />
+        )}
       </div>
+
+      {!premium && (
+        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2">
+          Free Plan: {workers.length}/{FREE_WORKER_LIMIT} मजदूर
+        </div>
+      )}
+
+      <PremiumUpgradeDialog
+        open={showUpgrade}
+        onOpenChange={setShowUpgrade}
+        onUpgrade={() => { setShowUpgrade(false); onNavigate?.("subscription"); }}
+      />
+
 
       {workers.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
