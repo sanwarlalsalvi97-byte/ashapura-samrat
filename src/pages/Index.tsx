@@ -116,7 +116,7 @@ export default function Index() {
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
         {tab === "cashbook" && <CashbookPage />}
-        {tab === "workers" && <WorkersPage />}
+        {tab === "workers" && <WorkersPage onNavigate={setTab} />}
         {tab === "bricks" && <BricksPage />}
         {tab === "contractors" && <ContractorsPage />}
         {tab === "roof" && <RoofPage />}

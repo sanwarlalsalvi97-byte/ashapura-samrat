@@ -34,11 +34,14 @@ const roleColors: Record<string, string> = {
   "ठेकेदार": "bg-destructive/15 text-destructive",
 };
 
-export default function WorkersPage() {
+export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) => void } = {}) {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [payTarget, setPayTarget] = useState<Worker | null>(null);
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const premium = isPremium();
+  const blocked = !canAddWorker(workers.length);
 
   const load = async () => {
     try {
