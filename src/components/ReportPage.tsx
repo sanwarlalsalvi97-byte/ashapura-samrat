@@ -412,6 +412,7 @@ function PaySalaryDialog({
   const [note, setNote] = useState("");
   const [mode, setMode] = useState("cash");
   const [saving, setSaving] = useState(false);
+  const [awaitingUpi, setAwaitingUpi] = useState(false);
 
   useEffect(() => {
     if (target) {
@@ -419,33 +420,80 @@ function PaySalaryDialog({
       setAmount(String(suggested));
       setNote(`सैलरी सेटलमेंट`);
       setMode("cash");
+      setAwaitingUpi(false);
     }
   }, [target]);
+
+  const savePayment = async (amt: number) => {
+    if (!target) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+    const { error } = await supabase.from("payment_history").insert({
+      user_id: user.id,
+      worker_id: target.worker.id,
+      amount: amt,
+      payment_date: todayISO(),
+      payment_mode: mode,
+      note: note || null,
+      site_name: target.worker.site_name || null,
+    });
+    if (error) throw error;
+  };
 
   const handlePay = async () => {
     if (!target) return;
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return toast({ title: "राशि दर्ज करें", variant: "destructive" });
+
+    // UPI mode: launch UPI app first, DO NOT save until user confirms.
+    if (mode === "upi") {
+      const vpa = (target.worker as any).upi_id as string | undefined;
+      if (!vpa) {
+        return toast({ title: "इस मजदूर की UPI ID नहीं है", description: "पहले मजदूर की जानकारी में UPI ID जोड़ें", variant: "destructive" });
+      }
+      try {
+        const { launchUpi } = await import("@/lib/upi");
+        const res = await launchUpi({ payeeVpa: vpa, payeeName: target.worker.name, amount: amt, note: note || `सैलरी` });
+        if (!res.opened) {
+          return toast({ title: "UPI ऐप नहीं खुला", description: res.error || "GPay / PhonePe / Paytm / BHIM इंस्टॉल करें", variant: "destructive" });
+        }
+      } catch (e: any) {
+        return toast({ title: "UPI लॉन्च असफल", description: e.message, variant: "destructive" });
+      }
+      setAwaitingUpi(true);
+      return;
+    }
+
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase.from("payment_history").insert({
-        user_id: user.id,
-        worker_id: target.worker.id,
-        amount: amt,
-        payment_date: todayISO(),
-        payment_mode: mode,
-        note: note || null,
-        site_name: target.worker.site_name || null,
-      });
-      if (error) throw error;
+      await savePayment(amt);
       toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए`, description: "कैशबुक में स्वतः जुड़ गया" });
       onSaved();
     } catch (err: any) {
       toast({ title: "गलती", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpiConfirm = async (success: boolean) => {
+    if (!target) return;
+    if (!success) {
+      setAwaitingUpi(false);
+      toast({ title: "पेमेंट रद्द", description: "कोई एंट्री नहीं जोड़ी गई" });
+      return;
+    }
+    const amt = parseFloat(amount);
+    setSaving(true);
+    try {
+      await savePayment(amt);
+      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए (UPI)` });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: "गलती", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+      setAwaitingUpi(false);
     }
   };
 
