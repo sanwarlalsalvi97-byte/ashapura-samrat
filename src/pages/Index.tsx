@@ -128,6 +128,7 @@ export default function Index() {
         {tab === "worker_expense" && <WorkerExpensesPage />}
         {tab === "payment_history" && <PaymentHistoryPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
+        {tab === "manage_subscription" && <ManageSubscriptionPage onNavigate={setTab} />}
       </main>
 
       {/* FAB removed — use Quick Actions / Workers page header instead */}
