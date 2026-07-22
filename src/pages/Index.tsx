@@ -13,6 +13,7 @@ import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
+import ManageSubscriptionPage from "@/components/ManageSubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
