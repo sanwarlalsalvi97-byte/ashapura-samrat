@@ -7,11 +7,13 @@ name: Android Release (AAB + APK)
 #   - Push a tag like `v1.0.0`  →  full release build, artifacts uploaded
 #   - Manual `workflow_dispatch` from the Actions tab
 #
-# Required repository secrets (Settings → Secrets and variables → Actions):
-#   ANDROID_KEYSTORE_BASE64   base64 of ashapura-release.keystore  (`base64 -w0 ashapura-release.keystore`)
-#   ANDROID_KEYSTORE_PASSWORD store password
-#   ANDROID_KEY_ALIAS         key alias (e.g. `ashapura`)
-#   ANDROID_KEY_PASSWORD      key password
+# Signing:
+#   The release keystore `ashapura-release.keystore` is committed to the
+#   repository root and used directly by this workflow. Only the following
+#   repository secrets are required (Settings → Secrets and variables → Actions):
+#     ANDROID_KEYSTORE_PASSWORD store password
+#     ANDROID_KEY_ALIAS         key alias (e.g. `ashapura`)
+#     ANDROID_KEY_PASSWORD      key password
 #
 # Outputs (downloadable from the workflow run):
 #   app-release.aab   — upload to Play Console
@@ -62,16 +64,14 @@ jobs:
       - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Decode keystore
-        env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Verify keystore exists
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set"
+          if [ ! -s "${{ github.workspace }}/ashapura-release.keystore" ]; then
+            echo "::error::ashapura-release.keystore not found in repository root."
+            echo "Commit the keystore file to the repo (or generate one) before running this workflow."
             exit 1
           fi
-          echo "$KEYSTORE_B64" | base64 -d > "${{ github.workspace }}/ashapura-release.keystore"
-          test -s "${{ github.workspace }}/ashapura-release.keystore"
+          echo "Keystore found: $(ls -lh ${{ github.workspace }}/ashapura-release.keystore | awk '{print $5}')"
 
       - name: Write keystore.properties
         env:
@@ -79,6 +79,10 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          if [ -z "$STORE_PW" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PW" ]; then
+            echo "::error::ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets must all be set."
+            exit 1
+          fi
           cat > android/keystore.properties <<EOF
           storeFile=${{ github.workspace }}/ashapura-release.keystore
           storePassword=${STORE_PW}

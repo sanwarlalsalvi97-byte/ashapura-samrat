@@ -13,6 +13,7 @@ import RoofPage from "@/components/RoofPage";
 import ReportPage from "@/components/ReportPage";
 import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
+import ManageSubscriptionPage from "@/components/ManageSubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
@@ -127,6 +128,7 @@ export default function Index() {
         {tab === "worker_expense" && <WorkerExpensesPage />}
         {tab === "payment_history" && <PaymentHistoryPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
+        {tab === "manage_subscription" && <ManageSubscriptionPage onNavigate={setTab} />}
       </main>
 
       {/* FAB removed — use Quick Actions / Workers page header instead */}

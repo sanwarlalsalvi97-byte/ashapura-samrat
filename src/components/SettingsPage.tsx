@@ -388,6 +388,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           </CardHeader>
           <CardContent className="divide-y divide-border">
             {[
+              { id: "manage_subscription" as TabId, hi: "मेरी सदस्यता", en: "My Subscription", icon: Crown },
               { id: "subscription" as TabId, hi: "Subscription / प्लान", en: "Subscription / Plans", icon: Crown },
               { id: "sites" as TabId, hi: "साइट प्रबंधन", en: "Site Management", icon: Building2 },
               { id: "contractors" as TabId, hi: "ठेकेदार / अनुबंध", en: "Contractor / Agreement", icon: HardHat },
