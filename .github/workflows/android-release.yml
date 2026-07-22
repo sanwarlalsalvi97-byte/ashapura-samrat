@@ -1,137 +1,59 @@
-name: Android Release (AAB + APK)
-
-# Builds a signed Android App Bundle (Play Store) and a signed universal APK
-# (side-load / QA) for Ashapura Samrat.
-#
-# Trigger:
-#   - Push a tag like `v1.0.0`  →  full release build, artifacts uploaded
-#   - Manual `workflow_dispatch` from the Actions tab
-#
-# Signing:
-#   The release keystore `ashapura-release.keystore` is committed to the
-#   repository root and used directly by this workflow. Only the following
-#   repository secrets are required (Settings → Secrets and variables → Actions):
-#     ANDROID_KEYSTORE_PASSWORD store password
-#     ANDROID_KEY_ALIAS         key alias (e.g. `ashapura`)
-#     ANDROID_KEY_PASSWORD      key password
-#
-# Outputs (downloadable from the workflow run):
-#   app-release.aab   — upload to Play Console
-#   app-release.apk   — side-load / share for QA
+name: Build Signed AAB + APK
 
 on:
-  push:
-    tags: ['v*.*.*']
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build signed AAB + APK
+    name: Build Signed Release
     runs-on: ubuntu-latest
-    timeout-minutes: 40
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install npm deps
-        run: npm ci
+      - name: Install dependencies
+        run: npm install
 
       - name: Build web bundle
         run: npm run build
 
-      - name: Add Android platform (if absent)
-        run: |
-          if [ ! -d android ]; then
-            npx cap add android
-          fi
+      - name: Add Android platform
+        run: npx cap add android || true
 
       - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Verify keystore exists
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Signed AAB and APK
         run: |
-          if [ ! -s "${{ github.workspace }}/ashapura-release.keystore" ]; then
-            echo "::error::ashapura-release.keystore not found in repository root."
-            echo "Commit the keystore file to the repo (or generate one) before running this workflow."
-            exit 1
-          fi
-          echo "Keystore found: $(ls -lh ${{ github.workspace }}/ashapura-release.keystore | awk '{print $5}')"
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease assembleRelease \
+            -Pandroid.injected.signing.store.file=app/release.keystore \
+            -Pandroid.injected.signing.store.password=123456 \
+            -Pandroid.injected.signing.key.alias=my-key-alias \
+            -Pandroid.injected.signing.key.password=123456
 
-      - name: Write keystore.properties
-        env:
-          STORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -z "$STORE_PW" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PW" ]; then
-            echo "::error::ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets must all be set."
-            exit 1
-          fi
-          cat > android/keystore.properties <<EOF
-          storeFile=${{ github.workspace }}/ashapura-release.keystore
-          storePassword=${STORE_PW}
-          keyAlias=${KEY_ALIAS}
-          keyPassword=${KEY_PW}
-          EOF
-
-      - name: Grant gradlew execute permission
-        working-directory: android
-        run: chmod +x ./gradlew
-
-      - name: Build release AAB
-        working-directory: android
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
-
-      - name: Build release APK
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Collect outputs
-        run: |
-          mkdir -p out
-          cp android/app/build/outputs/bundle/release/app-release.aab out/app-release.aab
-          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk out/app-release.apk
-          else
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk out/app-release.apk
-          fi
-          ls -lh out/
-
-      - name: Upload AAB
+      - name: Upload Signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
-          path: out/app-release.aab
-          if-no-files-found: error
+          name: app-release-signed-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
-      - name: Upload APK
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: out/app-release.apk
-          if-no-files-found: error
-
-      - name: Attach to GitHub Release (tag builds only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            out/app-release.aab
-            out/app-release.apk
-            
+          name: app-release-signed-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
