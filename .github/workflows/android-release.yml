@@ -134,3 +134,4 @@ jobs:
           files: |
             out/app-release.aab
             out/app-release.apk
+            
