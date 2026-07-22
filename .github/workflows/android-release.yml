@@ -41,9 +41,9 @@ jobs:
           cd android
           cat > keystore.properties << EOF
           storeFile=release.keystore
-          storePassword=123456
-          keyAlias=my-key-alias
-          keyPassword=123456
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease
