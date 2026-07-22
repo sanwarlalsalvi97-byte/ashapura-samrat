@@ -40,7 +40,7 @@ jobs:
         run: |
           cd android
           cat > keystore.properties << EOF
-          storeFile=app/release.keystore
+          storeFile=release.keystore
           storePassword=123456
           keyAlias=my-key-alias
           keyPassword=123456
