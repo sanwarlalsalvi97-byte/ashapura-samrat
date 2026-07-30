@@ -10,62 +10,55 @@ import {
   Heading,
   Html,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+import {
+  Footer,
+  Header,
+  button,
+  container,
+  h1,
+  hindi,
+  main,
+  text,
+} from './brand.tsx'
 
 interface RecoveryEmailProps {
   siteName: string
   confirmationUrl: string
 }
 
-export const RecoveryEmail = ({
-  siteName,
-  confirmationUrl,
-}: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+export const RecoveryEmail = ({ confirmationUrl }: RecoveryEmailProps) => (
+  <Html lang="hi" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>पासवर्ड रीसेट करें / Reset your password — Ashapura Samrat</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
+        <Header />
+        <Heading as="h1" style={h1}>
+          पासवर्ड रीसेट करें
+        </Heading>
+        <Text style={hindi}>
+          आपके Ashapura Samrat खाते के लिए पासवर्ड रीसेट का अनुरोध मिला है।
+          नया पासवर्ड बनाने के लिए नीचे दिए बटन पर टैप करें। यह लिंक कुछ समय
+          बाद समाप्त हो जाएगा।
+        </Text>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          We received a request to reset the password for your Ashapura Samrat
+          account. Tap the button below to choose a new password. This link
+          expires shortly.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
-        <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
-        </Text>
+        <Section style={{ margin: '0 0 24px' }}>
+          <Button style={button} href={confirmationUrl}>
+            नया पासवर्ड बनाएं / Reset password
+          </Button>
+        </Section>
+        <Footer note="अगर आपने यह अनुरोध नहीं किया है तो आपका पासवर्ड नहीं बदलेगा. / If you did not request this, your password will remain unchanged." />
       </Container>
     </Body>
   </Html>
 )
 
 export default RecoveryEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

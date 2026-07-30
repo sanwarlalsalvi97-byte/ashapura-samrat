@@ -9,10 +9,21 @@ import {
   Head,
   Heading,
   Html,
-  Link,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+import {
+  Footer,
+  Header,
+  button,
+  container,
+  h1,
+  hindi,
+  main,
+  text,
+} from './brand.tsx'
 
 interface SignupEmailProps {
   siteName: string
@@ -21,66 +32,33 @@ interface SignupEmailProps {
   confirmationUrl: string
 }
 
-export const SignupEmail = ({
-  siteName,
-  siteUrl,
-  recipient,
-  confirmationUrl,
-}: SignupEmailProps) => (
-  <Html lang="en" dir="ltr">
+export const SignupEmail = ({ recipient, confirmationUrl }: SignupEmailProps) => (
+  <Html lang="hi" dir="ltr">
     <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>अपना ईमेल कन्फर्म करें / Confirm your email — Ashapura Samrat</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
-        <Text style={text}>
-          Thanks for signing up for{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          !
+        <Header />
+        <Heading as="h1" style={h1}>
+          अपना ईमेल कन्फर्म करें
+        </Heading>
+        <Text style={hindi}>
+          नमस्ते, Ashapura Samrat में आपका स्वागत है। खाता शुरू करने के लिए
+          नीचे दिए बटन से अपना ईमेल ({recipient}) कन्फर्म करें।
         </Text>
         <Text style={text}>
-          Please confirm your email address (
-          <Link href={`mailto:${recipient}`} style={link}>
-            {recipient}
-          </Link>
-          ) by clicking the button below:
+          Welcome to Ashapura Samrat. Please confirm your email address (
+          {recipient}) to activate your account.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Verify Email
-        </Button>
-        <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
-        </Text>
+        <Section style={{ margin: '0 0 24px' }}>
+          <Button style={button} href={confirmationUrl}>
+            ईमेल कन्फर्म करें / Confirm email
+          </Button>
+        </Section>
+        <Footer note="अगर आपने यह खाता नहीं बनाया है तो इस ईमेल को अनदेखा करें. / If you did not create this account, you can ignore this email." />
       </Container>
     </Body>
   </Html>
 )
 
 export default SignupEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

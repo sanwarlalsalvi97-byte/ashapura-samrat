@@ -9,10 +9,21 @@ import {
   Head,
   Heading,
   Html,
-  Link,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+
+import {
+  Footer,
+  Header,
+  button,
+  container,
+  h1,
+  hindi,
+  main,
+  text,
+} from './brand.tsx'
 
 interface InviteEmailProps {
   siteName: string
@@ -20,60 +31,33 @@ interface InviteEmailProps {
   confirmationUrl: string
 }
 
-export const InviteEmail = ({
-  siteName,
-  siteUrl,
-  confirmationUrl,
-}: InviteEmailProps) => (
-  <Html lang="en" dir="ltr">
+export const InviteEmail = ({ confirmationUrl }: InviteEmailProps) => (
+  <Html lang="hi" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
+    <Preview>आपको आमंत्रित किया गया है / You've been invited — Ashapura Samrat</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
+        <Header />
+        <Heading as="h1" style={h1}>
+          आपको आमंत्रित किया गया है
+        </Heading>
+        <Text style={hindi}>
+          आपको Ashapura Samrat में शामिल होने के लिए आमंत्रित किया गया है।
+          अपना खाता बनाने के लिए नीचे दिए बटन पर टैप करें।
+        </Text>
         <Text style={text}>
-          You've been invited to join{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          . Click the button below to accept the invitation and create your
-          account.
+          You have been invited to join Ashapura Samrat. Tap the button below
+          to accept the invitation and set up your account.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Accept Invitation
-        </Button>
-        <Text style={footer}>
-          If you weren't expecting this invitation, you can safely ignore this
-          email.
-        </Text>
+        <Section style={{ margin: '0 0 24px' }}>
+          <Button style={button} href={confirmationUrl}>
+            आमंत्रण स्वीकारें / Accept invitation
+          </Button>
+        </Section>
+        <Footer note="अगर यह आमंत्रण आपके लिए नहीं है तो इस ईमेल को अनदेखा करें. / If this invitation was not meant for you, you can ignore this email." />
       </Container>
     </Body>
   </Html>
 )
 
 export default InviteEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
