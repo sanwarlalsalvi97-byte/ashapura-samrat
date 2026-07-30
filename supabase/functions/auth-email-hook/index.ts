@@ -17,13 +17,14 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'अपना ईमेल कन्फर्म करें | Confirm your email — Ashapura Samrat',
+  invite: 'आपको आमंत्रित किया गया है | You are invited to Ashapura Samrat',
+  magiclink: 'आपका लॉगिन लिंक | Your Ashapura Samrat login link',
+  recovery: 'पासवर्ड रीसेट करें | Reset your Ashapura Samrat password',
+  email_change: 'ईमेल बदलने की पुष्टि करें | Confirm your new email',
+  reauthentication: 'आपका वेरिफिकेशन कोड | Your verification code',
 }
+
 
 // Template mapping
 const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
