@@ -144,19 +144,48 @@ export default function ResetPassword() {
       <Card className="w-full max-w-sm animate-slide-up">
         <CardHeader className="text-center space-y-2">
           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <KeyRound className="w-9 h-9 text-primary-foreground" />
+            {failed ? (
+              <AlertTriangle className="w-9 h-9 text-primary-foreground" />
+            ) : (
+              <KeyRound className="w-9 h-9 text-primary-foreground" />
+            )}
           </div>
-          <CardTitle className="text-2xl font-bold">नया पासवर्ड सेट करें</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {failed ? "लिंक अमान्य या एक्सपायर" : "नया पासवर्ड सेट करें"}
+          </CardTitle>
           <p className="text-muted-foreground text-sm">
-            अपना नया पासवर्ड डालें
+            {failed ? "नीचे ईमेल डालकर नया लिंक मंगवाएं" : "अपना नया पासवर्ड डालें"}
           </p>
         </CardHeader>
         <CardContent>
           {failed ? (
-            <div className="space-y-3 py-2 text-center">
-              <p className="text-sm text-destructive">
-                यह लिंक अमान्य या समाप्त हो चुका है। कृपया फिर से पासवर्ड रीसेट लिंक भेजें।
-              </p>
+            <div className="space-y-4 py-1">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive text-center">
+                  {errorMsg || "यह लिंक अमान्य या समाप्त हो चुका है।"}
+                </p>
+              </div>
+
+              {resent ? (
+                <p className="text-sm text-center text-muted-foreground">
+                  नया रीसेट लिंक <span className="font-medium text-foreground">{resendEmail}</span> पर भेज दिया गया है। ईमेल चेक करें।
+                </p>
+              ) : (
+                <form onSubmit={handleResend} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="ईमेल"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    required
+                  />
+                  <Button type="submit" className="w-full" disabled={resending}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    {resending ? "भेज रहे हैं..." : "नया रीसेट लिंक भेजें"}
+                  </Button>
+                </form>
+              )}
+
               <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
                 लॉगिन पर वापस जाएं
               </Button>
