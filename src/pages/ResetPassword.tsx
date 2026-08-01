@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { KeyRound } from "lucide-react";
+import { KeyRound, AlertTriangle, Mail } from "lucide-react";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -14,15 +14,36 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
 
+    const fail = (msg: string) => {
+      setErrorMsg(msg);
+      setFailed(true);
+    };
+
     (async () => {
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const query = new URLSearchParams(window.location.search);
+
+      // 0) Supabase returned an explicit error in the link
+      const linkError = hash.get("error") || query.get("error");
+      const errorCode = hash.get("error_code") || query.get("error_code");
+      if (linkError) {
+        fail(
+          errorCode === "otp_expired"
+            ? "यह लिंक समाप्त हो चुका है (एक्सपायर्ड)। कृपया नया रीसेट लिंक मंगवाएं।"
+            : "यह लिंक अमान्य है या पहले ही इस्तेमाल हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।"
+        );
+        return;
+      }
 
       // 1) Implicit flow: #access_token=...&refresh_token=...
       const access_token = hash.get("access_token");
@@ -34,6 +55,8 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक अमान्य या समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 2) PKCE flow: ?code=...
@@ -45,6 +68,8 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक अमान्य या समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 3) OTP token link: ?token_hash=...&type=recovery
@@ -56,16 +81,39 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक समाप्त हो चुका है या पहले इस्तेमाल हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 4) Already-authenticated recovery session
       const { data } = await supabase.auth.getSession();
       if (data.session) setReady(true);
-      else setFailed(true);
+      else fail("रीसेट लिंक नहीं मिला या वह समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
     })();
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setResent(true);
+      toast({
+        title: "नया लिंक भेज दिया!",
+        description: "अपना ईमेल चेक करें और नए लिंक पर क्लिक करें।",
+      });
+    } catch (err: any) {
+      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,19 +144,48 @@ export default function ResetPassword() {
       <Card className="w-full max-w-sm animate-slide-up">
         <CardHeader className="text-center space-y-2">
           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <KeyRound className="w-9 h-9 text-primary-foreground" />
+            {failed ? (
+              <AlertTriangle className="w-9 h-9 text-primary-foreground" />
+            ) : (
+              <KeyRound className="w-9 h-9 text-primary-foreground" />
+            )}
           </div>
-          <CardTitle className="text-2xl font-bold">नया पासवर्ड सेट करें</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {failed ? "लिंक अमान्य या एक्सपायर" : "नया पासवर्ड सेट करें"}
+          </CardTitle>
           <p className="text-muted-foreground text-sm">
-            अपना नया पासवर्ड डालें
+            {failed ? "नीचे ईमेल डालकर नया लिंक मंगवाएं" : "अपना नया पासवर्ड डालें"}
           </p>
         </CardHeader>
         <CardContent>
           {failed ? (
-            <div className="space-y-3 py-2 text-center">
-              <p className="text-sm text-destructive">
-                यह लिंक अमान्य या समाप्त हो चुका है। कृपया फिर से पासवर्ड रीसेट लिंक भेजें।
-              </p>
+            <div className="space-y-4 py-1">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive text-center">
+                  {errorMsg || "यह लिंक अमान्य या समाप्त हो चुका है।"}
+                </p>
+              </div>
+
+              {resent ? (
+                <p className="text-sm text-center text-muted-foreground">
+                  नया रीसेट लिंक <span className="font-medium text-foreground">{resendEmail}</span> पर भेज दिया गया है। ईमेल चेक करें।
+                </p>
+              ) : (
+                <form onSubmit={handleResend} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="ईमेल"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    required
+                  />
+                  <Button type="submit" className="w-full" disabled={resending}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    {resending ? "भेज रहे हैं..." : "नया रीसेट लिंक भेजें"}
+                  </Button>
+                </form>
+              )}
+
               <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
                 लॉगिन पर वापस जाएं
               </Button>
