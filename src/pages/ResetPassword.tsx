@@ -104,7 +104,16 @@ export default function ResetPassword() {
           </p>
         </CardHeader>
         <CardContent>
-          {!ready ? (
+          {failed ? (
+            <div className="space-y-3 py-2 text-center">
+              <p className="text-sm text-destructive">
+                यह लिंक अमान्य या समाप्त हो चुका है। कृपया फिर से पासवर्ड रीसेट लिंक भेजें।
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+                लॉगिन पर वापस जाएं
+              </Button>
+            </div>
+          ) : !ready ? (
             <p className="text-center text-sm text-muted-foreground py-4">
               लिंक सत्यापित हो रहा है...
             </p>
