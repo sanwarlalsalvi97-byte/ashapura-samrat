@@ -14,15 +14,36 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
 
+    const fail = (msg: string) => {
+      setErrorMsg(msg);
+      setFailed(true);
+    };
+
     (async () => {
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const query = new URLSearchParams(window.location.search);
+
+      // 0) Supabase returned an explicit error in the link
+      const linkError = hash.get("error") || query.get("error");
+      const errorCode = hash.get("error_code") || query.get("error_code");
+      if (linkError) {
+        fail(
+          errorCode === "otp_expired"
+            ? "यह लिंक समाप्त हो चुका है (एक्सपायर्ड)। कृपया नया रीसेट लिंक मंगवाएं।"
+            : "यह लिंक अमान्य है या पहले ही इस्तेमाल हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।"
+        );
+        return;
+      }
 
       // 1) Implicit flow: #access_token=...&refresh_token=...
       const access_token = hash.get("access_token");
@@ -34,6 +55,8 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक अमान्य या समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 2) PKCE flow: ?code=...
@@ -45,6 +68,8 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक अमान्य या समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 3) OTP token link: ?token_hash=...&type=recovery
@@ -56,16 +81,39 @@ export default function ResetPassword() {
           window.history.replaceState({}, "", "/reset-password");
           return;
         }
+        fail("यह लिंक समाप्त हो चुका है या पहले इस्तेमाल हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
+        return;
       }
 
       // 4) Already-authenticated recovery session
       const { data } = await supabase.auth.getSession();
       if (data.session) setReady(true);
-      else setFailed(true);
+      else fail("रीसेट लिंक नहीं मिला या वह समाप्त हो चुका है। कृपया नया रीसेट लिंक मंगवाएं।");
     })();
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setResent(true);
+      toast({
+        title: "नया लिंक भेज दिया!",
+        description: "अपना ईमेल चेक करें और नए लिंक पर क्लिक करें।",
+      });
+    } catch (err: any) {
+      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
