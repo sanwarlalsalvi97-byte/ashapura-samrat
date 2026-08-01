@@ -20,7 +20,6 @@ const App = () => (
       <Sonner />
       <PinLockGate>
         <BrowserRouter>
-        <BrowserRouter>
           <AuthRedirectHandler />
           <Routes>
             <Route path="/" element={<Index />} />
