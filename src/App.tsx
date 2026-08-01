@@ -20,6 +20,8 @@ const App = () => (
       <Sonner />
       <PinLockGate>
         <BrowserRouter>
+        <BrowserRouter>
+          <AuthRedirectHandler />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/reset-password" element={<ResetPassword />} />
