@@ -13,6 +13,7 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
