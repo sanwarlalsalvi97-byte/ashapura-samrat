@@ -9,6 +9,7 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import Trust from "./pages/Trust.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PinLockGate from "./components/PinLockGate";
+import AuthRedirectHandler from "./components/AuthRedirectHandler";
 
 const queryClient = new QueryClient();
 
