@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { KeyRound } from "lucide-react";
+import { KeyRound, AlertTriangle, Mail } from "lucide-react";
 
 export default function ResetPassword() {
   const navigate = useNavigate();
