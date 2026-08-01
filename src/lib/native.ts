@@ -41,6 +41,20 @@ export async function initNative(onBack?: () => boolean) {
     }
   });
 
+  // Deep links (e.g. password reset emails): carry path + tokens into the SPA.
+  CapApp.addListener("appUrlOpen", ({ url }) => {
+    try {
+      const parsed = new URL(url);
+      const isRecovery =
+        parsed.hash.includes("type=recovery") ||
+        parsed.searchParams.get("type") === "recovery" ||
+        parsed.pathname.includes("reset-password");
+      const path = isRecovery ? "/reset-password" : parsed.pathname || "/";
+      window.history.pushState({}, "", `${path}${parsed.search}${parsed.hash}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } catch {}
+  });
+
   // Hide the native splash after first paint.
   setTimeout(() => {
     SplashScreen.hide().catch(() => {});

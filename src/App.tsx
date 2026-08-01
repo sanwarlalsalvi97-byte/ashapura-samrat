@@ -9,6 +9,7 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import Trust from "./pages/Trust.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PinLockGate from "./components/PinLockGate";
+import AuthRedirectHandler from "./components/AuthRedirectHandler";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
       <Sonner />
       <PinLockGate>
         <BrowserRouter>
+          <AuthRedirectHandler />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/reset-password" element={<ResetPassword />} />

@@ -13,18 +13,57 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // Supabase puts recovery tokens in URL hash; the client picks them up automatically
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setReady(true);
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
+    });
+
+    (async () => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const query = new URLSearchParams(window.location.search);
+
+      // 1) Implicit flow: #access_token=...&refresh_token=...
+      const access_token = hash.get("access_token");
+      const refresh_token = hash.get("refresh_token");
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", "/reset-password");
+          return;
+        }
       }
-    });
-    // Also check existing session in case event already fired
-    supabase.auth.getSession().then(({ data }) => {
+
+      // 2) PKCE flow: ?code=...
+      const code = query.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", "/reset-password");
+          return;
+        }
+      }
+
+      // 3) OTP token link: ?token_hash=...&type=recovery
+      const token_hash = query.get("token_hash") || hash.get("token_hash");
+      if (token_hash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash, type: "recovery" });
+        if (!error) {
+          setReady(true);
+          window.history.replaceState({}, "", "/reset-password");
+          return;
+        }
+      }
+
+      // 4) Already-authenticated recovery session
+      const { data } = await supabase.auth.getSession();
       if (data.session) setReady(true);
-    });
+      else setFailed(true);
+    })();
+
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -65,7 +104,16 @@ export default function ResetPassword() {
           </p>
         </CardHeader>
         <CardContent>
-          {!ready ? (
+          {failed ? (
+            <div className="space-y-3 py-2 text-center">
+              <p className="text-sm text-destructive">
+                यह लिंक अमान्य या समाप्त हो चुका है। कृपया फिर से पासवर्ड रीसेट लिंक भेजें।
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+                लॉगिन पर वापस जाएं
+              </Button>
+            </div>
+          ) : !ready ? (
             <p className="text-center text-sm text-muted-foreground py-4">
               लिंक सत्यापित हो रहा है...
             </p>
