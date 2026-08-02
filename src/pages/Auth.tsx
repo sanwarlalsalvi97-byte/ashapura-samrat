@@ -20,9 +20,10 @@ export default function Auth() {
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
   })();
-  const redirectTarget = consentNext && consentNext.startsWith("/")
-    ? `${window.location.origin}${consentNext}`
-    : window.location.origin;
+  // OAuth must always return to a public, existing URL — the app root.
+  // The intended destination (consentNext) is applied after the session hydrates.
+  const redirectTarget = window.location.origin + "/";
+
 
   const handleGoogle = async () => {
     setLoading(true);
