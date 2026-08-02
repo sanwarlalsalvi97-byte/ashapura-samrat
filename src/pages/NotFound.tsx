@@ -11,16 +11,26 @@ const NotFound = () => {
   useEffect(() => {
     const hash = window.location.hash || "";
     const search = window.location.search || "";
+    const path = window.location.pathname;
     const hasAuthPayload =
       hash.includes("access_token") ||
       hash.includes("error_description") ||
       /[?&](code|token_hash|type)=/.test(search);
 
-    if (hasAuthPayload || window.location.pathname === "/index") {
+    // The managed OAuth broker path only exists on published hosting; if it
+    // falls through to the SPA router, go home instead of showing a 404.
+    if (path.startsWith("/~oauth")) {
+      setRecovering(true);
+      window.location.replace("/");
+      return;
+    }
+
+    if (hasAuthPayload || path === "/index") {
       setRecovering(true);
       window.location.replace(`/${search}${hash}`);
     }
   }, []);
+
 
   if (recovering) {
     return (
