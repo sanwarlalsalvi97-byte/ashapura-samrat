@@ -7,6 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { KeyRound, AlertTriangle, Mail } from "lucide-react";
 
+const COOLDOWN_KEY = "reset_resend_until";
+const ATTEMPTS_KEY = "reset_resend_attempts";
+const BASE_COOLDOWN_SEC = 60; // पहला कूलडाउन
+const MAX_ATTEMPTS_PER_HOUR = 5;
+
+type Attempts = { count: number; windowStart: number };
+
+function readAttempts(): Attempts {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || "");
+    if (raw && typeof raw.count === "number" && typeof raw.windowStart === "number") {
+      if (Date.now() - raw.windowStart < 60 * 60 * 1000) return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return { count: 0, windowStart: Date.now() };
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -18,6 +37,18 @@ export default function ResetPassword() {
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // कूलडाउन टाइमर (localStorage में सुरक्षित ताकि रीलोड पर भी बना रहे)
+  useEffect(() => {
+    const tick = () => {
+      const until = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+      setCooldown(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -96,23 +127,54 @@ export default function ResetPassword() {
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (resending || cooldown > 0) return;
+
+    const attempts = readAttempts();
+    if (attempts.count >= MAX_ATTEMPTS_PER_HOUR) {
+      const mins = Math.max(1, Math.ceil((attempts.windowStart + 3600000 - Date.now()) / 60000));
+      toast({
+        title: "बहुत ज़्यादा कोशिशें",
+        description: `आपने एक घंटे में ${MAX_ATTEMPTS_PER_HOUR} बार लिंक मंगवा लिया है। ${mins} मिनट बाद फिर कोशिश करें।`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setResending(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
+
+      // हर कोशिश पर कूलडाउन दोगुना (60s, 120s, 240s...)
+      const nextCount = attempts.count + 1;
+      localStorage.setItem(
+        ATTEMPTS_KEY,
+        JSON.stringify({ count: nextCount, windowStart: attempts.windowStart })
+      );
+      const waitSec = BASE_COOLDOWN_SEC * Math.pow(2, nextCount - 1);
+      localStorage.setItem(COOLDOWN_KEY, String(Date.now() + waitSec * 1000));
+      setCooldown(waitSec);
+
       setResent(true);
       toast({
         title: "नया लिंक भेज दिया!",
         description: "अपना ईमेल चेक करें और नए लिंक पर क्लिक करें।",
       });
     } catch (err: any) {
+      // सर्वर rate-limit को भी कूलडाउन की तरह मानें
+      const msg = String(err?.message ?? "");
+      if (msg.toLowerCase().includes("rate") || err?.status === 429) {
+        localStorage.setItem(COOLDOWN_KEY, String(Date.now() + BASE_COOLDOWN_SEC * 1000));
+        setCooldown(BASE_COOLDOWN_SEC);
+      }
       toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
     } finally {
       setResending(false);
     }
   };
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,25 +228,37 @@ export default function ResetPassword() {
                 </p>
               </div>
 
-              {resent ? (
+              {resent && (
                 <p className="text-sm text-center text-muted-foreground">
                   नया रीसेट लिंक <span className="font-medium text-foreground">{resendEmail}</span> पर भेज दिया गया है। ईमेल चेक करें।
                 </p>
-              ) : (
-                <form onSubmit={handleResend} className="space-y-3">
-                  <Input
-                    type="email"
-                    placeholder="ईमेल"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    required
-                  />
-                  <Button type="submit" className="w-full" disabled={resending}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    {resending ? "भेज रहे हैं..." : "नया रीसेट लिंक भेजें"}
-                  </Button>
-                </form>
               )}
+
+              <form onSubmit={handleResend} className="space-y-3">
+                <Input
+                  type="email"
+                  placeholder="ईमेल"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  required
+                />
+                <Button type="submit" className="w-full" disabled={resending || cooldown > 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  {resending
+                    ? "भेज रहे हैं..."
+                    : cooldown > 0
+                      ? `फिर भेजें (${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")})`
+                      : resent
+                        ? "फिर से लिंक भेजें"
+                        : "नया रीसेट लिंक भेजें"}
+                </Button>
+                {cooldown > 0 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    स्पैम रोकने के लिए थोड़ा इंतज़ार करें।
+                  </p>
+                )}
+              </form>
+
 
               <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
                 लॉगिन पर वापस जाएं
