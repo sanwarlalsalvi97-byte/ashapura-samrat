@@ -228,25 +228,37 @@ export default function ResetPassword() {
                 </p>
               </div>
 
-              {resent ? (
+              {resent && (
                 <p className="text-sm text-center text-muted-foreground">
                   नया रीसेट लिंक <span className="font-medium text-foreground">{resendEmail}</span> पर भेज दिया गया है। ईमेल चेक करें।
                 </p>
-              ) : (
-                <form onSubmit={handleResend} className="space-y-3">
-                  <Input
-                    type="email"
-                    placeholder="ईमेल"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    required
-                  />
-                  <Button type="submit" className="w-full" disabled={resending}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    {resending ? "भेज रहे हैं..." : "नया रीसेट लिंक भेजें"}
-                  </Button>
-                </form>
               )}
+
+              <form onSubmit={handleResend} className="space-y-3">
+                <Input
+                  type="email"
+                  placeholder="ईमेल"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  required
+                />
+                <Button type="submit" className="w-full" disabled={resending || cooldown > 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  {resending
+                    ? "भेज रहे हैं..."
+                    : cooldown > 0
+                      ? `फिर भेजें (${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, "0")})`
+                      : resent
+                        ? "फिर से लिंक भेजें"
+                        : "नया रीसेट लिंक भेजें"}
+                </Button>
+                {cooldown > 0 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    स्पैम रोकने के लिए थोड़ा इंतज़ार करें।
+                  </p>
+                )}
+              </form>
+
 
               <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
                 लॉगिन पर वापस जाएं
