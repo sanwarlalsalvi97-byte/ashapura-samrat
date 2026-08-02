@@ -48,6 +48,17 @@ export default function Index() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // After OAuth/email sign-in, resume an intended destination (e.g. OAuth consent)
+  useEffect(() => {
+    if (!session) return;
+    let next = "";
+    try { next = sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { /* ignore */ }
+    if (next.startsWith("/") && !next.startsWith("//")) {
+      try { sessionStorage.removeItem("mcp_oauth_consent_next"); } catch { /* ignore */ }
+      window.location.replace(next);
+    }
+  }, [session]);
+
   // GPS status check
   useEffect(() => {
     if (!navigator.geolocation) { setGpsOn(false); return; }
