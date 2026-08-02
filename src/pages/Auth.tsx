@@ -24,8 +24,29 @@ export default function Auth() {
   // The intended destination (consentNext) is applied after the session hydrates.
   const redirectTarget = window.location.origin + "/";
 
+  // The managed Google OAuth broker lives behind the /~oauth/* path, which only
+  // exists on published/preview hosting. On the in-editor dev preview (and in a
+  // plain localhost/native shell) that path falls through to the SPA router and
+  // renders a 404, so we tell the user instead of dumping them on a dead page.
+  const PUBLISHED_URL = "https://ashapurapro.com";
+  const oauthSupported = (() => {
+    const h = window.location.hostname;
+    return (
+      h.endsWith(".lovable.app") ||
+      h === "ashapurapro.com" ||
+      h === "www.ashapurapro.com"
+    );
+  })();
 
   const handleGoogle = async () => {
+    if (!oauthSupported) {
+      toast({
+        title: "Google लॉगिन यहाँ उपलब्ध नहीं",
+        description: `प्रीव्यू में Google लॉगिन काम नहीं करता। कृपया ${PUBLISHED_URL} पर खोलकर लॉगिन करें, या ईमेल/पासवर्ड इस्तेमाल करें।`,
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
@@ -39,6 +60,7 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
 
 
 
