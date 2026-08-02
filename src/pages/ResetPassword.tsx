@@ -7,6 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { KeyRound, AlertTriangle, Mail } from "lucide-react";
 
+const COOLDOWN_KEY = "reset_resend_until";
+const ATTEMPTS_KEY = "reset_resend_attempts";
+const BASE_COOLDOWN_SEC = 60; // पहला कूलडाउन
+const MAX_ATTEMPTS_PER_HOUR = 5;
+
+type Attempts = { count: number; windowStart: number };
+
+function readAttempts(): Attempts {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || "");
+    if (raw && typeof raw.count === "number" && typeof raw.windowStart === "number") {
+      if (Date.now() - raw.windowStart < 60 * 60 * 1000) return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return { count: 0, windowStart: Date.now() };
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -18,6 +37,18 @@ export default function ResetPassword() {
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // कूलडाउन टाइमर (localStorage में सुरक्षित ताकि रीलोड पर भी बना रहे)
+  useEffect(() => {
+    const tick = () => {
+      const until = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+      setCooldown(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
