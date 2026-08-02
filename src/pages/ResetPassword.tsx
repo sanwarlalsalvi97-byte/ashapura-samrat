@@ -127,23 +127,54 @@ export default function ResetPassword() {
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (resending || cooldown > 0) return;
+
+    const attempts = readAttempts();
+    if (attempts.count >= MAX_ATTEMPTS_PER_HOUR) {
+      const mins = Math.max(1, Math.ceil((attempts.windowStart + 3600000 - Date.now()) / 60000));
+      toast({
+        title: "बहुत ज़्यादा कोशिशें",
+        description: `आपने एक घंटे में ${MAX_ATTEMPTS_PER_HOUR} बार लिंक मंगवा लिया है। ${mins} मिनट बाद फिर कोशिश करें।`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setResending(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
+
+      // हर कोशिश पर कूलडाउन दोगुना (60s, 120s, 240s...)
+      const nextCount = attempts.count + 1;
+      localStorage.setItem(
+        ATTEMPTS_KEY,
+        JSON.stringify({ count: nextCount, windowStart: attempts.windowStart })
+      );
+      const waitSec = BASE_COOLDOWN_SEC * Math.pow(2, nextCount - 1);
+      localStorage.setItem(COOLDOWN_KEY, String(Date.now() + waitSec * 1000));
+      setCooldown(waitSec);
+
       setResent(true);
       toast({
         title: "नया लिंक भेज दिया!",
         description: "अपना ईमेल चेक करें और नए लिंक पर क्लिक करें।",
       });
     } catch (err: any) {
+      // सर्वर rate-limit को भी कूलडाउन की तरह मानें
+      const msg = String(err?.message ?? "");
+      if (msg.toLowerCase().includes("rate") || err?.status === 429) {
+        localStorage.setItem(COOLDOWN_KEY, String(Date.now() + BASE_COOLDOWN_SEC * 1000));
+        setCooldown(BASE_COOLDOWN_SEC);
+      }
       toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
     } finally {
       setResending(false);
     }
   };
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
