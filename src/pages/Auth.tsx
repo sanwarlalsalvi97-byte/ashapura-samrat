@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import { isNative, openExternalUrl } from "@/lib/native";
 import logoUrl from "@/assets/logo.png";
 
 type Mode = "login" | "signup" | "forgot";
@@ -38,7 +39,27 @@ export default function Auth() {
     );
   })();
 
+  // Native Android: OAuth goes out to the system browser and returns through the
+  // custom URL scheme registered in AndroidManifest (handled in src/lib/native.ts).
+  const NATIVE_REDIRECT = "com.ashapurapro.samrat://auth/callback";
+
   const handleGoogle = async () => {
+    if (isNative()) {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true },
+        });
+        if (error) throw error;
+        if (data?.url) await openExternalUrl(data.url);
+      } catch (err: any) {
+        toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (!oauthSupported) {
       toast({
         title: "Google लॉगिन यहाँ उपलब्ध नहीं",
