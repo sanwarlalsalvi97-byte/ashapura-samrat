@@ -41,15 +41,48 @@ export async function initNative(onBack?: () => boolean) {
     }
   });
 
-  // Deep links (e.g. password reset emails): carry path + tokens into the SPA.
-  CapApp.addListener("appUrlOpen", ({ url }) => {
+  // Deep links (OAuth callbacks, password reset emails): carry path + tokens into the SPA.
+  CapApp.addListener("appUrlOpen", async ({ url }) => {
     try {
       const parsed = new URL(url);
+      const hash = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+      const query = parsed.searchParams;
+
       const isRecovery =
-        parsed.hash.includes("type=recovery") ||
-        parsed.searchParams.get("type") === "recovery" ||
+        hash.get("type") === "recovery" ||
+        query.get("type") === "recovery" ||
         parsed.pathname.includes("reset-password");
-      const path = isRecovery ? "/reset-password" : parsed.pathname || "/";
+
+      // Native Google OAuth callback (custom scheme) → establish the session here.
+      if (!isRecovery) {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const access_token = hash.get("access_token");
+          const refresh_token = hash.get("refresh_token");
+          const code = query.get("code");
+          if (access_token && refresh_token) {
+            await supabase.auth.setSession({ access_token, refresh_token });
+            window.history.replaceState({}, "", "/");
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            return;
+          }
+          if (code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (!error) {
+              window.history.replaceState({}, "", "/");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // Fallback: forward path + params into the SPA router.
+      const path = isRecovery
+        ? "/reset-password"
+        : parsed.protocol.startsWith("http")
+        ? parsed.pathname || "/"
+        : "/";
       window.history.pushState({}, "", `${path}${parsed.search}${parsed.hash}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch {}
