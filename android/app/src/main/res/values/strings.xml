@@ -3,5 +3,5 @@
     <string name="app_name">Ashapura Samrat</string>
     <string name="title_activity_main">Ashapura Samrat</string>
     <string name="package_name">com.ashapurasamrat.app</string>
-    <string name="custom_url_scheme">com.ashapurasamrat.app</string>
+    <string name="custom_url_scheme">com.ashapurapro.samrat</string>
 </resources>
