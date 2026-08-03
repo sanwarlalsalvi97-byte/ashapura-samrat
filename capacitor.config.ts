@@ -10,6 +10,11 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: false,
   },
+  // Custom URL scheme used for OAuth / password-recovery callbacks.
+  // Must match `custom_url_scheme` in android/app/src/main/res/values/strings.xml
+  server: {
+    androidScheme: 'https',
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 1500,

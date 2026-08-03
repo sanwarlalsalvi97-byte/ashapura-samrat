@@ -23,7 +23,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Custom URL scheme: OAuth / password-recovery callbacks back into the app -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" />
+            </intent-filter>
+
+            <!-- App Links: https deep links from emails open the installed app -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="ashapurapro.com" />
+                <data android:scheme="https" android:host="www.ashapurapro.com" />
+            </intent-filter>
+
         </activity>
+
 
         <provider
             android:name="androidx.core.content.FileProvider"
