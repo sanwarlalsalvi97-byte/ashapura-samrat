@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "as_premium_v1";
 const RECEIPT_KEY = "as_premium_receipt_v1";
-export const FREE_WORKER_LIMIT = 5;
+export const FREE_WORKER_LIMIT = 2;
 
 export type PremiumReceipt = {
   productId: string;

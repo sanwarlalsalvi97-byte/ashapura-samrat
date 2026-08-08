@@ -146,7 +146,7 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
               </span>
             </div>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              {isPro ? "सभी Premium फीचर्स अनलॉक हैं" : "अधिकतम 5 मजदूर तक सीमित"}
+              {isPro ? "सभी Premium फीचर्स अनलॉक हैं" : "अधिकतम 2 मजदूर तक सीमित"}
             </p>
           </div>
         </div>
