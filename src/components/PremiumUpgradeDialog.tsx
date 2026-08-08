@@ -18,7 +18,7 @@ export default function PremiumUpgradeDialog({ open, onOpenChange, onUpgrade }: 
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-2 text-sm">
-          <p className="font-semibold">Free Plan में अधिकतम 5 मजदूर जोड़े जा सकते हैं।</p>
+          <p className="font-semibold">Free Plan में अधिकतम 2 मजदूर जोड़े जा सकते हैं।</p>
           <p className="text-muted-foreground">Unlimited मजदूर जोड़ने के लिए Premium लें।</p>
         </div>
         <DialogFooter className="gap-2">
