@@ -188,11 +188,17 @@ export default function Auth() {
   };
 
   const title =
-    mode === "forgot" ? "पासवर्ड भूल गए?" : mode === "signup" ? "नया अकाउंट" : "Ashapura Samrat";
+    mode === "forgot" ? "पासवर्ड भूल गए?"
+    : mode === "signup" ? "नया अकाउंट"
+    : mode === "phone" ? "मोबाइल से लॉगिन"
+    : mode === "otp" ? "OTP डालें"
+    : "Ashapura Samrat";
   const subtitle =
-    mode === "forgot"
-      ? "ईमेल डालें, हम लिंक भेजेंगे"
-      : "मजदूरों की हाजिरी और हिसाब रखें";
+    mode === "forgot" ? "ईमेल डालें, हम लिंक भेजेंगे"
+    : mode === "phone" ? "10 अंकों का मोबाइल नंबर डालें"
+    : mode === "otp" ? `${e164} पर भेजा गया 6 अंकों का कोड`
+    : "मजदूरों की हाजिरी और हिसाब रखें";
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
