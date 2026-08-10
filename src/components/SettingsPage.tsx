@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type, Lock, Upload, HardDriveDownload, RefreshCw, AlertTriangle, Cloud } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type, Lock, Upload, HardDriveDownload, RefreshCw, AlertTriangle, Cloud } , MapPin } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import { getFontSize, setFontSize as persistFontSize, type FontSize } from "@/lib/font-size";
 import type { TabId } from "./BottomNav";
@@ -390,6 +390,8 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
             {[
               { id: "manage_subscription" as TabId, hi: "मेरी सदस्यता", en: "My Subscription", icon: Crown },
               { id: "subscription" as TabId, hi: "Subscription / प्लान", en: "Subscription / Plans", icon: Crown },
+              { id: "punch" as TabId, hi: "पंच इन / पंच आउट", en: "Punch In / Out", icon: MapPin },
+              { id: "geo_admin" as TabId, hi: "लोकेशन एडमिन", en: "Location Admin", icon: MapPin },
               { id: "sites" as TabId, hi: "साइट प्रबंधन", en: "Site Management", icon: Building2 },
               { id: "contractors" as TabId, hi: "ठेकेदार / अनुबंध", en: "Contractor / Agreement", icon: HardHat },
               { id: "cashbook" as TabId, hi: "हिसाब (आय/खर्च)", en: "Cashbook", icon: BookOpen },
