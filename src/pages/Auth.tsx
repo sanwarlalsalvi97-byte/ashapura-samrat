@@ -211,7 +211,70 @@ export default function Auth() {
           <p className="text-muted-foreground text-sm">{subtitle}</p>
         </CardHeader>
         <CardContent className="space-y-4">
+          {mode === "phone" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-2 rounded-md border border-input text-sm text-muted-foreground">+91</span>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  placeholder="मोबाइल नंबर"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                />
+              </div>
+              <Button className="w-full" onClick={sendOtp} disabled={loading || phone.length !== 10}>
+                {loading ? "रुकें..." : "OTP भेजें"}
+              </Button>
+              <button type="button" onClick={() => setMode("login")} className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" /> ईमेल से लॉगिन करें
+              </button>
+            </div>
+          )}
+
+          {mode === "otp" && (
+            <div className="space-y-3">
+              <Input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6 अंकों का OTP"
+                className="text-center text-lg tracking-[0.4em]"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+              <Button className="w-full" onClick={verifyOtp} disabled={loading || otp.length !== 6}>
+                {loading ? "जाँच रहे हैं..." : "वेरिफाई करें"}
+              </Button>
+              <button
+                type="button"
+                disabled={resendIn > 0 || loading}
+                onClick={sendOtp}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+              >
+                {resendIn > 0 ? `दोबारा भेजें (${resendIn}s)` : "OTP दोबारा भेजें"}
+              </button>
+              <button type="button" onClick={() => { setMode("phone"); setOtp(""); }} className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" /> नंबर बदलें
+              </button>
+            </div>
+          )}
+
+          {mode !== "phone" && mode !== "otp" && (<>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => setMode("phone")}
+            disabled={loading}
+          >
+            <Smartphone className="w-4 h-4 mr-2" />
+            मोबाइल OTP से लॉगिन
+          </Button>
+
           {/* Google */}
+
           <Button
             type="button"
             variant="outline"
