@@ -82,6 +82,72 @@ export type Database = {
           },
         ]
       }
+      attendance_logs: {
+        Row: {
+          attendance_type: string
+          created_at: string
+          distance_meters: number | null
+          face_verified: boolean
+          id: string
+          latitude: number | null
+          log_date: string
+          logged_at: string
+          longitude: number | null
+          notes: string | null
+          office_location_id: string | null
+          site_name: string | null
+          user_id: string
+          worker_id: string
+        }
+        Insert: {
+          attendance_type?: string
+          created_at?: string
+          distance_meters?: number | null
+          face_verified?: boolean
+          id?: string
+          latitude?: number | null
+          log_date?: string
+          logged_at?: string
+          longitude?: number | null
+          notes?: string | null
+          office_location_id?: string | null
+          site_name?: string | null
+          user_id?: string
+          worker_id: string
+        }
+        Update: {
+          attendance_type?: string
+          created_at?: string
+          distance_meters?: number | null
+          face_verified?: boolean
+          id?: string
+          latitude?: number | null
+          log_date?: string
+          logged_at?: string
+          longitude?: number | null
+          notes?: string | null
+          office_location_id?: string | null
+          site_name?: string | null
+          user_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_office_location_id_fkey"
+            columns: ["office_location_id"]
+            isOneToOne: false
+            referencedRelation: "office_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_logs_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brick_stock: {
         Row: {
           created_at: string
@@ -334,6 +400,45 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      office_locations: {
+        Row: {
+          created_at: string
+          face_scan_enabled: boolean
+          id: string
+          is_active: boolean
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          face_scan_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          latitude: number
+          longitude: number
+          name?: string
+          radius_meters?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          face_scan_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius_meters?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
