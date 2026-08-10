@@ -18,6 +18,8 @@ import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
 import PaymentHistoryPage from "@/components/PaymentHistoryPage";
+import PunchAttendancePage from "@/components/PunchAttendancePage";
+import GeoAdminPage from "@/components/GeoAdminPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import { HardHat, Bell, UserCircle2, MapPin } from "lucide-react";
@@ -138,6 +140,8 @@ export default function Index() {
         {tab === "pending" && <PendingPaymentsPage />}
         {tab === "worker_expense" && <WorkerExpensesPage />}
         {tab === "payment_history" && <PaymentHistoryPage />}
+        {tab === "punch" && <PunchAttendancePage />}
+        {tab === "geo_admin" && <GeoAdminPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
         {tab === "manage_subscription" && <ManageSubscriptionPage onNavigate={setTab} />}
       </main>

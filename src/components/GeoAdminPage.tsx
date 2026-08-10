@@ -1,0 +1,224 @@
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/hooks/use-toast";
+import { Crosshair, MapPin, Save } from "lucide-react";
+import { getCurrentCoords } from "@/lib/geo";
+import { fmt12, fmtHours, calcHours } from "@/lib/work-hours";
+import { todayISO } from "@/lib/date-utils";
+
+interface Office {
+  id?: string;
+  name: string;
+  latitude: string;
+  longitude: string;
+  radius_meters: string;
+  face_scan_enabled: boolean;
+}
+
+interface LogRow {
+  id: string;
+  worker_id: string;
+  attendance_type: string;
+  logged_at: string;
+  log_date: string;
+  distance_meters: number | null;
+  face_verified: boolean;
+}
+
+const empty: Office = {
+  name: "मुख्य ऑफिस",
+  latitude: "",
+  longitude: "",
+  radius_meters: "50",
+  face_scan_enabled: false,
+};
+
+export default function GeoAdminPage() {
+  const [office, setOffice] = useState<Office>(empty);
+  const [saving, setSaving] = useState(false);
+  const [date, setDate] = useState(todayISO());
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("office_locations")
+        .select("*").eq("is_active", true).order("created_at").limit(1);
+      const o = data?.[0];
+      if (o) {
+        setOffice({
+          id: o.id,
+          name: o.name,
+          latitude: String(o.latitude),
+          longitude: String(o.longitude),
+          radius_meters: String(o.radius_meters),
+          face_scan_enabled: o.face_scan_enabled,
+        });
+      }
+      const { data: w } = await supabase.from("workers").select("id, name");
+      setNames(Object.fromEntries((w ?? []).map((x) => [x.id, x.name])));
+    })();
+  }, []);
+
+  const loadLogs = useCallback(async () => {
+    const { data } = await supabase
+      .from("attendance_logs")
+      .select("id, worker_id, attendance_type, logged_at, log_date, distance_meters, face_verified")
+      .eq("log_date", date)
+      .order("logged_at", { ascending: true });
+    setLogs((data as LogRow[]) ?? []);
+  }, [date]);
+
+  useEffect(() => { void loadLogs(); }, [loadLogs]);
+
+  const useMyLocation = async () => {
+    try {
+      const c = await getCurrentCoords();
+      setOffice((o) => ({ ...o, latitude: c.latitude.toFixed(6), longitude: c.longitude.toFixed(6) }));
+      toast({ title: "लोकेशन ले ली गई", description: "यही आपकी वर्तमान जगह है।" });
+    } catch (e) {
+      toast({ title: "गलती", description: e instanceof Error ? e.message : "", variant: "destructive" });
+    }
+  };
+
+  const save = async () => {
+    const lat = Number(office.latitude);
+    const lng = Number(office.longitude);
+    const rad = Number(office.radius_meters);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      toast({ title: "गलत coordinates", description: "सही latitude/longitude डालें।", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(rad) || rad < 10 || rad > 5000) {
+      toast({ title: "गलत परिधि", description: "10 से 5000 मीटर के बीच डालें।", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("Not authenticated");
+      const payload = {
+        user_id: uid,
+        name: office.name.trim() || "मुख्य ऑफिस",
+        latitude: lat,
+        longitude: lng,
+        radius_meters: Math.round(rad),
+        face_scan_enabled: office.face_scan_enabled,
+        is_active: true,
+      };
+      if (office.id) {
+        const { error } = await supabase.from("office_locations").update(payload).eq("id", office.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("office_locations").insert(payload).select("id").single();
+        if (error) throw error;
+        setOffice((o) => ({ ...o, id: data.id }));
+      }
+      toast({ title: "सेव हो गया ✅", description: "ऑफिस लोकेशन अपडेट हो गई।" });
+    } catch (e) {
+      toast({ title: "गलती हुई", description: e instanceof Error ? e.message : "", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Group logs per worker → first IN, last OUT, total hours
+  const byWorker = new Map<string, { in?: string; out?: string; dist?: number | null }>();
+  for (const l of logs) {
+    const t = new Date(l.logged_at);
+    const hhmm = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+    const cur = byWorker.get(l.worker_id) ?? {};
+    if (l.attendance_type === "in") { if (!cur.in) cur.in = hhmm; }
+    else cur.out = hhmm;
+    cur.dist = l.distance_meters;
+    byWorker.set(l.worker_id, cur);
+  }
+
+  return (
+    <div className="space-y-4 animate-slide-up">
+      <div>
+        <h2 className="text-lg font-bold">लोकेशन एडमिन</h2>
+        <p className="text-xs text-muted-foreground">ऑफिस/शॉप GPS और हाजिरी परिधि सेट करें</p>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><MapPin className="w-4 h-4" /> ऑफिस लोकेशन</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">नाम</Label>
+            <Input value={office.name} onChange={(e) => setOffice({ ...office, name: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Latitude</Label>
+              <Input inputMode="decimal" value={office.latitude}
+                onChange={(e) => setOffice({ ...office, latitude: e.target.value })} placeholder="23.022505" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Longitude</Label>
+              <Input inputMode="decimal" value={office.longitude}
+                onChange={(e) => setOffice({ ...office, longitude: e.target.value })} placeholder="72.571362" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">अनुमत परिधि (मीटर)</Label>
+            <Input inputMode="numeric" value={office.radius_meters}
+              onChange={(e) => setOffice({ ...office, radius_meters: e.target.value })} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">फेस स्कैन ज़रूरी करें</p>
+              <p className="text-[11px] text-muted-foreground">बंद रहने पर सिर्फ GPS से हाजिरी लगेगी</p>
+            </div>
+            <Switch checked={office.face_scan_enabled}
+              onCheckedChange={(v) => setOffice({ ...office, face_scan_enabled: v })} />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={useMyLocation}>
+              <Crosshair className="w-4 h-4 mr-2" /> यहीं की लोकेशन लें
+            </Button>
+            <Button className="flex-1" onClick={save} disabled={saving}>
+              <Save className="w-4 h-4 mr-2" /> सेव करें
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">दैनिक हाजिरी लॉग</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          {byWorker.size === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">इस दिन कोई पंच रिकॉर्ड नहीं।</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {[...byWorker.entries()].map(([wid, v]) => (
+                <div key={wid} className="py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{names[wid] ?? "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      IN {fmt12(v.in)} • OUT {fmt12(v.out)}
+                      {v.dist != null ? ` • ${Math.round(v.dist)}m` : ""}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold shrink-0">{fmtHours(calcHours(v.in, v.out))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
