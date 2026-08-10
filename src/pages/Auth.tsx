@@ -343,6 +343,9 @@ export default function Auth() {
               </button>
             )}
           </form>
+          </>)}
+
+
 
         </CardContent>
       </Card>
