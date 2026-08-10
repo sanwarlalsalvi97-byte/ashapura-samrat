@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace } from "lucide-react";
 import { fmtDistance, getCurrentCoords, haversineMeters, type Coords } from "@/lib/geo";
 import { calcHours, fmt12, fmtHours, splitOT } from "@/lib/work-hours";
-import { todayIso } from "@/lib/date-utils";
+import { todayISO } from "@/lib/date-utils";
 
 interface Worker { id: string; name: string; worker_code: string | null; site_name: string | null }
 interface Office {
@@ -36,7 +36,7 @@ export default function PunchAttendancePage() {
   const [today, setToday] = useState<TodayRow | null>(null);
   const [faceVerified, setFaceVerified] = useState(false);
 
-  const date = todayIso();
+  const date = todayISO();
 
   const loadBase = useCallback(async () => {
     const [{ data: w }, { data: o }] = await Promise.all([
