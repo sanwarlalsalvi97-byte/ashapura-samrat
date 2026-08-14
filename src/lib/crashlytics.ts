@@ -30,7 +30,7 @@ export async function logJsError(err: unknown, context?: string) {
       });
     }
     await FirebaseCrashlytics.log({ message: stack ? `${message}\n${stack}` : message });
-    await FirebaseCrashlytics.recordException({ message, stacktrace: stack ? [] : undefined });
+    await FirebaseCrashlytics.recordException({ message });
   } catch {
     /* never let reporting break the app */
   }
