@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor-firebase/crashlytics": "^8.4.0",
     "@capacitor/android": "^8.4.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/app-launcher": "^8.0.1",
