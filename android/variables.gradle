@@ -15,4 +15,6 @@ ext {
     cordovaAndroidVersion = '14.0.1'
     // Google Play Billing Library — must stay >= 8.0.0 (Play policy)
     playBillingVersion = '8.0.0'
+    // Firebase BoM (Crashlytics + Analytics)
+    firebaseBomVersion = '34.4.0'
 }
