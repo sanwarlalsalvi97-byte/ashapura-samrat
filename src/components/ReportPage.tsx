@@ -1,4 +1,5 @@
 import { monthBoundsISO, todayISO } from "@/lib/date-utils";
+import { useRole } from "@/lib/roles";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
@@ -55,6 +56,7 @@ export default function ReportPage() {
   const [siteExp, setSiteExp] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [sitePay, setSitePay] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
+  const { readOnly } = useRole();
   const [payTarget, setPayTarget] = useState<WorkerLedger | null>(null);
 
   const loadSiteData = useCallback(async () => {
@@ -271,9 +273,9 @@ export default function ReportPage() {
                 l={s}
                 month={month}
                 year={year}
-                onPay={() => setPayTarget(s)}
+                onPay={readOnly ? undefined : () => setPayTarget(s)}
                 onShare={() => shareOnWhatsApp(s)}
-                onDelete={() => handleDelete(s)}
+                onDelete={readOnly ? undefined : () => handleDelete(s)}
               />
             ))}
           </div>
@@ -295,9 +297,9 @@ function LedgerCard({
   l: WorkerLedger;
   month: number;
   year: number;
-  onPay: () => void;
+  onPay?: () => void;
   onShare: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }) {
   const negative = l.remainingBalance < -0.5;
   const positive = l.remainingBalance > 0.5;
@@ -315,6 +317,7 @@ function LedgerCard({
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onShare}>
               <Share2 className="w-4 h-4" />
             </Button>
+            {onDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-destructive hover:text-destructive">
@@ -336,6 +339,7 @@ function LedgerCard({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -390,12 +394,14 @@ function LedgerCard({
           )}
         </div>
 
+        {onPay && (
         <Button
           onClick={onPay}
           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 rounded-xl h-11 font-bold"
         >
           <BadgeIndianRupee className="w-4 h-4" /> Pay Salary / सैलरी चुकाएं
         </Button>
+        )}
       </CardContent>
     </Card>
   );

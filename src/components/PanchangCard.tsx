@@ -8,6 +8,9 @@ import {
   Compass,
   Sprout,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 
 interface Props {
@@ -15,17 +18,33 @@ interface Props {
   className?: string;
 }
 
-export default function PanchangCard({ date, className }: Props) {
-  const [now, setNow] = useState(() => date ?? new Date());
+function sameDay(a: Date, b: Date) {
+  return a.toDateString() === b.toDateString();
+}
 
-  // Auto-refresh: recompute every minute so tithi flips in real time.
+function addDays(d: Date, n: number) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+export default function PanchangCard({ date, className }: Props) {
+  const [selected, setSelected] = useState(() => date ?? new Date());
+
+  // Follow an externally controlled date if the parent changes it.
+  useEffect(() => { if (date) setSelected(date); }, [date]);
+
+  // Auto-refresh: recompute every minute so tithi flips in real time (today only).
   useEffect(() => {
     if (date) return;
-    const t = setInterval(() => setNow(new Date()), 60_000);
+    const t = setInterval(() => {
+      setSelected((cur) => (sameDay(cur, new Date()) ? new Date() : cur));
+    }, 60_000);
     return () => clearInterval(t);
   }, [date]);
 
-  const p: Panchang = useMemo(() => computePanchang(now), [now]);
+  const isToday = sameDay(selected, new Date());
+  const p: Panchang = useMemo(() => computePanchang(selected), [selected]);
 
   const highlight = p.isPurnima
     ? { label: "🌕 पूर्णिमा", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" }
@@ -42,12 +61,38 @@ export default function PanchangCard({ date, className }: Props) {
         (className || "")
       }
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-orange-600" />
-          <h2 className="text-sm font-extrabold">पंचांग</h2>
+      <div className="flex items-center justify-between mb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarDays className="w-4 h-4 text-orange-600 shrink-0" />
+          <h2 className="text-sm font-extrabold shrink-0">पंचांग</h2>
+          <span className="text-[11px] font-semibold text-muted-foreground truncate">{p.gregorian}</span>
         </div>
-        <span className="text-[11px] font-semibold text-muted-foreground">{p.gregorian}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            aria-label="पिछला दिन"
+            onClick={() => setSelected((d) => addDays(d, -1))}
+            className="w-7 h-7 grid place-items-center rounded-lg bg-muted/60 hover:bg-muted active:scale-95 transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Date())}
+            disabled={isToday}
+            className="h-7 px-2 rounded-lg bg-orange-500/15 text-orange-700 dark:text-orange-300 text-[11px] font-bold flex items-center gap-1 disabled:opacity-45 active:scale-95 transition"
+          >
+            <RotateCcw className="w-3 h-3" /> आज
+          </button>
+          <button
+            type="button"
+            aria-label="अगला दिन"
+            onClick={() => setSelected((d) => addDays(d, 1))}
+            className="w-7 h-7 grid place-items-center rounded-lg bg-muted/60 hover:bg-muted active:scale-95 transition"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Primary row: Vaar • Paksha • Tithi */}

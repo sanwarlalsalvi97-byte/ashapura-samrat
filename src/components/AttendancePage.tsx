@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import TithiBadge from "./TithiBadge";
+import { useRole } from "@/lib/roles";
 
 const STATUS_LABEL: Record<string, string> = {
   Present: "हाजिर",
@@ -50,6 +51,7 @@ export default function AttendancePage() {
   const [savingAll, setSavingAll] = useState(false);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [search, setSearch] = useState("");
+  const { readOnly } = useRole();
   const [mode, setMode] = useState<"manual" | "gps">(() => (localStorage.getItem("att-mode") as "manual" | "gps") || "manual");
 
   useEffect(() => { localStorage.setItem("att-mode", mode); }, [mode]);
@@ -522,6 +524,7 @@ export default function AttendancePage() {
                     currentOvertimeHours={attendance[w.id]?.overtime_hours}
                     currentNotes={(attendance[w.id] as any)?.notes}
                     mode={mode}
+                    readOnly={readOnly}
                     onMarked={loadData}
                     onSelectionChange={handleSelectionChange}
                     onSiteChange={handleSiteChange}

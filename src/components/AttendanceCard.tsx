@@ -47,6 +47,8 @@ interface Props {
   currentOvertimeHours?: number;
   currentNotes?: string | null;
   mode?: "manual" | "gps";
+  /** Worker (मजदूर) accounts: view only, no marking/editing. */
+  readOnly?: boolean;
   onMarked: () => void;
   // Legacy no-op props (page still passes them)
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
@@ -138,7 +140,7 @@ function codeToPayload(code: AttCode, otHours: number, checkIn: string, checkOut
 export default function AttendanceCard({
   worker, date, currentStatus, currentCreatedAt, currentUpdatedAt,
   currentInTime, currentOutTime, currentOvertimeHours, currentNotes,
-  mode = "manual", onMarked, onSiteChange, onGpsChange,
+  mode = "manual", onMarked, onSiteChange, onGpsChange, readOnly = false,
 }: Props) {
   const derivedCode = deriveCode(currentStatus, currentOvertimeHours, currentNotes);
   const [code, setCode] = useState<AttCode | undefined>(derivedCode);
@@ -204,6 +206,7 @@ export default function AttendanceCard({
   }
 
   const pickCode = (c: AttCode) => {
+    if (readOnly) return;
     if (c === "OT") {
       setOtDialog(true);
       return;
@@ -296,7 +299,7 @@ export default function AttendanceCard({
             </div>
           )}
         </div>
-        {mode === "gps" && (
+        {mode === "gps" && !readOnly && (
           <button
             onClick={captureGps}
             disabled={gpsLoading}
@@ -325,7 +328,7 @@ export default function AttendanceCard({
               key={c.code}
               whileTap={{ scale: 0.94 }}
               onClick={() => pickCode(c.code)}
-              disabled={!!savingCode}
+              disabled={!!savingCode || readOnly}
               title={c.full}
               className={`relative h-12 rounded-xl font-extrabold text-[13px] leading-none flex flex-col items-center justify-center gap-0.5 transition-all ${
                 active ? `${c.active} shadow-md` : c.idle
@@ -348,7 +351,7 @@ export default function AttendanceCard({
       {/* Site dropdown */}
       <div className="px-4 pb-3 pt-1">
         <label className="text-[11px] text-muted-foreground font-medium">साइट</label>
-        <Select value={site || "__none__"} onValueChange={updateSite}>
+        <Select value={site || "__none__"} onValueChange={updateSite} disabled={readOnly}>
           <SelectTrigger className="h-9 mt-1 text-sm rounded-xl bg-background border-primary/30">
             <SelectValue placeholder="साइट चुनें" />
           </SelectTrigger>

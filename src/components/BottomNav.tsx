@@ -5,6 +5,8 @@ export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" |
 interface Props {
   active: TabId;
   onNavigate: (tab: TabId) => void;
+  /** Restrict visible tabs (e.g. read-only worker accounts). */
+  allowed?: TabId[];
 }
 
 const tabs = [
@@ -16,11 +18,12 @@ const tabs = [
   { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
 ];
 
-export default function BottomNav({ active, onNavigate }: Props) {
+export default function BottomNav({ active, onNavigate, allowed }: Props) {
+  const visible = allowed ? tabs.filter((t) => allowed.includes(t.id)) : tabs;
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
       <div className="flex overflow-x-auto items-center h-16 max-w-lg mx-auto px-1 no-scrollbar">
-        {tabs.map(({ id, label, icon: Icon }) => (
+        {visible.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => onNavigate(id)}
