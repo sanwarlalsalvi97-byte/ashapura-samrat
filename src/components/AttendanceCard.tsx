@@ -328,7 +328,7 @@ export default function AttendanceCard({
               key={c.code}
               whileTap={{ scale: 0.94 }}
               onClick={() => pickCode(c.code)}
-              disabled={!!savingCode}
+              disabled={!!savingCode || readOnly}
               title={c.full}
               className={`relative h-12 rounded-xl font-extrabold text-[13px] leading-none flex flex-col items-center justify-center gap-0.5 transition-all ${
                 active ? `${c.active} shadow-md` : c.idle
