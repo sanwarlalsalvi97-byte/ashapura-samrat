@@ -138,7 +138,7 @@ function codeToPayload(code: AttCode, otHours: number, checkIn: string, checkOut
 export default function AttendanceCard({
   worker, date, currentStatus, currentCreatedAt, currentUpdatedAt,
   currentInTime, currentOutTime, currentOvertimeHours, currentNotes,
-  mode = "manual", onMarked, onSiteChange, onGpsChange,
+  mode = "manual", onMarked, onSiteChange, onGpsChange, readOnly = false,
 }: Props) {
   const derivedCode = deriveCode(currentStatus, currentOvertimeHours, currentNotes);
   const [code, setCode] = useState<AttCode | undefined>(derivedCode);
