@@ -299,7 +299,7 @@ export default function AttendanceCard({
             </div>
           )}
         </div>
-        {mode === "gps" && (
+        {mode === "gps" && !readOnly && (
           <button
             onClick={captureGps}
             disabled={gpsLoading}
