@@ -138,7 +138,22 @@ function IndexInner() {
         )}
       </header>
 
+      {isWorker && (
+        <div className="bg-primary/10 text-primary text-[11px] text-center py-1.5 px-3 font-semibold flex items-center justify-center gap-1.5">
+          <Eye className="w-3.5 h-3.5" />
+          मजदूर व्यू — सिर्फ देखने के लिए (Read-only)
+        </div>
+      )}
+
       <main className="max-w-lg mx-auto px-4 py-4">
+        {isWorker && !WORKER_TABS.includes(tab) ? (
+          <div className="text-center py-16 space-y-2">
+            <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
+            <p className="font-bold">यह सेक्शन सिर्फ ठेकेदार (Admin) के लिए है</p>
+            <p className="text-sm text-muted-foreground">आप अपनी हाजिरी और मजदूरी देख सकते हैं।</p>
+          </div>
+        ) : (
+        <>
         {tab === "home" && <HomePage onNavigate={setTab} />}
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
@@ -157,12 +172,14 @@ function IndexInner() {
         {tab === "geo_admin" && <GeoAdminPage />}
         {tab === "subscription" && <SubscriptionPage onNavigate={setTab} />}
         {tab === "manage_subscription" && <ManageSubscriptionPage onNavigate={setTab} />}
+        </>
+        )}
       </main>
 
       {/* FAB removed — use Quick Actions / Workers page header instead */}
 
 
-      <BottomNav active={tab} onNavigate={setTab} />
+      <BottomNav active={tab} onNavigate={setTab} allowed={isWorker ? WORKER_TABS : undefined} />
     </div>
   );
 }
