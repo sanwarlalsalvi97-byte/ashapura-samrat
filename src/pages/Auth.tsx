@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Smartphone } from "lucide-react";
+import { ArrowLeft, Smartphone, HardHat, UserRound } from "lucide-react";
 import { isNative, openExternalUrl } from "@/lib/native";
+import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
 type Mode = "login" | "signup" | "forgot" | "phone" | "otp";
