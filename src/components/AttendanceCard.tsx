@@ -47,6 +47,8 @@ interface Props {
   currentOvertimeHours?: number;
   currentNotes?: string | null;
   mode?: "manual" | "gps";
+  /** Worker (मजदूर) accounts: view only, no marking/editing. */
+  readOnly?: boolean;
   onMarked: () => void;
   // Legacy no-op props (page still passes them)
   onSelectionChange?: (workerId: string, status: AttendanceStatus | undefined) => void;
