@@ -351,7 +351,7 @@ export default function AttendanceCard({
       {/* Site dropdown */}
       <div className="px-4 pb-3 pt-1">
         <label className="text-[11px] text-muted-foreground font-medium">साइट</label>
-        <Select value={site || "__none__"} onValueChange={updateSite}>
+        <Select value={site || "__none__"} onValueChange={updateSite} disabled={readOnly}>
           <SelectTrigger className="h-9 mt-1 text-sm rounded-xl bg-background border-primary/30">
             <SelectValue placeholder="साइट चुनें" />
           </SelectTrigger>
