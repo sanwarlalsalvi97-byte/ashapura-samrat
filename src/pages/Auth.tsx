@@ -21,6 +21,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [signupRole, setSignupRole] = useState<"admin" | "worker">("admin");
   const [resendIn, setResendIn] = useState(0);
   const timerRef = useRef<number | null>(null);
 
