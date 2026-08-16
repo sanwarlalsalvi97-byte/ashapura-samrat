@@ -204,6 +204,7 @@ export default function AttendanceCard({
   }
 
   const pickCode = (c: AttCode) => {
+    if (readOnly) return;
     if (c === "OT") {
       setOtDialog(true);
       return;
