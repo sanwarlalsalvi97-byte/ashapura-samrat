@@ -295,6 +295,32 @@ export default function Auth() {
           </Button>
 
           <form onSubmit={handleEmailAuth} className="space-y-3">
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground">मैं हूँ</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: "admin" as const, label: "ठेकेदार", sub: "पूरा कंट्रोल", Icon: HardHat },
+                    { id: "worker" as const, label: "मजदूर", sub: "सिर्फ देखें", Icon: UserRound },
+                  ]).map(({ id, label, sub, Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setSignupRole(id)}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        signupRole === id
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                          : "border-border hover:bg-muted/60"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 mb-1 text-primary" />
+                      <div className="text-sm font-bold">{label}</div>
+                      <div className="text-[11px] text-muted-foreground">{sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <Input
               type="email"
               placeholder="ईमेल"
