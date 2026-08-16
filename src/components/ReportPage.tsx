@@ -339,6 +339,7 @@ function LedgerCard({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
