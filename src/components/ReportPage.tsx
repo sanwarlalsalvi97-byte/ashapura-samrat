@@ -55,6 +55,7 @@ export default function ReportPage() {
   const [siteExp, setSiteExp] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [sitePay, setSitePay] = useState<{ amount: number; site_name: string | null }[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
+  const { readOnly } = useRole();
   const [payTarget, setPayTarget] = useState<WorkerLedger | null>(null);
 
   const loadSiteData = useCallback(async () => {
@@ -271,7 +272,7 @@ export default function ReportPage() {
                 l={s}
                 month={month}
                 year={year}
-                onPay={() => setPayTarget(s)}
+                onPay={readOnly ? undefined : () => setPayTarget(s)}
                 onShare={() => shareOnWhatsApp(s)}
                 onDelete={() => handleDelete(s)}
               />
@@ -390,12 +391,14 @@ function LedgerCard({
           )}
         </div>
 
+        {onPay && (
         <Button
           onClick={onPay}
           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 rounded-xl h-11 font-bold"
         >
           <BadgeIndianRupee className="w-4 h-4" /> Pay Salary / सैलरी चुकाएं
         </Button>
+        )}
       </CardContent>
     </Card>
   );
