@@ -165,6 +165,7 @@ export default function Auth() {
         });
         setMode("login");
       } else if (mode === "signup") {
+        setPendingSignupRole(signupRole);
         const { error } = await supabase.auth.signUp({
           email,
           password,
