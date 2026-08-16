@@ -317,6 +317,7 @@ function LedgerCard({
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onShare}>
               <Share2 className="w-4 h-4" />
             </Button>
+            {onDelete && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-destructive hover:text-destructive">
