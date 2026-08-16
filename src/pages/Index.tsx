@@ -22,16 +22,29 @@ import PunchAttendancePage from "@/components/PunchAttendancePage";
 import GeoAdminPage from "@/components/GeoAdminPage";
 import logoUrl from "@/assets/logo.png";
 import BottomNav, { type TabId } from "@/components/BottomNav";
-import { HardHat, Bell, UserCircle2, MapPin } from "lucide-react";
+import { HardHat, Bell, UserCircle2, MapPin, Eye, Lock } from "lucide-react";
 import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
+import { RoleProvider, useRole } from "@/lib/roles";
+
+/** Tabs a मजदूर (worker) account may open — all read-only screens. */
+const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
 
 export default function Index() {
+  return (
+    <RoleProvider>
+      <IndexInner />
+    </RoleProvider>
+  );
+}
+
+function IndexInner() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("home");
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
+  const { isWorker } = useRole();
   useAttendanceAlarm();
   useOfflineSync();
   useAutoBackup(!!session);
