@@ -1,4 +1,5 @@
 import { monthBoundsISO, todayISO } from "@/lib/date-utils";
+import { useRole } from "@/lib/roles";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { deleteWorkerMonthAttendance, getWorkers, getContractors, type Worker, type Contractor } from "@/lib/supabase-helpers";
@@ -274,7 +275,7 @@ export default function ReportPage() {
                 year={year}
                 onPay={readOnly ? undefined : () => setPayTarget(s)}
                 onShare={() => shareOnWhatsApp(s)}
-                onDelete={() => handleDelete(s)}
+                onDelete={readOnly ? undefined : () => handleDelete(s)}
               />
             ))}
           </div>
@@ -296,9 +297,9 @@ function LedgerCard({
   l: WorkerLedger;
   month: number;
   year: number;
-  onPay: () => void;
+  onPay?: () => void;
   onShare: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }) {
   const negative = l.remainingBalance < -0.5;
   const positive = l.remainingBalance > 0.5;
