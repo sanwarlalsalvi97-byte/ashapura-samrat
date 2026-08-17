@@ -96,7 +96,7 @@ jobs:
 
       - name: Clean up keystore
         if: always()
-        run: rm -f android/release.keystore android/keystore.properties
+        run: rm -f android/release.keystore android/keystore.properties android/signing-config.json
 
       - name: Upload Signed AAB
         uses: actions/upload-artifact@v4
