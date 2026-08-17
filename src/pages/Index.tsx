@@ -27,6 +27,8 @@ import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { RoleProvider, useRole } from "@/lib/roles";
+import WorkerLinkPage from "@/components/WorkerLinkPage";
+import { getLinkedWorker } from "@/lib/worker-link";
 
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
