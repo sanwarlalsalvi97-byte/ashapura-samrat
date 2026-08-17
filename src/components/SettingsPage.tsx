@@ -974,10 +974,11 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         variant="outline"
         className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
         onClick={async () => {
-          const text = "Hey! Check out the Ashapura Samrat app to manage your construction site and labor attendance easily: https://ashapurapro.com";
+          const shareUrl = "https://play.google.com/store/apps/details?id=com.ashapura.samrat";
+          const text = `Hey! Manage your construction site, labor attendance, and accounts easily with Ashapura Samrat app. Download now: ${shareUrl}`;
           try {
             if (navigator.share) {
-              await navigator.share({ title: "Ashapura Samrat", text, url: "https://ashapurapro.com" });
+              await navigator.share({ title: "Ashapura Samrat", text, url: shareUrl });
               return;
             }
           } catch { return; }
