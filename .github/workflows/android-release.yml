@@ -89,7 +89,7 @@ jobs:
 
       - name: Signing summary
         if: always()
-        run: echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY
+        run: 'echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY'
 
       - name: Clean up keystore
         if: always()
