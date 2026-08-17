@@ -584,6 +584,7 @@ export type Database = {
           daily_rate: number
           id: string
           is_active: boolean
+          linked_user_id: string | null
           name: string
           phone: string | null
           role: Database["public"]["Enums"]["worker_role"]
@@ -598,6 +599,7 @@ export type Database = {
           daily_rate?: number
           id?: string
           is_active?: boolean
+          linked_user_id?: string | null
           name: string
           phone?: string | null
           role?: Database["public"]["Enums"]["worker_role"]
@@ -612,6 +614,7 @@ export type Database = {
           daily_rate?: number
           id?: string
           is_active?: boolean
+          linked_user_id?: string | null
           name?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["worker_role"]
@@ -638,6 +641,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_linked_worker_id: { Args: { _user_id: string }; Returns: string }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -645,6 +649,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      link_worker_account: {
+        Args: { _phone: string; _worker_code: string }
+        Returns: string
       }
       move_to_dlq: {
         Args: {

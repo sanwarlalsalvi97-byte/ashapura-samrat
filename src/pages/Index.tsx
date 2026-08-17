@@ -27,6 +27,8 @@ import { useAttendanceAlarm } from "@/hooks/use-attendance-alarm";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { RoleProvider, useRole } from "@/lib/roles";
+import WorkerLinkPage from "@/components/WorkerLinkPage";
+import { getLinkedWorker } from "@/lib/worker-link";
 
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
@@ -44,7 +46,10 @@ function IndexInner() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("home");
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
-  const { isWorker } = useRole();
+  const { isWorker, loading: roleLoading } = useRole();
+  const [linkChecked, setLinkChecked] = useState(false);
+  const [linkedWorkerId, setLinkedWorkerId] = useState<string | null>(null);
+
   useAttendanceAlarm();
   useOfflineSync();
   useAutoBackup(!!session);
@@ -86,7 +91,22 @@ function IndexInner() {
     return () => { cancelled = true; };
   }, [session]);
 
-  if (loading) {
+
+  // Worker accounts must be linked to a worker record created by their contractor,
+  // otherwise every screen is scoped to an empty tenant.
+  useEffect(() => {
+    if (!session || !isWorker) { setLinkChecked(true); setLinkedWorkerId(null); return; }
+    let cancelled = false;
+    setLinkChecked(false);
+    getLinkedWorker().then((w) => {
+      if (cancelled) return;
+      setLinkedWorkerId(w?.id ?? null);
+      setLinkChecked(true);
+    });
+    return () => { cancelled = true; };
+  }, [session, isWorker]);
+
+  if (loading || (session && roleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <HardHat className="w-10 h-10 text-primary animate-pulse" />
@@ -95,6 +115,19 @@ function IndexInner() {
   }
 
   if (!session) return <Auth />;
+
+  if (isWorker && !linkChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <HardHat className="w-10 h-10 text-primary animate-pulse" />
+      </div>
+    );
+  }
+
+  if (isWorker && !linkedWorkerId) {
+    return <WorkerLinkPage onLinked={() => { setLinkChecked(false); setLinkedWorkerId(null); getLinkedWorker().then((w) => { setLinkedWorkerId(w?.id ?? null); setLinkChecked(true); }); }} />;
+  }
+
 
   return (
     <div className="min-h-screen bg-background pb-20">

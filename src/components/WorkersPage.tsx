@@ -159,6 +159,12 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
                           {w.role}
                         </span>
+                        {(w as any).worker_code && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-muted text-muted-foreground">
+                            कोड: {(w as any).worker_code}
+                            {(w as any).linked_user_id ? " • जुड़ा" : " • अनलिंक"}
+                          </span>
+                        )}
                         <span className="text-xs text-muted-foreground">₹{w.daily_rate}/दिन</span>
                         {pendingBal !== 0 && (
                           <span className={`text-xs font-bold ${pendingBal > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
@@ -166,6 +172,7 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
                           </span>
                         )}
                       </div>
+
                     </div>
 
                     <div className="flex items-center gap-2">
