@@ -44,7 +44,10 @@ function IndexInner() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("home");
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
-  const { isWorker } = useRole();
+  const { isWorker, loading: roleLoading } = useRole();
+  const [linkChecked, setLinkChecked] = useState(false);
+  const [linkedWorkerId, setLinkedWorkerId] = useState<string | null>(null);
+
   useAttendanceAlarm();
   useOfflineSync();
   useAutoBackup(!!session);
