@@ -89,7 +89,22 @@ function IndexInner() {
     return () => { cancelled = true; };
   }, [session]);
 
-  if (loading) {
+
+  // Worker accounts must be linked to a worker record created by their contractor,
+  // otherwise every screen is scoped to an empty tenant.
+  useEffect(() => {
+    if (!session || !isWorker) { setLinkChecked(true); setLinkedWorkerId(null); return; }
+    let cancelled = false;
+    setLinkChecked(false);
+    getLinkedWorker().then((w) => {
+      if (cancelled) return;
+      setLinkedWorkerId(w?.id ?? null);
+      setLinkChecked(true);
+    });
+    return () => { cancelled = true; };
+  }, [session, isWorker]);
+
+  if (loading || (session && roleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <HardHat className="w-10 h-10 text-primary animate-pulse" />
@@ -98,6 +113,19 @@ function IndexInner() {
   }
 
   if (!session) return <Auth />;
+
+  if (isWorker && !linkChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <HardHat className="w-10 h-10 text-primary animate-pulse" />
+      </div>
+    );
+  }
+
+  if (isWorker && !linkedWorkerId) {
+    return <WorkerLinkPage onLinked={() => { setLinkChecked(false); setLinkedWorkerId(null); getLinkedWorker().then((w) => { setLinkedWorkerId(w?.id ?? null); setLinkChecked(true); }); }} />;
+  }
+
 
   return (
     <div className="min-h-screen bg-background pb-20">
