@@ -36,27 +36,52 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Restore keystore from secret
+      - name: Prepare keystore (secret or generated fallback)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. Add the base64-encoded release keystore as a repository secret."
-            exit 1
+          set -e
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Using release keystore from ANDROID_KEYSTORE_BASE64 secret."
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+            STORE_PASS="$ANDROID_KEYSTORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_KEY_ALIAS"
+            KEY_PASS="$ANDROID_KEY_PASSWORD"
+            echo "SIGNING_MODE=release-secret" >> "$GITHUB_ENV"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating a temporary keystore. The resulting AAB/APK is NOT Play-Store upload compatible unless this keystore matches your Play signing key."
+            STORE_PASS="ashapura-temp"
+            KEY_ALIAS="ashapura-temp"
+            KEY_PASS="ashapura-temp"
+            keytool -genkeypair -v \
+              -keystore android/release.keystore \
+              -storetype PKCS12 \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+              -dname "CN=Ashapura Samrat, OU=Build, O=Ashapura, L=NA, S=NA, C=IN"
+            echo "SIGNING_MODE=temporary-generated" >> "$GITHUB_ENV"
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+          cat > android/keystore.properties << EOF
+          storeFile=release.keystore
+          storePassword=$STORE_PASS
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASS
+          EOF
 
-      - name: Build Signed AAB and APK
+      - name: Build AAB and APK
         run: |
           cd android
-          cat > keystore.properties << EOF
-          storeFile=release.keystore
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          EOF
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease
+
+      - name: Signing summary
+        if: always()
+        run: echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY
+
 
       - name: Clean up keystore
         if: always()
