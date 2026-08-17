@@ -15,8 +15,11 @@ export default function WorkerLinkPage({ onLinked }: { onLinked: () => void }) {
     setError("");
     const res = await linkWorkerAccount(code, phone);
     setBusy(false);
-    if (res.ok) onLinked();
-    else setError(res.ok ? "" : res.message);
+    if (res.ok === true) {
+      onLinked();
+      return;
+    }
+    setError(res.message);
   };
 
   return (
