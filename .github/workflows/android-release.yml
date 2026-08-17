@@ -44,18 +44,20 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
+          DEFAULT_PASS="androidkeystore"
+          DEFAULT_ALIAS="android"
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "Using release keystore from ANDROID_KEYSTORE_BASE64 secret."
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
-            STORE_PASS="$ANDROID_KEYSTORE_PASSWORD"
-            KEY_ALIAS="$ANDROID_KEY_ALIAS"
-            KEY_PASS="$ANDROID_KEY_PASSWORD"
+            STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-$DEFAULT_PASS}"
+            KEY_ALIAS="${ANDROID_KEY_ALIAS:-$DEFAULT_ALIAS}"
+            KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
             echo "SIGNING_MODE=release-secret" >> "$GITHUB_ENV"
           else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating a temporary keystore. The resulting AAB/APK is NOT Play-Store upload compatible unless this keystore matches your Play signing key."
-            STORE_PASS="ashapura-temp"
-            KEY_ALIAS="ashapura-temp"
-            KEY_PASS="ashapura-temp"
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating a fallback keystore with default credentials. The resulting AAB/APK is NOT Play-Store upload compatible unless this keystore matches your Play signing key."
+            STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-$DEFAULT_PASS}"
+            KEY_ALIAS="${ANDROID_KEY_ALIAS:-$DEFAULT_ALIAS}"
+            KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
             keytool -genkeypair -v \
               -keystore android/release.keystore \
               -storetype PKCS12 \
@@ -63,7 +65,7 @@ jobs:
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
               -dname "CN=Ashapura Samrat, OU=Build, O=Ashapura, L=NA, S=NA, C=IN"
-            echo "SIGNING_MODE=temporary-generated" >> "$GITHUB_ENV"
+            echo "SIGNING_MODE=fallback-generated" >> "$GITHUB_ENV"
           fi
           cat > android/keystore.properties << EOF
           storeFile=release.keystore
@@ -71,6 +73,15 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASS
           EOF
+          cat > android/signing-config.json << EOF
+          {
+            "storeFile": "release.keystore",
+            "storePassword": "$STORE_PASS",
+            "keyAlias": "$KEY_ALIAS",
+            "keyPassword": "$KEY_PASS"
+          }
+          EOF
+
 
       - name: Build AAB and APK
         run: |
