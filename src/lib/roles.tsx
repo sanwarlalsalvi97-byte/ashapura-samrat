@@ -42,7 +42,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const load = async () => {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { if (!cancelled) { setRole("admin"); setLoading(false); } return; }
@@ -63,9 +64,26 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setRole(roles.includes("worker") && !roles.includes("admin") ? "worker" : roles.includes("admin") ? "admin" : roles[0] ?? "admin");
       setLoading(false);
-    })();
-    return () => { cancelled = true; };
+    };
+
+    void load();
+
+    // Re-resolve the role whenever the auth session changes (sign-in / sign-out),
+    // otherwise a worker signing in keeps the default admin (editable) UI.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        if (!cancelled) { setRole("admin"); setLoading(false); }
+        return;
+      }
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
+        // defer to avoid calling supabase inside the auth callback
+        setTimeout(() => { if (!cancelled) void load(); }, 0);
+      }
+    });
+
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
   }, [tick]);
+
 
   const isWorker = role === "worker";
   return (
