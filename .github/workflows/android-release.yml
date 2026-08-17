@@ -7,7 +7,6 @@ jobs:
   build:
     name: Build Signed Release
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,7 +53,7 @@ jobs:
             KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
             echo "SIGNING_MODE=release-secret" >> "$GITHUB_ENV"
           else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating a fallback keystore with default credentials. The resulting AAB/APK is NOT Play-Store upload compatible unless this keystore matches your Play signing key."
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating a fallback keystore with default credentials."
             STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-$DEFAULT_PASS}"
             KEY_ALIAS="${ANDROID_KEY_ALIAS:-$DEFAULT_ALIAS}"
             KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
@@ -82,7 +81,6 @@ jobs:
           }
           EOF
 
-
       - name: Build AAB and APK
         run: |
           cd android
@@ -92,7 +90,6 @@ jobs:
       - name: Signing summary
         if: always()
         run: echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY
-
 
       - name: Clean up keystore
         if: always()
@@ -109,3 +106,4 @@ jobs:
         with:
           name: app-release-signed-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
