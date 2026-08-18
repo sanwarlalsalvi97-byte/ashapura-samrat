@@ -87,6 +87,12 @@ jobs:
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease
 
+      - name: Verify no AD_ID / AdServices permissions
+        run: |
+          chmod +x scripts/check-ad-id.sh
+          ./scripts/check-ad-id.sh
+
+
       - name: Signing summary
         if: always()
         run: 'echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY'
