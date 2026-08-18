@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Trust from "./pages/Trust.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PinLockGate from "./components/PinLockGate";
 import AuthRedirectHandler from "./components/AuthRedirectHandler";
