@@ -990,6 +990,14 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         {t("ऐप शेयर करें", "Share App")}
       </Button>
 
+      {/* Legal */}
+      <Button asChild variant="outline" className="w-full gap-2">
+        <Link to="/privacy">
+          <FileText className="w-4 h-4" />
+          {t("गोपनीयता नीति / Privacy Policy", "Privacy Policy")}
+        </Link>
+      </Button>
+
       {/* Logout */}
       <Button onClick={handleLogout} variant="destructive" className="w-full gap-2">
         <LogOut className="w-4 h-4" />
