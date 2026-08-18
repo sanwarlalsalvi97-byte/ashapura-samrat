@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Smartphone, HardHat, UserRound } from "lucide-react";
-import { isNative, openExternalUrl } from "@/lib/native";
+import { isNative } from "@/lib/native";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -50,7 +49,7 @@ export default function Auth() {
       toast({
         title: "OTP नहीं भेजा जा सका",
         description: /provider|not enabled|unsupported|sms/i.test(msg)
-          ? "SMS सेवा अभी चालू नहीं है। कृपया ईमेल/पासवर्ड या Google से लॉगिन करें।"
+          ? "SMS सेवा अभी चालू नहीं है। कृपया ईमेल/पासवर्ड से लॉगिन करें।"
           : msg,
         variant: "destructive",
       });
@@ -85,66 +84,8 @@ export default function Auth() {
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
   })();
-  // OAuth must always return to a public, existing URL — the app root.
-  // The intended destination (consentNext) is applied after the session hydrates.
   const redirectTarget = window.location.origin + "/";
-
-  // The managed Google OAuth broker lives behind the /~oauth/* path, which only
-  // exists on published/preview hosting. On the in-editor dev preview (and in a
-  // plain localhost/native shell) that path falls through to the SPA router and
-  // renders a 404, so we tell the user instead of dumping them on a dead page.
   const PUBLISHED_URL = "https://ashapurapro.com";
-  const oauthSupported = (() => {
-    const h = window.location.hostname;
-    return (
-      h.endsWith(".lovable.app") ||
-      h === "ashapurapro.com" ||
-      h === "www.ashapurapro.com"
-    );
-  })();
-
-  // Native Android: OAuth goes out to the system browser and returns through the
-  // custom URL scheme registered in AndroidManifest (handled in src/lib/native.ts).
-  const NATIVE_REDIRECT = "com.ashapurapro.samrat://auth/callback";
-
-  const handleGoogle = async () => {
-    if (isNative()) {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true },
-        });
-        if (error) throw error;
-        if (data?.url) await openExternalUrl(data.url);
-      } catch (err: any) {
-        toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-    if (!oauthSupported) {
-      toast({
-        title: "Google लॉगिन यहाँ उपलब्ध नहीं",
-        description: `प्रीव्यू में Google लॉगिन काम नहीं करता। कृपया ${PUBLISHED_URL} पर खोलकर लॉगिन करें, या ईमेल/पासवर्ड इस्तेमाल करें।`,
-        variant: "destructive",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectTarget,
-      });
-      if (result.error) throw new Error(result.error.message || "Google login failed");
-      // result.redirected → browser will redirect; tokens-set path returns silently.
-    } catch (err: any) {
-      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
 
@@ -274,24 +215,6 @@ export default function Auth() {
           >
             <Smartphone className="w-4 h-4 mr-2" />
             मोबाइल OTP से लॉगिन
-          </Button>
-
-          {/* Google */}
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogle}
-            disabled={loading}
-          >
-            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
-            </svg>
-            Google से लॉगिन
           </Button>
 
           <form onSubmit={handleEmailAuth} className="space-y-3">
