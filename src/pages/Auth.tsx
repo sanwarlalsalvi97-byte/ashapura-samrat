@@ -84,66 +84,8 @@ export default function Auth() {
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
   })();
-  // OAuth must always return to a public, existing URL — the app root.
-  // The intended destination (consentNext) is applied after the session hydrates.
   const redirectTarget = window.location.origin + "/";
-
-  // The managed Google OAuth broker lives behind the /~oauth/* path, which only
-  // exists on published/preview hosting. On the in-editor dev preview (and in a
-  // plain localhost/native shell) that path falls through to the SPA router and
-  // renders a 404, so we tell the user instead of dumping them on a dead page.
   const PUBLISHED_URL = "https://ashapurapro.com";
-  const oauthSupported = (() => {
-    const h = window.location.hostname;
-    return (
-      h.endsWith(".lovable.app") ||
-      h === "ashapurapro.com" ||
-      h === "www.ashapurapro.com"
-    );
-  })();
-
-  // Native Android: OAuth goes out to the system browser and returns through the
-  // custom URL scheme registered in AndroidManifest (handled in src/lib/native.ts).
-  const NATIVE_REDIRECT = "com.ashapurapro.samrat://auth/callback";
-
-  const handleGoogle = async () => {
-    if (isNative()) {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true },
-        });
-        if (error) throw error;
-        if (data?.url) await openExternalUrl(data.url);
-      } catch (err: any) {
-        toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-    if (!oauthSupported) {
-      toast({
-        title: "Google लॉगिन यहाँ उपलब्ध नहीं",
-        description: `प्रीव्यू में Google लॉगिन काम नहीं करता। कृपया ${PUBLISHED_URL} पर खोलकर लॉगिन करें, या ईमेल/पासवर्ड इस्तेमाल करें।`,
-        variant: "destructive",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectTarget,
-      });
-      if (result.error) throw new Error(result.error.message || "Google login failed");
-      // result.redirected → browser will redirect; tokens-set path returns silently.
-    } catch (err: any) {
-      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
 
