@@ -71,6 +71,10 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [pinEnabled, setPinEnabled] = useState(isPinEnabled());
   const [newPin, setNewPin] = useState("");
 
+  // Ad privacy smoke test
+  const [adReport, setAdReport] = useState<AdPrivacyReport | null>(null);
+  const [adCheckRunning, setAdCheckRunning] = useState(false);
+
   // Backup / Restore
   // Backup password removed — backups are passwordless. Legacy state kept only for restore-password of old encrypted backups.
   const [busy, setBusy] = useState<null | "backup" | "restore" | "drive-backup" | "drive-restore">(null);
