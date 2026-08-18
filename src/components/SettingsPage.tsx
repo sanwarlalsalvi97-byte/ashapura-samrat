@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type, Lock, Upload, HardDriveDownload, RefreshCw, AlertTriangle, Cloud, MapPin, Share2 } from "lucide-react";
+import { LogOut, User, IndianRupee, Download, Languages, Clock, Bell, BellOff, WifiOff, Users, Trash2, Moon, Sun, HardHat, Layers, BookOpen, ChevronRight, Crown, Building2, Type, Lock, Upload, HardDriveDownload, RefreshCw, AlertTriangle, Cloud, MapPin, Share2, FileText } from "lucide-react";
 import { getTheme, setTheme as persistTheme, type Theme } from "@/lib/theme";
 import { getFontSize, setFontSize as persistFontSize, type FontSize } from "@/lib/font-size";
 import type { TabId } from "./BottomNav";
@@ -987,6 +988,14 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
       >
         <Share2 className="w-4 h-4" />
         {t("ऐप शेयर करें", "Share App")}
+      </Button>
+
+      {/* Legal */}
+      <Button asChild variant="outline" className="w-full gap-2">
+        <Link to="/privacy">
+          <FileText className="w-4 h-4" />
+          {t("गोपनीयता नीति / Privacy Policy", "Privacy Policy")}
+        </Link>
       </Button>
 
       {/* Logout */}
