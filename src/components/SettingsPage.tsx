@@ -990,6 +990,78 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
         {t("ऐप शेयर करें", "Share App")}
       </Button>
 
+      {/* Privacy diagnostics: Ad ID / AdServices runtime smoke test */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            {t("प्राइवेसी जाँच (Ad ID)", "Privacy check (Ad ID)")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "यह जाँच रनटाइम पर पुष्टि करती है कि Advertising ID / AdServices reporting बंद है।",
+              "This runtime check verifies that Advertising ID / AdServices reporting is disabled.",
+            )}
+          </p>
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            disabled={adCheckRunning}
+            onClick={async () => {
+              setAdCheckRunning(true);
+              const r = await runAdPrivacyCheck();
+              setAdReport(r);
+              setAdCheckRunning(false);
+              console.log(formatAdPrivacyReport(r));
+              toast({
+                title: r.ok
+                  ? t("✅ Ad ID reporting बंद है", "✅ Ad ID reporting is off")
+                  : t("⚠️ समस्या मिली", "⚠️ Issue found"),
+                description: formatAdPrivacyReport(r),
+                variant: r.ok ? undefined : "destructive",
+              });
+            }}
+          >
+            <RefreshCw className={`w-4 h-4 ${adCheckRunning ? "animate-spin" : ""}`} />
+            {t("जाँच चलाएँ", "Run check")}
+          </Button>
+
+          {adReport && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span>{t("परिणाम", "Result")}</span>
+                <span className={adReport.ok ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+                  {adReport.ok ? "PASS" : "FAIL"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>{t("प्लेटफ़ॉर्म", "Platform")}</span>
+                <span>{adReport.platform}</span>
+              </div>
+              {adReport.versionName && (
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>{t("वर्ज़न", "Version")}</span>
+                  <span>{adReport.versionName} ({adReport.versionCode})</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>{t("Ad permissions", "Ad permissions")}</span>
+                <span>{adReport.violations.length ? adReport.violations.join(", ") : t("कोई नहीं", "none")}</span>
+              </div>
+              {Object.entries(adReport.analyticsFlags).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-2 text-muted-foreground">
+                  <span className="truncate">{k.replace("google_analytics_", "")}</span>
+                  <span className={v ? "text-destructive" : ""}>{String(v)}</span>
+                </div>
+              ))}
+              {adReport.error && <p className="text-muted-foreground pt-1">{adReport.error}</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Legal */}
       <Button asChild variant="outline" className="w-full gap-2">
         <Link to="/privacy">
