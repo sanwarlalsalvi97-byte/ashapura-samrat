@@ -131,8 +131,8 @@ export default function Privacy() {
           <p>
             For privacy questions, data deletion requests, or security reports, contact the app owner through
             the in-app support option in Settings, or email{" "}
-            <a href="mailto:support@ashapurapro.com" className="text-primary underline inline-flex items-center gap-1">
-              support@ashapurapro.com
+            <a href="mailto:sanwarlalsavi97@gmail.com" className="text-primary underline inline-flex items-center gap-1">
+              sanwarlalsavi97@gmail.com
               <ExternalLink className="w-3 h-3" />
             </a>.
           </p>

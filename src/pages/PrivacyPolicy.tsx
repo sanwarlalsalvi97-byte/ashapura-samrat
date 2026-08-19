@@ -185,10 +185,10 @@ export default function PrivacyPolicy() {
             contact the app owner through the in-app support option in Settings,
             or email{" "}
             <a
-              href="mailto:support@ashapurapro.com"
+              href="mailto:sanwarlalsavi97@gmail.com"
               className="text-primary underline inline-flex items-center gap-1"
             >
-              support@ashapurapro.com
+              sanwarlalsavi97@gmail.com
               <ExternalLink className="w-3 h-3" />
             </a>
             .
