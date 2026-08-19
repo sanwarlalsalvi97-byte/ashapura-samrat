@@ -142,6 +142,30 @@ export async function saveTextFile(name: string, text: string, mime = "applicati
   return url;
 }
 
+/** Android notification channel used for the "हाजिरी का समय" alarm. */
+export const ATTENDANCE_CHANNEL_ID = "attendance_alarm";
+
+let channelReady = false;
+
+/** Create (idempotently) the high-importance attendance channel with sound. */
+export async function ensureAttendanceChannel(): Promise<void> {
+  if (!isAndroidNative() || channelReady) return;
+  try {
+    await LocalNotifications.createChannel({
+      id: ATTENDANCE_CHANNEL_ID,
+      name: "हाजिरी अलार्म / Attendance time",
+      description: "Daily reminder to mark attendance",
+      importance: 5,
+      visibility: 1,
+      sound: "default",
+      vibration: true,
+      lights: true,
+      lightColor: "#0E7A3A",
+    });
+    channelReady = true;
+  } catch {}
+}
+
 /** Ensure notification permission on native devices. */
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!isNative()) {
@@ -152,10 +176,42 @@ export async function ensureNotificationPermission(): Promise<boolean> {
     return res === "granted";
   }
   try {
+    await ensureAttendanceChannel();
     const status = await LocalNotifications.checkPermissions();
     if (status.display === "granted") return true;
     const req = await LocalNotifications.requestPermissions();
     return req.display === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fire the attendance reminder immediately through the high-importance
+ * channel (so Android plays the alert sound). Returns false on web.
+ */
+export async function showAttendanceNotification(
+  title: string,
+  body: string,
+): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    await ensureAttendanceChannel();
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: Math.floor(Date.now() % 100000),
+          title,
+          body,
+          channelId: ATTENDANCE_CHANNEL_ID,
+          sound: "default",
+          smallIcon: "ic_stat_icon_config_sample",
+          iconColor: "#0E7A3A",
+          schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
+        },
+      ],
+    });
+    return true;
   } catch {
     return false;
   }
