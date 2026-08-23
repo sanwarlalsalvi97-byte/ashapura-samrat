@@ -32,11 +32,15 @@ export async function ensureLocationPermission(): Promise<boolean> {
     const status = await Geolocation.checkPermissions();
     if (status.location === "granted") return true;
     const req = await Geolocation.requestPermissions();
-    return req.location === "granted";
+    if (req.location === "granted") return true;
   } catch {
-    return false;
+    /* fall through to the generic bridge */
   }
+  // Fallback: request FINE+COARSE through the native permissions bridge.
+  const { requestPermission } = await import("@/lib/permissions");
+  return requestPermission("location");
 }
+
 
 /** Current high-accuracy position. Throws with a readable message on failure. */
 export async function getCurrentCoords(): Promise<Coords> {
