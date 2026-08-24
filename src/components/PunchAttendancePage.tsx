@@ -3,11 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace } from "lucide-react";
+import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace, Check } from "lucide-react";
 import { fmtDistance, getCurrentCoords, haversineMeters, type Coords } from "@/lib/geo";
 import { calcHours, fmt12, fmtHours, splitOT } from "@/lib/work-hours";
 import { todayISO } from "@/lib/date-utils";
+import FaceScanDialog from "@/components/FaceScanDialog";
+
 
 interface Worker { id: string; name: string; worker_code: string | null; site_name: string | null }
 interface Office {
@@ -35,6 +38,11 @@ export default function PunchAttendancePage() {
   const [saving, setSaving] = useState(false);
   const [today, setToday] = useState<TodayRow | null>(null);
   const [faceVerified, setFaceVerified] = useState(false);
+  const [useFaceScan, setUseFaceScan] = useState(false);
+  const [faceOpen, setFaceOpen] = useState(false);
+  const [facePhoto, setFacePhoto] = useState<Blob | null>(null);
+  const [pendingType, setPendingType] = useState<"in" | "out" | null>(null);
+
 
   const date = todayISO();
 
@@ -87,9 +95,19 @@ export default function PunchAttendancePage() {
   const radius = office?.radius_meters ?? 50;
   const inside = distance != null && distance <= radius;
   const faceRequired = !!office?.face_scan_enabled;
-  const canPunch = !!workerId && !!office && inside && !saving && (!faceRequired || faceVerified);
+  const faceOK = !faceRequired || faceVerified || !!facePhoto;
+  const canPunch = !!workerId && !!office && inside && !saving && faceOK;
 
-  const punch = async (type: "in" | "out") => {
+  const uploadFace = async (uid: string, blob: Blob, type: "in" | "out") => {
+    const path = `${uid}/${workerId}/${date}-${type}-${Date.now()}.jpg`;
+    const { error } = await supabase.storage
+      .from("attendance-photos")
+      .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    if (error) throw error;
+    return path;
+  };
+
+  const punch = async (type: "in" | "out", photo?: Blob | null) => {
     if (!office || !coords || distance == null) return;
     if (distance > radius) {
       toast({
@@ -106,6 +124,8 @@ export default function PunchAttendancePage() {
       if (!uid) throw new Error("Not authenticated");
       const worker = workers.find((w) => w.id === workerId);
       const t = nowTime();
+      const shot = photo ?? facePhoto;
+      const photoPath = shot ? await uploadFace(uid, shot, type) : null;
 
       const { error: logErr } = await supabase.from("attendance_logs").insert({
         user_id: uid,
@@ -113,13 +133,17 @@ export default function PunchAttendancePage() {
         office_location_id: office.id,
         attendance_type: type,
         log_date: date,
+        logged_at: new Date().toISOString(),
         latitude: coords.latitude,
         longitude: coords.longitude,
         distance_meters: Math.round(distance),
-        face_verified: faceVerified,
+        face_verified: !!shot || faceVerified,
+        photo_url: photoPath,
         site_name: worker?.site_name ?? null,
       });
       if (logErr) throw logErr;
+      setFacePhoto(null);
+
 
       // Mirror into the main हाजिरी sheet
       if (type === "in") {
@@ -254,24 +278,48 @@ export default function PunchAttendancePage() {
             </div>
           </div>
 
-          {faceRequired && (
-            <button
-              type="button"
-              onClick={() => setFaceVerified((v) => !v)}
-              className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                faceVerified ? "border-accent text-accent" : "border-border text-muted-foreground"
-              }`}
-            >
-              <ScanFace className="w-4 h-4" />
-              {faceVerified ? "फेस वेरिफाई हो गया" : "फेस वेरिफिकेशन (एडमिन द्वारा चालू)"}
-            </button>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div className="flex items-center gap-2 text-sm">
+              <ScanFace className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">फेस स्कैन हाजिरी {faceRequired ? "(ज़रूरी)" : "(वैकल्पिक)"}</p>
+                <p className="text-[11px] text-muted-foreground">फोटो + GPS + समय एक साथ सेव</p>
+              </div>
+            </div>
+            <Switch
+              checked={useFaceScan || faceRequired}
+              disabled={faceRequired}
+              onCheckedChange={(v) => { setUseFaceScan(v); if (!v) setFacePhoto(null); }}
+              aria-label="फेस स्कैन हाजिरी चालू करें"
+            />
+          </div>
+
+          {facePhoto && (
+            <p className="flex items-center gap-2 text-xs text-accent font-medium">
+              <Check className="w-4 h-4" /> फोटो तैयार है — पंच करते ही सेव होगी
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <Button className="h-14 text-base" disabled={!canPunch} onClick={() => punch("in")}>
+            <Button
+              className="h-14 text-base"
+              disabled={!workerId || !office || !inside || saving}
+              onClick={() => {
+                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("in"); setFaceOpen(true); }
+                else void punch("in");
+              }}
+            >
               <LogIn className="w-5 h-5 mr-2" /> पंच इन
             </Button>
-            <Button className="h-14 text-base" variant="secondary" disabled={!canPunch} onClick={() => punch("out")}>
+            <Button
+              className="h-14 text-base"
+              variant="secondary"
+              disabled={!workerId || !office || !inside || saving}
+              onClick={() => {
+                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("out"); setFaceOpen(true); }
+                else void punch("out");
+              }}
+            >
               <LogOut className="w-5 h-5 mr-2" /> पंच आउट
             </Button>
           </div>
@@ -280,6 +328,19 @@ export default function PunchAttendancePage() {
               You are outside the allowed {radius}m office perimeter.
             </p>
           )}
+
+          <FaceScanDialog
+            open={faceOpen}
+            onOpenChange={(v) => { setFaceOpen(v); if (!v) setPendingType(null); }}
+            onCaptured={(blob) => {
+              setFacePhoto(blob);
+              setFaceVerified(true);
+              const type = pendingType;
+              setPendingType(null);
+              if (type) void punch(type, blob);
+            }}
+          />
+
         </CardContent>
       </Card>
     </div>

@@ -95,6 +95,7 @@ export type Database = {
           longitude: number | null
           notes: string | null
           office_location_id: string | null
+          photo_url: string | null
           site_name: string | null
           user_id: string
           worker_id: string
@@ -111,6 +112,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           office_location_id?: string | null
+          photo_url?: string | null
           site_name?: string | null
           user_id?: string
           worker_id: string
@@ -127,6 +129,7 @@ export type Database = {
           longitude?: number | null
           notes?: string | null
           office_location_id?: string | null
+          photo_url?: string | null
           site_name?: string | null
           user_id?: string
           worker_id?: string
