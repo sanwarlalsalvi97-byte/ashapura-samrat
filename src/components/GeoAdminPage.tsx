@@ -28,6 +28,9 @@ interface LogRow {
   log_date: string;
   distance_meters: number | null;
   face_verified: boolean;
+  photo_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const empty: Office = {
