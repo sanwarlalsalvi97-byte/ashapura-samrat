@@ -72,11 +72,25 @@ export default function GeoAdminPage() {
   const loadLogs = useCallback(async () => {
     const { data } = await supabase
       .from("attendance_logs")
-      .select("id, worker_id, attendance_type, logged_at, log_date, distance_meters, face_verified")
+      .select("id, worker_id, attendance_type, logged_at, log_date, distance_meters, face_verified, photo_url, latitude, longitude")
       .eq("log_date", date)
       .order("logged_at", { ascending: true });
-    setLogs((data as LogRow[]) ?? []);
+    const rows = (data as LogRow[]) ?? [];
+    setLogs(rows);
+
+    const paths = rows.map((r) => r.photo_url).filter((p): p is string => !!p);
+    if (paths.length) {
+      const { data: signed } = await supabase.storage
+        .from("attendance-photos")
+        .createSignedUrls(paths, 3600);
+      const map: Record<string, string> = {};
+      (signed ?? []).forEach((s) => { if (s.path && s.signedUrl) map[s.path] = s.signedUrl; });
+      setPhotoUrls(map);
+    } else {
+      setPhotoUrls({});
+    }
   }, [date]);
+
 
   useEffect(() => { void loadLogs(); }, [loadLogs]);
 
