@@ -278,24 +278,48 @@ export default function PunchAttendancePage() {
             </div>
           </div>
 
-          {faceRequired && (
-            <button
-              type="button"
-              onClick={() => setFaceVerified((v) => !v)}
-              className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                faceVerified ? "border-accent text-accent" : "border-border text-muted-foreground"
-              }`}
-            >
-              <ScanFace className="w-4 h-4" />
-              {faceVerified ? "फेस वेरिफाई हो गया" : "फेस वेरिफिकेशन (एडमिन द्वारा चालू)"}
-            </button>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <div className="flex items-center gap-2 text-sm">
+              <ScanFace className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">फेस स्कैन हाजिरी {faceRequired ? "(ज़रूरी)" : "(वैकल्पिक)"}</p>
+                <p className="text-[11px] text-muted-foreground">फोटो + GPS + समय एक साथ सेव</p>
+              </div>
+            </div>
+            <Switch
+              checked={useFaceScan || faceRequired}
+              disabled={faceRequired}
+              onCheckedChange={(v) => { setUseFaceScan(v); if (!v) setFacePhoto(null); }}
+              aria-label="फेस स्कैन हाजिरी चालू करें"
+            />
+          </div>
+
+          {facePhoto && (
+            <p className="flex items-center gap-2 text-xs text-accent font-medium">
+              <Check className="w-4 h-4" /> फोटो तैयार है — पंच करते ही सेव होगी
+            </p>
           )}
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <Button className="h-14 text-base" disabled={!canPunch} onClick={() => punch("in")}>
+            <Button
+              className="h-14 text-base"
+              disabled={!workerId || !office || !inside || saving}
+              onClick={() => {
+                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("in"); setFaceOpen(true); }
+                else void punch("in");
+              }}
+            >
               <LogIn className="w-5 h-5 mr-2" /> पंच इन
             </Button>
-            <Button className="h-14 text-base" variant="secondary" disabled={!canPunch} onClick={() => punch("out")}>
+            <Button
+              className="h-14 text-base"
+              variant="secondary"
+              disabled={!workerId || !office || !inside || saving}
+              onClick={() => {
+                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("out"); setFaceOpen(true); }
+                else void punch("out");
+              }}
+            >
               <LogOut className="w-5 h-5 mr-2" /> पंच आउट
             </Button>
           </div>
@@ -304,6 +328,19 @@ export default function PunchAttendancePage() {
               You are outside the allowed {radius}m office perimeter.
             </p>
           )}
+
+          <FaceScanDialog
+            open={faceOpen}
+            onOpenChange={(v) => { setFaceOpen(v); if (!v) setPendingType(null); }}
+            onCaptured={(blob) => {
+              setFacePhoto(blob);
+              setFaceVerified(true);
+              const type = pendingType;
+              setPendingType(null);
+              if (type) void punch(type, blob);
+            }}
+          />
+
         </CardContent>
       </Card>
     </div>
