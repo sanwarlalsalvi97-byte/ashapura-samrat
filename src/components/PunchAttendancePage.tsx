@@ -38,6 +38,11 @@ export default function PunchAttendancePage() {
   const [saving, setSaving] = useState(false);
   const [today, setToday] = useState<TodayRow | null>(null);
   const [faceVerified, setFaceVerified] = useState(false);
+  const [useFaceScan, setUseFaceScan] = useState(false);
+  const [faceOpen, setFaceOpen] = useState(false);
+  const [facePhoto, setFacePhoto] = useState<Blob | null>(null);
+  const [pendingType, setPendingType] = useState<"in" | "out" | null>(null);
+
 
   const date = todayISO();
 
