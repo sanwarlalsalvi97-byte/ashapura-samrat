@@ -95,9 +95,19 @@ export default function PunchAttendancePage() {
   const radius = office?.radius_meters ?? 50;
   const inside = distance != null && distance <= radius;
   const faceRequired = !!office?.face_scan_enabled;
-  const canPunch = !!workerId && !!office && inside && !saving && (!faceRequired || faceVerified);
+  const faceOK = !faceRequired || faceVerified || !!facePhoto;
+  const canPunch = !!workerId && !!office && inside && !saving && faceOK;
 
-  const punch = async (type: "in" | "out") => {
+  const uploadFace = async (uid: string, blob: Blob, type: "in" | "out") => {
+    const path = `${uid}/${workerId}/${date}-${type}-${Date.now()}.jpg`;
+    const { error } = await supabase.storage
+      .from("attendance-photos")
+      .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    if (error) throw error;
+    return path;
+  };
+
+  const punch = async (type: "in" | "out", photo?: Blob | null) => {
     if (!office || !coords || distance == null) return;
     if (distance > radius) {
       toast({
@@ -114,6 +124,8 @@ export default function PunchAttendancePage() {
       if (!uid) throw new Error("Not authenticated");
       const worker = workers.find((w) => w.id === workerId);
       const t = nowTime();
+      const shot = photo ?? facePhoto;
+      const photoPath = shot ? await uploadFace(uid, shot, type) : null;
 
       const { error: logErr } = await supabase.from("attendance_logs").insert({
         user_id: uid,
@@ -121,13 +133,17 @@ export default function PunchAttendancePage() {
         office_location_id: office.id,
         attendance_type: type,
         log_date: date,
+        logged_at: new Date().toISOString(),
         latitude: coords.latitude,
         longitude: coords.longitude,
         distance_meters: Math.round(distance),
-        face_verified: faceVerified,
+        face_verified: !!shot || faceVerified,
+        photo_url: photoPath,
         site_name: worker?.site_name ?? null,
       });
       if (logErr) throw logErr;
+      setFacePhoto(null);
+
 
       // Mirror into the main हाजिरी sheet
       if (type === "in") {
