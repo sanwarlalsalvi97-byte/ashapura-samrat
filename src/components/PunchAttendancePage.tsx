@@ -3,11 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace } from "lucide-react";
+import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace, Check } from "lucide-react";
 import { fmtDistance, getCurrentCoords, haversineMeters, type Coords } from "@/lib/geo";
 import { calcHours, fmt12, fmtHours, splitOT } from "@/lib/work-hours";
 import { todayISO } from "@/lib/date-utils";
+import FaceScanDialog from "@/components/FaceScanDialog";
+
 
 interface Worker { id: string; name: string; worker_code: string | null; site_name: string | null }
 interface Office {
