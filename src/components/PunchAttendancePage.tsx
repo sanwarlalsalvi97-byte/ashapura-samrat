@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { MapPin, LogIn, LogOut, RefreshCw, ShieldCheck, ShieldAlert, ScanFace, Check } from "lucide-react";
 import { fmtDistance, getCurrentCoords, haversineMeters, type Coords } from "@/lib/geo";
@@ -11,6 +15,8 @@ import { calcHours, fmt12, fmtHours, splitOT } from "@/lib/work-hours";
 import { todayISO } from "@/lib/date-utils";
 import FaceScanDialog from "@/components/FaceScanDialog";
 
+/** GPS readings less precise than this are treated as unreliable. */
+const ACCURACY_LIMIT_M = 50;
 
 interface Worker { id: string; name: string; worker_code: string | null; site_name: string | null }
 interface Office {
@@ -42,7 +48,7 @@ export default function PunchAttendancePage() {
   const [faceOpen, setFaceOpen] = useState(false);
   const [facePhoto, setFacePhoto] = useState<Blob | null>(null);
   const [pendingType, setPendingType] = useState<"in" | "out" | null>(null);
-
+  const [warnType, setWarnType] = useState<"in" | "out" | null>(null);
 
   const date = todayISO();
 
@@ -94,9 +100,25 @@ export default function PunchAttendancePage() {
 
   const radius = office?.radius_meters ?? 50;
   const inside = distance != null && distance <= radius;
+  const accuracy = coords?.accuracy ?? null;
+  const accuracyPoor = accuracy != null && accuracy > ACCURACY_LIMIT_M;
   const faceRequired = !!office?.face_scan_enabled;
-  const faceOK = !faceRequired || faceVerified || !!facePhoto;
-  const canPunch = !!workerId && !!office && inside && !saving && faceOK;
+  const scanOn = useFaceScan || faceRequired;
+
+  /** Reasons that make this punch questionable. */
+  const warnings = useMemo(() => {
+    const list: string[] = [];
+    if (distance != null && distance > radius) {
+      list.push(`ऑफिस से दूरी ${fmtDistance(distance)} है — अनुमत ${radius}m परिधि के बाहर।`);
+    }
+    if (accuracyPoor && accuracy != null) {
+      list.push(`GPS सटीकता कमज़ोर है (±${Math.round(accuracy)}m) — ${ACCURACY_LIMIT_M}m से ज़्यादा।`);
+    }
+    if (faceRequired && !facePhoto && !faceVerified) {
+      list.push("फेस स्कैन ज़रूरी है, पर वेरिफाई नहीं हुआ।");
+    }
+    return list;
+  }, [distance, radius, accuracyPoor, accuracy, faceRequired, facePhoto, faceVerified]);
 
   const uploadFace = async (uid: string, blob: Blob, type: "in" | "out") => {
     const path = `${uid}/${workerId}/${date}-${type}-${Date.now()}.jpg`;
@@ -109,14 +131,6 @@ export default function PunchAttendancePage() {
 
   const punch = async (type: "in" | "out", photo?: Blob | null) => {
     if (!office || !coords || distance == null) return;
-    if (distance > radius) {
-      toast({
-        title: "परिधि के बाहर",
-        description: `You are outside the allowed ${radius}m office perimeter.`,
-        variant: "destructive",
-      });
-      return;
-    }
     setSaving(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
@@ -126,6 +140,12 @@ export default function PunchAttendancePage() {
       const t = nowTime();
       const shot = photo ?? facePhoto;
       const photoPath = shot ? await uploadFace(uid, shot, type) : null;
+
+      const reasons: string[] = [];
+      if (distance > radius) reasons.push(`GPS out of range (${Math.round(distance)}m > ${radius}m)`);
+      if (accuracyPoor && accuracy != null) reasons.push(`Low GPS accuracy (±${Math.round(accuracy)}m)`);
+      if (faceRequired && !shot && !faceVerified) reasons.push("Face scan required but not verified");
+      const suspicious = reasons.length > 0;
 
       const { error: logErr } = await supabase.from("attendance_logs").insert({
         user_id: uid,
@@ -137,13 +157,16 @@ export default function PunchAttendancePage() {
         latitude: coords.latitude,
         longitude: coords.longitude,
         distance_meters: Math.round(distance),
+        accuracy_meters: accuracy != null ? Math.round(accuracy) : null,
         face_verified: !!shot || faceVerified,
         photo_url: photoPath,
         site_name: worker?.site_name ?? null,
+        is_suspicious: suspicious,
+        suspicious_reason: suspicious ? reasons.join(" • ") : null,
+        review_status: suspicious ? "pending" : "approved",
       });
       if (logErr) throw logErr;
       setFacePhoto(null);
-
 
       // Mirror into the main हाजिरी sheet
       if (type === "in") {
@@ -176,8 +199,13 @@ export default function PunchAttendancePage() {
       }
 
       toast({
-        title: type === "in" ? "पंच इन हो गया ✅" : "पंच आउट हो गया ✅",
-        description: `${fmt12(t)} • ${fmtDistance(distance)} ऑफिस से`,
+        title: suspicious
+          ? (type === "in" ? "पंच इन सेव — समीक्षा बाकी ⚠️" : "पंच आउट सेव — समीक्षा बाकी ⚠️")
+          : (type === "in" ? "पंच इन हो गया ✅" : "पंच आउट हो गया ✅"),
+        description: suspicious
+          ? "एडमिन की मंज़ूरी के बाद ही यह पक्का होगा।"
+          : `${fmt12(t)} • ${fmtDistance(distance)} ऑफिस से`,
+        variant: suspicious ? "destructive" : undefined,
       });
       await loadToday();
     } catch (e) {
@@ -189,6 +217,21 @@ export default function PunchAttendancePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  /** Entry point for the buttons: warn first, then face scan, then save. */
+  const startPunch = (type: "in" | "out") => {
+    if (warnings.length) { setWarnType(type); return; }
+    if (scanOn && !facePhoto) { setPendingType(type); setFaceOpen(true); return; }
+    void punch(type);
+  };
+
+  const proceedAfterWarning = () => {
+    const type = warnType;
+    setWarnType(null);
+    if (!type) return;
+    if (scanOn && !facePhoto) { setPendingType(type); setFaceOpen(true); return; }
+    void punch(type);
   };
 
   const worked = calcHours(today?.in_time, today?.out_time);
@@ -225,6 +268,11 @@ export default function PunchAttendancePage() {
                 {coords.latitude.toFixed(6)}, {coords.longitude.toFixed(6)}
                 {coords.accuracy ? ` (±${Math.round(coords.accuracy)}m)` : ""}
               </p>
+              {accuracyPoor && (
+                <p className="text-xs text-destructive font-medium">
+                  GPS सटीकता कमज़ोर (±{Math.round(accuracy!)}m) — खुली जगह पर जाकर रिफ्रेश करें।
+                </p>
+              )}
               {office && distance != null && (
                 <div
                   className={`flex items-center gap-2 rounded-lg px-3 py-2 font-semibold ${
@@ -287,7 +335,7 @@ export default function PunchAttendancePage() {
               </div>
             </div>
             <Switch
-              checked={useFaceScan || faceRequired}
+              checked={scanOn}
               disabled={faceRequired}
               onCheckedChange={(v) => { setUseFaceScan(v); if (!v) setFacePhoto(null); }}
               aria-label="फेस स्कैन हाजिरी चालू करें"
@@ -303,27 +351,21 @@ export default function PunchAttendancePage() {
           <div className="grid grid-cols-2 gap-3 pt-1">
             <Button
               className="h-14 text-base"
-              disabled={!workerId || !office || !inside || saving}
-              onClick={() => {
-                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("in"); setFaceOpen(true); }
-                else void punch("in");
-              }}
+              disabled={!workerId || !office || !coords || saving}
+              onClick={() => startPunch("in")}
             >
               <LogIn className="w-5 h-5 mr-2" /> पंच इन
             </Button>
             <Button
               className="h-14 text-base"
               variant="secondary"
-              disabled={!workerId || !office || !inside || saving}
-              onClick={() => {
-                if ((useFaceScan || faceRequired) && !facePhoto) { setPendingType("out"); setFaceOpen(true); }
-                else void punch("out");
-              }}
+              disabled={!workerId || !office || !coords || saving}
+              onClick={() => startPunch("out")}
             >
               <LogOut className="w-5 h-5 mr-2" /> पंच आउट
             </Button>
           </div>
-          {!inside && office && (
+          {!inside && office && distance != null && (
             <p className="text-center text-xs text-destructive font-medium">
               You are outside the allowed {radius}m office perimeter.
             </p>
@@ -341,6 +383,30 @@ export default function PunchAttendancePage() {
             }}
           />
 
+          <AlertDialog open={!!warnType} onOpenChange={(v) => !v && setWarnType(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-destructive" /> पंच पर चेतावनी
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-left">
+                    <ul className="list-disc pl-4 space-y-1">
+                      {warnings.map((w) => <li key={w}>{w}</li>)}
+                    </ul>
+                    <p>
+                      फिर भी पंच करने पर यह एंट्री <strong>संदिग्ध (Suspicious)</strong> मार्क होगी और
+                      एडमिन की समीक्षा में जाएगी।
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>रद्द करें</AlertDialogCancel>
+                <AlertDialogAction onClick={proceedAfterWarning}>फिर भी पंच करें</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>
