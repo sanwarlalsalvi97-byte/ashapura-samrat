@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Crosshair, MapPin, Save } from "lucide-react";
+import { Crosshair, MapPin, Save, ImageOff } from "lucide-react";
 import { getCurrentCoords } from "@/lib/geo";
 import { fmt12, fmtHours, calcHours } from "@/lib/work-hours";
 import { todayISO } from "@/lib/date-utils";
@@ -47,6 +48,8 @@ export default function GeoAdminPage() {
   const [date, setDate] = useState(todayISO());
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [viewLog, setViewLog] = useState<LogRow | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -234,8 +237,97 @@ export default function GeoAdminPage() {
               ))}
             </div>
           )}
+
+          {logs.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-semibold text-muted-foreground">पंच एंट्री (फोटो सहित)</p>
+              {logs.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setViewLog(l)}
+                  className="w-full flex items-center gap-3 rounded-lg border border-border px-2 py-2 text-left hover:bg-muted/50"
+                >
+                  {l.photo_url && photoUrls[l.photo_url] ? (
+                    <img
+                      src={photoUrls[l.photo_url]}
+                      alt={`${names[l.worker_id] ?? "मजदूर"} की फेस स्कैन फोटो`}
+                      className="h-10 w-10 rounded-full object-cover shrink-0"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <ImageOff className="w-4 h-4 text-muted-foreground" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium truncate">
+                      {names[l.worker_id] ?? "—"} • {l.attendance_type.toUpperCase()}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {new Date(l.logged_at).toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" })}
+                      {l.distance_meters != null ? ` • ${Math.round(l.distance_meters)}m` : ""}
+                      {l.face_verified ? " • फेस ✓" : ""}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!viewLog} onOpenChange={(v) => !v && setViewLog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {viewLog ? `${names[viewLog.worker_id] ?? "—"} • ${viewLog.attendance_type.toUpperCase()}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {viewLog && (
+            <div className="space-y-3">
+              {viewLog.photo_url && photoUrls[viewLog.photo_url] ? (
+                <img
+                  src={photoUrls[viewLog.photo_url]}
+                  alt="फेस वेरिफिकेशन फोटो (पूरा आकार)"
+                  className="w-full rounded-xl object-cover"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-6">इस एंट्री में फोटो नहीं है।</p>
+              )}
+              <div className="space-y-1 text-sm">
+                <p><span className="text-muted-foreground">समय: </span>{new Date(viewLog.logged_at).toLocaleString("hi-IN")}</p>
+                <p>
+                  <span className="text-muted-foreground">GPS: </span>
+                  {viewLog.latitude != null && viewLog.longitude != null
+                    ? `${Number(viewLog.latitude).toFixed(6)}, ${Number(viewLog.longitude).toFixed(6)}`
+                    : "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">ऑफिस से दूरी: </span>
+                  {viewLog.distance_meters != null ? `${Math.round(viewLog.distance_meters)} m` : "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">फेस वेरिफिकेशन: </span>
+                  {viewLog.face_verified ? "हो गया ✓" : "नहीं"}
+                </p>
+              </div>
+              {viewLog.latitude != null && viewLog.longitude != null && (
+                <Button asChild variant="outline" className="w-full">
+                  <a
+                    href={`https://www.google.com/maps?q=${viewLog.latitude},${viewLog.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MapPin className="w-4 h-4 mr-2" /> मैप पर देखें
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
 }
