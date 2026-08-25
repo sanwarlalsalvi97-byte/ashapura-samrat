@@ -84,11 +84,13 @@ export type Database = {
       }
       attendance_logs: {
         Row: {
+          accuracy_meters: number | null
           attendance_type: string
           created_at: string
           distance_meters: number | null
           face_verified: boolean
           id: string
+          is_suspicious: boolean
           latitude: number | null
           log_date: string
           logged_at: string
@@ -96,16 +98,22 @@ export type Database = {
           notes: string | null
           office_location_id: string | null
           photo_url: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           site_name: string | null
+          suspicious_reason: string | null
           user_id: string
           worker_id: string
         }
         Insert: {
+          accuracy_meters?: number | null
           attendance_type?: string
           created_at?: string
           distance_meters?: number | null
           face_verified?: boolean
           id?: string
+          is_suspicious?: boolean
           latitude?: number | null
           log_date?: string
           logged_at?: string
@@ -113,16 +121,22 @@ export type Database = {
           notes?: string | null
           office_location_id?: string | null
           photo_url?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           site_name?: string | null
+          suspicious_reason?: string | null
           user_id?: string
           worker_id: string
         }
         Update: {
+          accuracy_meters?: number | null
           attendance_type?: string
           created_at?: string
           distance_meters?: number | null
           face_verified?: boolean
           id?: string
+          is_suspicious?: boolean
           latitude?: number | null
           log_date?: string
           logged_at?: string
@@ -130,7 +144,11 @@ export type Database = {
           notes?: string | null
           office_location_id?: string | null
           photo_url?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           site_name?: string | null
+          suspicious_reason?: string | null
           user_id?: string
           worker_id?: string
         }
