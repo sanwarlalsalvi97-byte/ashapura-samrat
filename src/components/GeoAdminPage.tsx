@@ -47,6 +47,8 @@ export default function GeoAdminPage() {
   const [date, setDate] = useState(todayISO());
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [viewLog, setViewLog] = useState<LogRow | null>(null);
 
   useEffect(() => {
     void (async () => {
