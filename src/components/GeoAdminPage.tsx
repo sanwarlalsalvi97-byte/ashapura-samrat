@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Crosshair, MapPin, Save, ImageOff } from "lucide-react";
+import { Crosshair, MapPin, Save, ImageOff, Search, ShieldAlert, Check, X } from "lucide-react";
 import { getCurrentCoords } from "@/lib/geo";
 import { fmt12, fmtHours, calcHours } from "@/lib/work-hours";
 import { todayISO } from "@/lib/date-utils";
@@ -28,10 +30,15 @@ interface LogRow {
   logged_at: string;
   log_date: string;
   distance_meters: number | null;
+  accuracy_meters: number | null;
   face_verified: boolean;
   photo_url: string | null;
   latitude: number | null;
   longitude: number | null;
+  site_name: string | null;
+  is_suspicious: boolean;
+  suspicious_reason: string | null;
+  review_status: string;
 }
 
 const empty: Office = {
@@ -42,10 +49,23 @@ const empty: Office = {
   face_scan_enabled: false,
 };
 
+const SELECT_COLS =
+  "id, worker_id, attendance_type, logged_at, log_date, distance_meters, accuracy_meters, face_verified, photo_url, latitude, longitude, site_name, is_suspicious, suspicious_reason, review_status";
+
+const statusLabel = (r: LogRow) => {
+  if (r.review_status === "rejected") return { text: "अस्वीकृत", cls: "bg-destructive/15 text-destructive" };
+  if (r.review_status === "pending") return { text: "संदिग्ध — समीक्षा बाकी", cls: "bg-amber-500/15 text-amber-600" };
+  return { text: "मंज़ूर", cls: "bg-accent/15 text-accent" };
+};
+
 export default function GeoAdminPage() {
   const [office, setOffice] = useState<Office>(empty);
   const [saving, setSaving] = useState(false);
-  const [date, setDate] = useState(todayISO());
+  const [fromDate, setFromDate] = useState(todayISO());
+  const [toDate, setToDate] = useState(todayISO());
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [siteFilter, setSiteFilter] = useState("all");
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
@@ -75,8 +95,9 @@ export default function GeoAdminPage() {
   const loadLogs = useCallback(async () => {
     const { data } = await supabase
       .from("attendance_logs")
-      .select("id, worker_id, attendance_type, logged_at, log_date, distance_meters, face_verified, photo_url, latitude, longitude")
-      .eq("log_date", date)
+      .select(SELECT_COLS)
+      .gte("log_date", fromDate)
+      .lte("log_date", toDate)
       .order("logged_at", { ascending: true });
     const rows = (data as LogRow[]) ?? [];
     setLogs(rows);
@@ -92,10 +113,44 @@ export default function GeoAdminPage() {
     } else {
       setPhotoUrls({});
     }
-  }, [date]);
-
+  }, [fromDate, toDate]);
 
   useEffect(() => { void loadLogs(); }, [loadLogs]);
+
+  const sites = useMemo(
+    () => [...new Set(logs.map((l) => l.site_name).filter((s): s is string => !!s))].sort(),
+    [logs]
+  );
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return logs.filter((l) => {
+      if (q && !(names[l.worker_id] ?? "").toLowerCase().includes(q)) return false;
+      if (siteFilter !== "all" && (l.site_name ?? "") !== siteFilter) return false;
+      if (statusFilter === "suspicious" && !l.is_suspicious) return false;
+      if (["approved", "pending", "rejected"].includes(statusFilter) && l.review_status !== statusFilter) return false;
+      if (statusFilter === "in" && l.attendance_type !== "in") return false;
+      if (statusFilter === "out" && l.attendance_type !== "out") return false;
+      return true;
+    });
+  }, [logs, search, siteFilter, statusFilter, names]);
+
+  const pending = useMemo(() => logs.filter((l) => l.review_status === "pending"), [logs]);
+
+  const review = async (id: string, status: "approved" | "rejected") => {
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("attendance_logs")
+      .update({ review_status: status, reviewed_by: auth.user?.id ?? null, reviewed_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) {
+      toast({ title: "गलती हुई", description: error.message, variant: "destructive" });
+      return;
+    }
+    setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, review_status: status } : l)));
+    setViewLog((v) => (v && v.id === id ? { ...v, review_status: status } : v));
+    toast({ title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत कर दिया ❌" });
+  };
 
   const useMyLocation = async () => {
     try {
@@ -149,9 +204,9 @@ export default function GeoAdminPage() {
     }
   };
 
-  // Group logs per worker → first IN, last OUT, total hours
+  // Group filtered logs per worker → first IN, last OUT, total hours
   const byWorker = new Map<string, { in?: string; out?: string; dist?: number | null }>();
-  for (const l of logs) {
+  for (const l of filtered) {
     const t = new Date(l.logged_at);
     const hhmm = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
     const cur = byWorker.get(l.worker_id) ?? {};
@@ -213,14 +268,87 @@ export default function GeoAdminPage() {
         </CardContent>
       </Card>
 
+      {pending.length > 0 && (
+        <Card className="border-amber-500/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-600">
+              <ShieldAlert className="w-4 h-4" /> संदिग्ध पंच — समीक्षा ({pending.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pending.map((l) => (
+              <div key={l.id} className="rounded-lg border border-border p-2 space-y-2">
+                <button type="button" onClick={() => setViewLog(l)} className="w-full text-left">
+                  <p className="text-sm font-medium">
+                    {names[l.worker_id] ?? "—"} • {l.attendance_type.toUpperCase()} •{" "}
+                    {new Date(l.logged_at).toLocaleString("hi-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                  <p className="text-[11px] text-destructive">{l.suspicious_reason ?? "संदिग्ध एंट्री"}</p>
+                </button>
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1" onClick={() => review(l.id, "approved")}>
+                    <Check className="w-4 h-4 mr-1" /> मंज़ूर
+                  </Button>
+                  <Button size="sm" variant="destructive" className="flex-1" onClick={() => review(l.id, "rejected")}>
+                    <X className="w-4 h-4 mr-1" /> अस्वीकार
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">दैनिक हाजिरी लॉग</CardTitle>
+          <CardTitle className="text-sm">हाजिरी लॉग व फ़िल्टर</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">से तारीख़</Label>
+              <Input type="date" value={fromDate} max={toDate} onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">तक तारीख़</Label>
+              <Input type="date" value={toDate} min={fromDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="मजदूर का नाम खोजें"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue placeholder="स्थिति" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">सभी स्थिति</SelectItem>
+                <SelectItem value="approved">मंज़ूर</SelectItem>
+                <SelectItem value="pending">समीक्षा बाकी</SelectItem>
+                <SelectItem value="rejected">अस्वीकृत</SelectItem>
+                <SelectItem value="suspicious">संदिग्ध</SelectItem>
+                <SelectItem value="in">सिर्फ पंच इन</SelectItem>
+                <SelectItem value="out">सिर्फ पंच आउट</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger><SelectValue placeholder="साइट" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">सभी साइट</SelectItem>
+                {sites.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
           {byWorker.size === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">इस दिन कोई पंच रिकॉर्ड नहीं।</p>
+            <p className="text-sm text-muted-foreground text-center py-4">इस फ़िल्टर में कोई पंच रिकॉर्ड नहीं।</p>
           ) : (
             <div className="divide-y divide-border">
               {[...byWorker.entries()].map(([wid, v]) => (
@@ -238,40 +366,45 @@ export default function GeoAdminPage() {
             </div>
           )}
 
-          {logs.length > 0 && (
+          {filtered.length > 0 && (
             <div className="space-y-2 pt-2">
               <p className="text-xs font-semibold text-muted-foreground">पंच एंट्री (फोटो सहित)</p>
-              {logs.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  onClick={() => setViewLog(l)}
-                  className="w-full flex items-center gap-3 rounded-lg border border-border px-2 py-2 text-left hover:bg-muted/50"
-                >
-                  {l.photo_url && photoUrls[l.photo_url] ? (
-                    <img
-                      src={photoUrls[l.photo_url]}
-                      alt={`${names[l.worker_id] ?? "मजदूर"} की फेस स्कैन फोटो`}
-                      className="h-10 w-10 rounded-full object-cover shrink-0"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <ImageOff className="w-4 h-4 text-muted-foreground" />
+              {filtered.map((l) => {
+                const st = statusLabel(l);
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setViewLog(l)}
+                    className="w-full flex items-center gap-3 rounded-lg border border-border px-2 py-2 text-left hover:bg-muted/50"
+                  >
+                    {l.photo_url && photoUrls[l.photo_url] ? (
+                      <img
+                        src={photoUrls[l.photo_url]}
+                        alt={`${names[l.worker_id] ?? "मजदूर"} की फेस स्कैन फोटो`}
+                        className="h-10 w-10 rounded-full object-cover shrink-0"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <ImageOff className="w-4 h-4 text-muted-foreground" />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium truncate">
+                        {names[l.worker_id] ?? "—"} • {l.attendance_type.toUpperCase()}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {new Date(l.logged_at).toLocaleString("hi-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {l.distance_meters != null ? ` • ${Math.round(l.distance_meters)}m` : ""}
+                        {l.site_name ? ` • ${l.site_name}` : ""}
+                        {l.face_verified ? " • फेस ✓" : ""}
+                      </span>
+                      <Badge variant="outline" className={`mt-1 text-[10px] border-0 ${st.cls}`}>{st.text}</Badge>
                     </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium truncate">
-                      {names[l.worker_id] ?? "—"} • {l.attendance_type.toUpperCase()}
-                    </span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      {new Date(l.logged_at).toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" })}
-                      {l.distance_meters != null ? ` • ${Math.round(l.distance_meters)}m` : ""}
-                      {l.face_verified ? " • फेस ✓" : ""}
-                    </span>
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -308,9 +441,22 @@ export default function GeoAdminPage() {
                   {viewLog.distance_meters != null ? `${Math.round(viewLog.distance_meters)} m` : "—"}
                 </p>
                 <p>
+                  <span className="text-muted-foreground">GPS सटीकता: </span>
+                  {viewLog.accuracy_meters != null ? `±${Math.round(viewLog.accuracy_meters)} m` : "—"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">साइट: </span>{viewLog.site_name || "—"}
+                </p>
+                <p>
                   <span className="text-muted-foreground">फेस वेरिफिकेशन: </span>
                   {viewLog.face_verified ? "हो गया ✓" : "नहीं"}
                 </p>
+                <p>
+                  <span className="text-muted-foreground">स्थिति: </span>{statusLabel(viewLog).text}
+                </p>
+                {viewLog.suspicious_reason && (
+                  <p className="text-destructive text-xs">{viewLog.suspicious_reason}</p>
+                )}
               </div>
               {viewLog.latitude != null && viewLog.longitude != null && (
                 <Button asChild variant="outline" className="w-full">
@@ -323,11 +469,20 @@ export default function GeoAdminPage() {
                   </a>
                 </Button>
               )}
+              {viewLog.review_status === "pending" && (
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={() => review(viewLog.id, "approved")}>
+                    <Check className="w-4 h-4 mr-1" /> मंज़ूर
+                  </Button>
+                  <Button variant="destructive" className="flex-1" onClick={() => review(viewLog.id, "rejected")}>
+                    <X className="w-4 h-4 mr-1" /> अस्वीकार
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
-
 }
