@@ -137,6 +137,44 @@ export default function GeoAdminPage() {
 
   const pending = useMemo(() => logs.filter((l) => l.review_status === "pending"), [logs]);
 
+  /** Apply an approved punch into the main हाजिरी sheet. */
+  const applyToAttendance = async (log: LogRow) => {
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) return;
+    const t = new Date(log.logged_at).toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const { data: existing } = await supabase
+      .from("attendance")
+      .select("id, in_time, out_time")
+      .eq("worker_id", log.worker_id)
+      .eq("date", log.log_date)
+      .maybeSingle();
+
+    if (existing) {
+      const inT = log.attendance_type === "in" ? t : existing.in_time;
+      const outT = log.attendance_type === "out" ? t : existing.out_time;
+      const total = calcHours(inT, outT);
+      await supabase.from("attendance").update({
+        in_time: inT, out_time: outT,
+        total_hours: total,
+        overtime_hours: total > 8 ? Number((total - 8).toFixed(2)) : 0,
+        status: "Present",
+      }).eq("id", existing.id);
+    } else {
+      await supabase.from("attendance").insert({
+        user_id: uid,
+        worker_id: log.worker_id,
+        date: log.log_date,
+        status: "Present",
+        site_name: log.site_name,
+        in_time: log.attendance_type === "in" ? t : null,
+        out_time: log.attendance_type === "out" ? t : null,
+      });
+    }
+  };
+
   const review = async (id: string, status: "approved" | "rejected") => {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
@@ -147,10 +185,23 @@ export default function GeoAdminPage() {
       toast({ title: "गलती हुई", description: error.message, variant: "destructive" });
       return;
     }
+    const log = logs.find((l) => l.id === id);
+    if (status === "approved" && log) {
+      try {
+        await applyToAttendance(log);
+      } catch (e) {
+        toast({
+          title: "हाजिरी अपडेट नहीं हुई",
+          description: e instanceof Error ? e.message : "कृपया दोबारा कोशिश करें",
+          variant: "destructive",
+        });
+      }
+    }
     setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, review_status: status } : l)));
     setViewLog((v) => (v && v.id === id ? { ...v, review_status: status } : v));
     toast({ title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत कर दिया ❌" });
   };
+
 
   const useMyLocation = async () => {
     try {
