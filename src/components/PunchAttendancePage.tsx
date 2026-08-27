@@ -168,8 +168,12 @@ export default function PunchAttendancePage() {
       if (logErr) throw logErr;
       setFacePhoto(null);
 
-      // Mirror into the main हाजिरी sheet
-      if (type === "in") {
+      // Mirror into the main हाजिरी sheet — only once the punch is trustworthy.
+      // Suspicious punches wait for admin approval (GeoAdminPage applies them).
+      if (suspicious) {
+        // skip mirroring
+      } else if (type === "in") {
+
         if (today) {
           const total = calcHours(t, today.out_time);
           const { overtime } = splitOT(total);
