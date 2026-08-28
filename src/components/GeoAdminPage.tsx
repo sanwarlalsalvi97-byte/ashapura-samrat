@@ -175,6 +175,29 @@ export default function GeoAdminPage() {
     }
   };
 
+  /** Undo a rejected punch from the main हाजिरी sheet. */
+  const revertFromAttendance = async (log: LogRow) => {
+    const { data: existing } = await supabase
+      .from("attendance")
+      .select("id, in_time, out_time")
+      .eq("worker_id", log.worker_id)
+      .eq("date", log.log_date)
+      .maybeSingle();
+    if (!existing) return;
+    const inT = log.attendance_type === "in" ? null : existing.in_time;
+    const outT = log.attendance_type === "out" ? null : existing.out_time;
+    if (!inT && !outT) {
+      await supabase.from("attendance").delete().eq("id", existing.id);
+      return;
+    }
+    const total = calcHours(inT, outT);
+    await supabase.from("attendance").update({
+      in_time: inT, out_time: outT,
+      total_hours: total,
+      overtime_hours: total > 8 ? Number((total - 8).toFixed(2)) : 0,
+    }).eq("id", existing.id);
+  };
+
   const review = async (id: string, status: "approved" | "rejected") => {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
@@ -186,9 +209,10 @@ export default function GeoAdminPage() {
       return;
     }
     const log = logs.find((l) => l.id === id);
-    if (status === "approved" && log) {
+    if (log) {
       try {
-        await applyToAttendance(log);
+        if (status === "approved") await applyToAttendance(log);
+        else await revertFromAttendance(log);
       } catch (e) {
         toast({
           title: "हाजिरी अपडेट नहीं हुई",
@@ -199,8 +223,11 @@ export default function GeoAdminPage() {
     }
     setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, review_status: status } : l)));
     setViewLog((v) => (v && v.id === id ? { ...v, review_status: status } : v));
-    toast({ title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत कर दिया ❌" });
+    toast({
+      title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत — हाजिरी से हटा दिया ❌",
+    });
   };
+
 
 
   const useMyLocation = async () => {
