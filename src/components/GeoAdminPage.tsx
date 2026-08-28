@@ -53,10 +53,11 @@ const SELECT_COLS =
   "id, worker_id, attendance_type, logged_at, log_date, distance_meters, accuracy_meters, face_verified, photo_url, latitude, longitude, site_name, is_suspicious, suspicious_reason, review_status";
 
 const statusLabel = (r: LogRow) => {
-  if (r.review_status === "rejected") return { text: "अस्वीकृत", cls: "bg-destructive/15 text-destructive" };
-  if (r.review_status === "pending") return { text: "संदिग्ध — समीक्षा बाकी", cls: "bg-amber-500/15 text-amber-600" };
-  return { text: "मंज़ूर", cls: "bg-accent/15 text-accent" };
+  if (r.review_status === "rejected") return { text: "अस्वीकृत (Rejected)", cls: "bg-destructive/15 text-destructive" };
+  if (r.review_status === "pending") return { text: "फ्लैग — समीक्षा बाकी", cls: "bg-amber-500/15 text-amber-600" };
+  return { text: "मंज़ूर (Approved)", cls: "bg-accent/15 text-accent" };
 };
+
 
 export default function GeoAdminPage() {
   const [office, setOffice] = useState<Office>(empty);
@@ -175,6 +176,29 @@ export default function GeoAdminPage() {
     }
   };
 
+  /** Undo a rejected punch from the main हाजिरी sheet. */
+  const revertFromAttendance = async (log: LogRow) => {
+    const { data: existing } = await supabase
+      .from("attendance")
+      .select("id, in_time, out_time")
+      .eq("worker_id", log.worker_id)
+      .eq("date", log.log_date)
+      .maybeSingle();
+    if (!existing) return;
+    const inT = log.attendance_type === "in" ? null : existing.in_time;
+    const outT = log.attendance_type === "out" ? null : existing.out_time;
+    if (!inT && !outT) {
+      await supabase.from("attendance").delete().eq("id", existing.id);
+      return;
+    }
+    const total = calcHours(inT, outT);
+    await supabase.from("attendance").update({
+      in_time: inT, out_time: outT,
+      total_hours: total,
+      overtime_hours: total > 8 ? Number((total - 8).toFixed(2)) : 0,
+    }).eq("id", existing.id);
+  };
+
   const review = async (id: string, status: "approved" | "rejected") => {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
@@ -186,9 +210,10 @@ export default function GeoAdminPage() {
       return;
     }
     const log = logs.find((l) => l.id === id);
-    if (status === "approved" && log) {
+    if (log) {
       try {
-        await applyToAttendance(log);
+        if (status === "approved") await applyToAttendance(log);
+        else await revertFromAttendance(log);
       } catch (e) {
         toast({
           title: "हाजिरी अपडेट नहीं हुई",
@@ -199,8 +224,11 @@ export default function GeoAdminPage() {
     }
     setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, review_status: status } : l)));
     setViewLog((v) => (v && v.id === id ? { ...v, review_status: status } : v));
-    toast({ title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत कर दिया ❌" });
+    toast({
+      title: status === "approved" ? "मंज़ूर हो गया ✅" : "अस्वीकृत — हाजिरी से हटा दिया ❌",
+    });
   };
+
 
 
   const useMyLocation = async () => {
@@ -323,9 +351,13 @@ export default function GeoAdminPage() {
         <Card className="border-amber-500/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-600">
-              <ShieldAlert className="w-4 h-4" /> संदिग्ध पंच — समीक्षा ({pending.length})
+              <ShieldAlert className="w-4 h-4" /> फ्लैग पंच — समीक्षा ({pending.length})
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">
+              हाजिरी पहले ही लग चुकी है — अस्वीकार करने पर शीट से हट जाएगी।
+            </p>
           </CardHeader>
+
           <CardContent className="space-y-2">
             {pending.map((l) => (
               <div key={l.id} className="rounded-lg border border-border p-2 space-y-2">
@@ -448,10 +480,15 @@ export default function GeoAdminPage() {
                       <span className="block text-[11px] text-muted-foreground">
                         {new Date(l.logged_at).toLocaleString("hi-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         {l.distance_meters != null ? ` • ${Math.round(l.distance_meters)}m` : ""}
-                        {l.site_name ? ` • ${l.site_name}` : ""}
                         {l.face_verified ? " • फेस ✓" : ""}
                       </span>
-                      <Badge variant="outline" className={`mt-1 text-[10px] border-0 ${st.cls}`}>{st.text}</Badge>
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        <Badge variant="outline" className={`text-[10px] border-0 ${st.cls}`}>{st.text}</Badge>
+                        <Badge variant="outline" className="text-[10px] border-0 bg-primary/10 text-primary">
+                          साइट: {l.site_name || "—"}
+                        </Badge>
+                      </span>
+
                     </span>
                   </button>
                 );

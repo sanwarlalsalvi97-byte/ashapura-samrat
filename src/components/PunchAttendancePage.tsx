@@ -168,11 +168,10 @@ export default function PunchAttendancePage() {
       if (logErr) throw logErr;
       setFacePhoto(null);
 
-      // Mirror into the main हाजिरी sheet — only once the punch is trustworthy.
-      // Suspicious punches wait for admin approval (GeoAdminPage applies them).
-      if (suspicious) {
-        // skip mirroring
-      } else if (type === "in") {
+      // Mirror into the main हाजिरी sheet immediately — attendance is never blocked.
+      // Suspicious punches are still flagged so admins can audit/reject them later.
+      if (type === "in") {
+
 
         if (today) {
           const total = calcHours(t, today.out_time);
@@ -204,13 +203,13 @@ export default function PunchAttendancePage() {
 
       toast({
         title: suspicious
-          ? (type === "in" ? "पंच इन सेव — समीक्षा बाकी ⚠️" : "पंच आउट सेव — समीक्षा बाकी ⚠️")
+          ? (type === "in" ? "पंच इन सेव — फ्लैग किया गया ⚠️" : "पंच आउट सेव — फ्लैग किया गया ⚠️")
           : (type === "in" ? "पंच इन हो गया ✅" : "पंच आउट हो गया ✅"),
         description: suspicious
-          ? "एडमिन की मंज़ूरी के बाद ही यह पक्का होगा।"
+          ? `हाजिरी लग गई • ${fmt12(t)} — एडमिन बाद में समीक्षा करेगा।`
           : `${fmt12(t)} • ${fmtDistance(distance)} ऑफिस से`,
-        variant: suspicious ? "destructive" : undefined,
       });
+
       await loadToday();
     } catch (e) {
       toast({
@@ -399,9 +398,10 @@ export default function PunchAttendancePage() {
                       {warnings.map((w) => <li key={w}>{w}</li>)}
                     </ul>
                     <p>
-                      फिर भी पंच करने पर यह एंट्री <strong>संदिग्ध (Suspicious)</strong> मार्क होगी और
-                      एडमिन की समीक्षा में जाएगी।
+                      हाजिरी तुरंत लग जाएगी — पर यह एंट्री <strong>संदिग्ध (Flagged)</strong> मार्क होगी
+                      और एडमिन बाद में समीक्षा कर सकेगा।
                     </p>
+
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
