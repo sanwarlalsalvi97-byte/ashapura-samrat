@@ -351,9 +351,13 @@ export default function GeoAdminPage() {
         <Card className="border-amber-500/40">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-600">
-              <ShieldAlert className="w-4 h-4" /> संदिग्ध पंच — समीक्षा ({pending.length})
+              <ShieldAlert className="w-4 h-4" /> फ्लैग पंच — समीक्षा ({pending.length})
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">
+              हाजिरी पहले ही लग चुकी है — अस्वीकार करने पर शीट से हट जाएगी।
+            </p>
           </CardHeader>
+
           <CardContent className="space-y-2">
             {pending.map((l) => (
               <div key={l.id} className="rounded-lg border border-border p-2 space-y-2">
