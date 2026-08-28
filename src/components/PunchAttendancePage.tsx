@@ -203,13 +203,13 @@ export default function PunchAttendancePage() {
 
       toast({
         title: suspicious
-          ? (type === "in" ? "पंच इन सेव — समीक्षा बाकी ⚠️" : "पंच आउट सेव — समीक्षा बाकी ⚠️")
+          ? (type === "in" ? "पंच इन सेव — फ्लैग किया गया ⚠️" : "पंच आउट सेव — फ्लैग किया गया ⚠️")
           : (type === "in" ? "पंच इन हो गया ✅" : "पंच आउट हो गया ✅"),
         description: suspicious
-          ? "एडमिन की मंज़ूरी के बाद ही यह पक्का होगा।"
+          ? `हाजिरी लग गई • ${fmt12(t)} — एडमिन बाद में समीक्षा करेगा।`
           : `${fmt12(t)} • ${fmtDistance(distance)} ऑफिस से`,
-        variant: suspicious ? "destructive" : undefined,
       });
+
       await loadToday();
     } catch (e) {
       toast({
