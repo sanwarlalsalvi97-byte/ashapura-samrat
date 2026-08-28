@@ -53,10 +53,11 @@ const SELECT_COLS =
   "id, worker_id, attendance_type, logged_at, log_date, distance_meters, accuracy_meters, face_verified, photo_url, latitude, longitude, site_name, is_suspicious, suspicious_reason, review_status";
 
 const statusLabel = (r: LogRow) => {
-  if (r.review_status === "rejected") return { text: "अस्वीकृत", cls: "bg-destructive/15 text-destructive" };
-  if (r.review_status === "pending") return { text: "संदिग्ध — समीक्षा बाकी", cls: "bg-amber-500/15 text-amber-600" };
-  return { text: "मंज़ूर", cls: "bg-accent/15 text-accent" };
+  if (r.review_status === "rejected") return { text: "अस्वीकृत (Rejected)", cls: "bg-destructive/15 text-destructive" };
+  if (r.review_status === "pending") return { text: "फ्लैग — समीक्षा बाकी", cls: "bg-amber-500/15 text-amber-600" };
+  return { text: "मंज़ूर (Approved)", cls: "bg-accent/15 text-accent" };
 };
+
 
 export default function GeoAdminPage() {
   const [office, setOffice] = useState<Office>(empty);
