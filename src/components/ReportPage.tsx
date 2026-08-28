@@ -77,19 +77,32 @@ export default function ReportPage() {
 
   useEffect(() => { loadSiteData(); }, [loadSiteData]);
 
+  const activeSite = siteFilter === "__all__" ? null : siteFilter;
+
   const loadLedger = useCallback(async () => {
     try {
-      const res = await computeWorkerLedger({ year, monthIndex0: month - 1 });
+      const res = await computeWorkerLedger({ year, monthIndex0: month - 1, siteFilter: activeSite });
       setLedger(res.rows);
       setLedgerTotals(res.totals);
     } catch {}
-  }, [year, month]);
+  }, [year, month, activeSite]);
 
   useEffect(() => {
     loadLedger();
     const unsub = subscribePaymentSources(() => { loadLedger(); loadSiteData(); });
     return () => unsub();
   }, [loadLedger, loadSiteData]);
+
+  /** When a site is selected, hide workers with no activity on that site. */
+  const visibleLedger = useMemo(() => {
+    if (!activeSite) return ledger;
+    return ledger.filter((l) =>
+      (l.worker.site_name || "").trim() === activeSite ||
+      l.presentDays || l.halfDays || l.absentDays ||
+      l.currentEarnings || l.currentAdvance || l.currentPaid || l.previousBalance
+    );
+  }, [ledger, activeSite]);
+
 
   const handleDelete = async (worker: WorkerLedger) => {
     try {
