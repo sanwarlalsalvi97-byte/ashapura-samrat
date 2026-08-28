@@ -476,10 +476,15 @@ export default function GeoAdminPage() {
                       <span className="block text-[11px] text-muted-foreground">
                         {new Date(l.logged_at).toLocaleString("hi-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         {l.distance_meters != null ? ` • ${Math.round(l.distance_meters)}m` : ""}
-                        {l.site_name ? ` • ${l.site_name}` : ""}
                         {l.face_verified ? " • फेस ✓" : ""}
                       </span>
-                      <Badge variant="outline" className={`mt-1 text-[10px] border-0 ${st.cls}`}>{st.text}</Badge>
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        <Badge variant="outline" className={`text-[10px] border-0 ${st.cls}`}>{st.text}</Badge>
+                        <Badge variant="outline" className="text-[10px] border-0 bg-primary/10 text-primary">
+                          साइट: {l.site_name || "—"}
+                        </Badge>
+                      </span>
+
                     </span>
                   </button>
                 );
