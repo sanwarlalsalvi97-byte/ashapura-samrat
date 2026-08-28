@@ -398,9 +398,10 @@ export default function PunchAttendancePage() {
                       {warnings.map((w) => <li key={w}>{w}</li>)}
                     </ul>
                     <p>
-                      फिर भी पंच करने पर यह एंट्री <strong>संदिग्ध (Suspicious)</strong> मार्क होगी और
-                      एडमिन की समीक्षा में जाएगी।
+                      हाजिरी तुरंत लग जाएगी — पर यह एंट्री <strong>संदिग्ध (Flagged)</strong> मार्क होगी
+                      और एडमिन बाद में समीक्षा कर सकेगा।
                     </p>
+
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
