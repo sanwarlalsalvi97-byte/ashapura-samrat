@@ -774,3 +774,47 @@ function Row({ label, value, bold, tone, muted }: { label: string; value: string
   );
 }
 
+
+/** Site tabs shown at the top of the report — filters every section below. */
+function SiteFilterBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [sites, setSites] = useState<string[]>(() => listSites().map((s) => s.name).sort());
+
+  useEffect(() => {
+    const refresh = () => setSites(listSites().map((s) => s.name).sort());
+    window.addEventListener("sites-updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  const options = ["__all__", ...sites];
+
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-2 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-1">
+        <Building2 className="w-3.5 h-3.5 text-primary" /> साइट चुनें
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {options.map((s) => {
+          const active = value === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onChange(s)}
+              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-input hover:bg-muted"
+              }`}
+            >
+              {s === "__all__" ? "सभी साइट" : s}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
