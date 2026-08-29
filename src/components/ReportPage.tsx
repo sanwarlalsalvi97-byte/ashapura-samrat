@@ -178,14 +178,15 @@ export default function ReportPage() {
         `📌 *देय (Net Payable): ${inr(worker.netPayable)}*\n` +
         `🏁 *बाकी: ${inr(worker.remainingBalance)}*`;
     } else {
-      text = `📋 *पेरोल रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
-      ledger.forEach((s) => {
+      text = `📋 *पेरोल रिपोर्ट — ${monthNames[month - 1]} ${year}*\n🏗️ साइट: ${activeSite || "सभी साइट"}\n\n`;
+      visibleLedger.forEach((s) => {
         text += `👷 *${s.worker.name}*\n` +
           `   पिछला: ${inr(s.previousBalance)} | कमाई: ${inr(s.currentEarnings)} | एडवांस: ${inr(s.currentAdvance)}\n` +
           `   बाकी: *${inr(s.remainingBalance)}*\n\n`;
       });
       text += `💰 *कुल बाकी: ${inr(ledgerTotals.remainingBalance)}*`;
     }
+
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };
