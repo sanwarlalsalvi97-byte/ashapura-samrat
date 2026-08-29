@@ -124,7 +124,7 @@ export default function ReportPage() {
   };
 
   const exportMonthly = async (format: "csv" | "pdf") => {
-    if (ledger.length === 0) return;
+    if (visibleLedger.length === 0) return;
     const mode = getGroupingMode();
     let workers: Worker[] = [];
     let contractors: Contractor[] = [];
@@ -134,12 +134,13 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पिछला बाकी", "हाजिर", "आधा", "गैर", "कमाई", "एडवांस", "जीवन एडवांस", "चुकाया", "देय", "बाकी"];
-    const rows: (string | number)[][] = ledger.map((s) => {
+    const headers = ["साइट", "ठेकेदार/समूह", "नाम", "पिछला बाकी", "हाजिर", "आधा", "गैर", "कमाई", "एडवांस", "जीवन एडवांस", "चुकाया", "देय", "बाकी"];
+    const rows: (string | number)[][] = visibleLedger.map((s) => {
       const w = workerById.get(s.worker.id);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
+      const site = activeSite || (w?.site_name || s.worker.site_name || "—");
       return [
-        group, s.worker.name,
+        site, group, s.worker.name,
         Math.round(s.previousBalance),
         s.presentDays, s.halfDays, s.absentDays,
         Math.round(s.currentEarnings), Math.round(s.currentAdvance),
@@ -147,18 +148,21 @@ export default function ReportPage() {
         Math.round(s.netPayable), Math.round(s.remainingBalance),
       ];
     });
-    rows.push(["", "कुल", Math.round(ledgerTotals.previousBalance), "", "", "",
+    rows.push([activeSite || "सभी साइट", "", "कुल", Math.round(ledgerTotals.previousBalance), "", "", "",
       Math.round(ledgerTotals.currentEarnings), Math.round(ledgerTotals.currentAdvance),
       Math.round(ledgerTotals.totalAdvanceLifetime), Math.round(ledgerTotals.currentPaid),
       Math.round(ledgerTotals.netPayable), Math.round(ledgerTotals.remainingBalance)]);
-    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
+    const siteLabel = activeSite ? ` — साइट: ${activeSite}` : " — सभी साइट";
+    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}${siteLabel}`;
     if (format === "csv") {
-      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
+      const fileSite = activeSite ? `-${activeSite.replace(/[\\/:*?"<>|\s]+/g, "_")}` : "";
+      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}${fileSite}.csv`, headers, rows);
       toast({ title: "CSV डाउनलोड हो गई" });
     } else {
       exportPDF(title, headers, rows);
     }
   };
+
 
   const shareOnWhatsApp = (worker?: WorkerLedger) => {
     let text = "";
@@ -174,14 +178,15 @@ export default function ReportPage() {
         `📌 *देय (Net Payable): ${inr(worker.netPayable)}*\n` +
         `🏁 *बाकी: ${inr(worker.remainingBalance)}*`;
     } else {
-      text = `📋 *पेरोल रिपोर्ट — ${monthNames[month - 1]} ${year}*\n\n`;
-      ledger.forEach((s) => {
+      text = `📋 *पेरोल रिपोर्ट — ${monthNames[month - 1]} ${year}*\n🏗️ साइट: ${activeSite || "सभी साइट"}\n\n`;
+      visibleLedger.forEach((s) => {
         text += `👷 *${s.worker.name}*\n` +
           `   पिछला: ${inr(s.previousBalance)} | कमाई: ${inr(s.currentEarnings)} | एडवांस: ${inr(s.currentAdvance)}\n` +
           `   बाकी: *${inr(s.remainingBalance)}*\n\n`;
       });
       text += `💰 *कुल बाकी: ${inr(ledgerTotals.remainingBalance)}*`;
     }
+
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
   };
@@ -206,11 +211,17 @@ export default function ReportPage() {
         </Button>
       </div>
 
+      {/* Site filter — applies to the whole report */}
+      <SiteFilterBar value={siteFilter} onChange={setSiteFilter} />
+
       {/* === Payroll Summary Cards === */}
       <section>
         <div className="rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-5 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.55)]">
-          <div className="text-[11px] font-bold uppercase tracking-widest opacity-90">कुल बाकी (Remaining)</div>
+          <div className="text-[11px] font-bold uppercase tracking-widest opacity-90">
+            कुल बाकी (Remaining) • {activeSite || "सभी साइट"}
+          </div>
           <div className="text-4xl font-extrabold tabular-nums mt-1">{inr(ledgerTotals.remainingBalance)}</div>
+
           <div className="grid grid-cols-2 gap-2 mt-3">
             <div className="rounded-2xl bg-white/15 backdrop-blur p-2.5">
               <div className="text-[10px] font-bold uppercase opacity-90">पिछला बाकी</div>
@@ -234,7 +245,7 @@ export default function ReportPage() {
 
       {/* === मजदूर-वार हिसाब मिलान (Reconciliation) === */}
       <WorkerReconciliationTable
-        rows={ledger}
+        rows={visibleLedger}
         totals={ledgerTotals}
         defaultCollapsed={false}
       />
@@ -251,10 +262,12 @@ export default function ReportPage() {
         onSiteFilterChange={setSiteFilter}
       />
 
-      {ledger.length === 0 ? (
+      {visibleLedger.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">कोई रिकॉर्ड नहीं</p>
-          <p className="text-sm mt-1">इस महीने की हाजिरी लगाएं</p>
+          <p className="text-sm mt-1">
+            {activeSite ? `${activeSite} पर इस महीने कोई हाजिरी नहीं` : "इस महीने की हाजिरी लगाएं"}
+          </p>
         </div>
       ) : (
         <>
@@ -280,9 +293,10 @@ export default function ReportPage() {
           </div>
 
           <div className="space-y-3">
-            {ledger.map((s) => (
+            {visibleLedger.map((s) => (
               <LedgerCard
                 key={s.worker.id}
+
                 l={s}
                 month={month}
                 year={year}
@@ -320,12 +334,18 @@ function LedgerCard({
     <Card className="rounded-3xl border-border/60 shadow-sm overflow-hidden">
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
               {l.worker.name.slice(0, 1)}
             </span>
-            <span className="font-extrabold">{l.worker.name}</span>
+            <span className="min-w-0">
+              <span className="block font-extrabold truncate">{l.worker.name}</span>
+              <span className="block text-[10px] font-bold text-muted-foreground truncate">
+                🏗️ {l.worker.site_name || "साइट नहीं"}
+              </span>
+            </span>
           </div>
+
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onShare}>
               <Share2 className="w-4 h-4" />
@@ -754,3 +774,47 @@ function Row({ label, value, bold, tone, muted }: { label: string; value: string
   );
 }
 
+
+/** Site tabs shown at the top of the report — filters every section below. */
+function SiteFilterBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [sites, setSites] = useState<string[]>(() => listSites().map((s) => s.name).sort());
+
+  useEffect(() => {
+    const refresh = () => setSites(listSites().map((s) => s.name).sort());
+    window.addEventListener("sites-updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("sites-updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  const options = ["__all__", ...sites];
+
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-2 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-1">
+        <Building2 className="w-3.5 h-3.5 text-primary" /> साइट चुनें
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {options.map((s) => {
+          const active = value === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onChange(s)}
+              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-input hover:bg-muted"
+              }`}
+            >
+              {s === "__all__" ? "सभी साइट" : s}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
