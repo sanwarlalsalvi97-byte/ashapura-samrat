@@ -211,11 +211,17 @@ export default function ReportPage() {
         </Button>
       </div>
 
+      {/* Site filter — applies to the whole report */}
+      <SiteFilterBar value={siteFilter} onChange={setSiteFilter} />
+
       {/* === Payroll Summary Cards === */}
       <section>
         <div className="rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-5 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.55)]">
-          <div className="text-[11px] font-bold uppercase tracking-widest opacity-90">कुल बाकी (Remaining)</div>
+          <div className="text-[11px] font-bold uppercase tracking-widest opacity-90">
+            कुल बाकी (Remaining) • {activeSite || "सभी साइट"}
+          </div>
           <div className="text-4xl font-extrabold tabular-nums mt-1">{inr(ledgerTotals.remainingBalance)}</div>
+
           <div className="grid grid-cols-2 gap-2 mt-3">
             <div className="rounded-2xl bg-white/15 backdrop-blur p-2.5">
               <div className="text-[10px] font-bold uppercase opacity-90">पिछला बाकी</div>
