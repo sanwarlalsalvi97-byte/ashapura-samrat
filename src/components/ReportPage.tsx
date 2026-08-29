@@ -334,12 +334,18 @@ function LedgerCard({
     <Card className="rounded-3xl border-border/60 shadow-sm overflow-hidden">
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
               {l.worker.name.slice(0, 1)}
             </span>
-            <span className="font-extrabold">{l.worker.name}</span>
+            <span className="min-w-0">
+              <span className="block font-extrabold truncate">{l.worker.name}</span>
+              <span className="block text-[10px] font-bold text-muted-foreground truncate">
+                🏗️ {l.worker.site_name || "साइट नहीं"}
+              </span>
+            </span>
           </div>
+
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={onShare}>
               <Share2 className="w-4 h-4" />
