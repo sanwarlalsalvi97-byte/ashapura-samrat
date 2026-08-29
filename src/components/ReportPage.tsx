@@ -124,7 +124,7 @@ export default function ReportPage() {
   };
 
   const exportMonthly = async (format: "csv" | "pdf") => {
-    if (ledger.length === 0) return;
+    if (visibleLedger.length === 0) return;
     const mode = getGroupingMode();
     let workers: Worker[] = [];
     let contractors: Contractor[] = [];
@@ -134,12 +134,13 @@ export default function ReportPage() {
     } catch {}
     const workerById = new Map(workers.map((w) => [w.id, w]));
 
-    const headers = ["ठेकेदार/साइट", "नाम", "पिछला बाकी", "हाजिर", "आधा", "गैर", "कमाई", "एडवांस", "जीवन एडवांस", "चुकाया", "देय", "बाकी"];
-    const rows: (string | number)[][] = ledger.map((s) => {
+    const headers = ["साइट", "ठेकेदार/समूह", "नाम", "पिछला बाकी", "हाजिर", "आधा", "गैर", "कमाई", "एडवांस", "जीवन एडवांस", "चुकाया", "देय", "बाकी"];
+    const rows: (string | number)[][] = visibleLedger.map((s) => {
       const w = workerById.get(s.worker.id);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
+      const site = activeSite || (w?.site_name || s.worker.site_name || "—");
       return [
-        group, s.worker.name,
+        site, group, s.worker.name,
         Math.round(s.previousBalance),
         s.presentDays, s.halfDays, s.absentDays,
         Math.round(s.currentEarnings), Math.round(s.currentAdvance),
@@ -147,18 +148,21 @@ export default function ReportPage() {
         Math.round(s.netPayable), Math.round(s.remainingBalance),
       ];
     });
-    rows.push(["", "कुल", Math.round(ledgerTotals.previousBalance), "", "", "",
+    rows.push([activeSite || "सभी साइट", "", "कुल", Math.round(ledgerTotals.previousBalance), "", "", "",
       Math.round(ledgerTotals.currentEarnings), Math.round(ledgerTotals.currentAdvance),
       Math.round(ledgerTotals.totalAdvanceLifetime), Math.round(ledgerTotals.currentPaid),
       Math.round(ledgerTotals.netPayable), Math.round(ledgerTotals.remainingBalance)]);
-    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}`;
+    const siteLabel = activeSite ? ` — साइट: ${activeSite}` : " — सभी साइट";
+    const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}${siteLabel}`;
     if (format === "csv") {
-      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}.csv`, headers, rows);
+      const fileSite = activeSite ? `-${activeSite.replace(/[\\/:*?"<>|\s]+/g, "_")}` : "";
+      exportCSV(`रिपोर्ट-${year}-${String(month).padStart(2, "0")}${fileSite}.csv`, headers, rows);
       toast({ title: "CSV डाउनलोड हो गई" });
     } else {
       exportPDF(title, headers, rows);
     }
   };
+
 
   const shareOnWhatsApp = (worker?: WorkerLedger) => {
     let text = "";
