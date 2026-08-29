@@ -245,7 +245,7 @@ export default function ReportPage() {
 
       {/* === मजदूर-वार हिसाब मिलान (Reconciliation) === */}
       <WorkerReconciliationTable
-        rows={ledger}
+        rows={visibleLedger}
         totals={ledgerTotals}
         defaultCollapsed={false}
       />
@@ -262,10 +262,12 @@ export default function ReportPage() {
         onSiteFilterChange={setSiteFilter}
       />
 
-      {ledger.length === 0 ? (
+      {visibleLedger.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">कोई रिकॉर्ड नहीं</p>
-          <p className="text-sm mt-1">इस महीने की हाजिरी लगाएं</p>
+          <p className="text-sm mt-1">
+            {activeSite ? `${activeSite} पर इस महीने कोई हाजिरी नहीं` : "इस महीने की हाजिरी लगाएं"}
+          </p>
         </div>
       ) : (
         <>
@@ -291,9 +293,10 @@ export default function ReportPage() {
           </div>
 
           <div className="space-y-3">
-            {ledger.map((s) => (
+            {visibleLedger.map((s) => (
               <LedgerCard
                 key={s.worker.id}
+
                 l={s}
                 month={month}
                 year={year}
