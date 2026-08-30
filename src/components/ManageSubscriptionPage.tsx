@@ -97,8 +97,10 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
   };
 
   const isPro = premium;
-  const planLabel = isPro ? meta.planName || "Premium" : "Free";
+  const trialActive = !isPro && trial.active;
+  const planLabel = isPro ? meta.planName || "Premium" : trialActive ? "फ्री ट्रायल" : "Free";
   const cycleLabel = meta.cycle === "yearly" ? "वार्षिक" : meta.cycle === "monthly" ? "मासिक" : "—";
+
 
   return (
     <div className="relative pb-10 animate-fade-in">
