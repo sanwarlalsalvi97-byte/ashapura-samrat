@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Crown, Leaf, RefreshCw, CheckCircle2, XCircle, Sparkles, ShieldCheck, CalendarClock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { isPremium, setPremium } from "@/lib/premium";
+import { isPremium, setPremium, loadTrial, getTrial, trialDaysLeft, FREE_WORKER_LIMIT, TRIAL_MONTHS } from "@/lib/premium";
 import type { TabId } from "./BottomNav";
 
 interface Props {
@@ -44,20 +44,26 @@ function fmtDate(iso?: string) {
 export default function ManageSubscriptionPage({ onNavigate }: Props) {
   const [premium, setPremiumState] = useState<boolean>(isPremium());
   const [meta, setMeta] = useState<SubMeta>(readMeta());
+  const [trial, setTrial] = useState(getTrial());
+  const [daysLeft, setDaysLeft] = useState(trialDaysLeft());
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     const onUpd = () => {
       setPremiumState(isPremium());
       setMeta(readMeta());
+      setTrial(getTrial());
+      setDaysLeft(trialDaysLeft());
     };
     window.addEventListener("premium-updated", onUpd);
     window.addEventListener("storage", onUpd);
+    loadTrial();
     return () => {
       window.removeEventListener("premium-updated", onUpd);
       window.removeEventListener("storage", onUpd);
     };
   }, []);
+
 
   const restorePurchases = async () => {
     setRestoring(true);
@@ -91,8 +97,10 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
   };
 
   const isPro = premium;
-  const planLabel = isPro ? meta.planName || "Premium" : "Free";
+  const trialActive = !isPro && trial.active;
+  const planLabel = isPro ? meta.planName || "Premium" : trialActive ? "फ्री ट्रायल" : "Free";
   const cycleLabel = meta.cycle === "yearly" ? "वार्षिक" : meta.cycle === "monthly" ? "मासिक" : "—";
+
 
   return (
     <div className="relative pb-10 animate-fade-in">

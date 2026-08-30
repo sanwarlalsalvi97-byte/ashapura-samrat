@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
 import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
-import { canAddWorker, isPremium, FREE_WORKER_LIMIT } from "@/lib/premium";
+import { canAddWorker, isPremium, FREE_WORKER_LIMIT, loadTrial, getTrial, trialDaysLeft } from "@/lib/premium";
 
 import {
   AlertDialog,
@@ -40,8 +40,12 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [planTick, setPlanTick] = useState(0);
   const premium = isPremium();
+  const trial = getTrial();
+  const daysLeft = trialDaysLeft();
   const blocked = !canAddWorker(workers.length);
+
 
   const load = async () => {
     try {
@@ -61,14 +65,19 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
 
   useEffect(() => {
     load();
+    loadTrial();
     const refresh = () => setSites(listSites());
+    const planRefresh = () => setPlanTick((t) => t + 1);
     window.addEventListener("sites-updated", refresh);
+    window.addEventListener("premium-updated", planRefresh);
     const unsub = subscribePaymentSources(load);
     return () => {
       window.removeEventListener("sites-updated", refresh);
+      window.removeEventListener("premium-updated", planRefresh);
       unsub();
     };
   }, []);
+
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
     if (newSite === "__add__") {
@@ -126,10 +135,15 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
       </div>
 
       {!premium && (
-        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2">
-          Free Plan: {workers.length}/{FREE_WORKER_LIMIT} मजदूर
+        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2" data-tick={planTick}>
+          {trial.active ? (
+            <>फ्री ट्रायल: {workers.length}/{FREE_WORKER_LIMIT} मजदूर · {daysLeft} दिन बाकी</>
+          ) : (
+            <>फ्री ट्रायल समाप्त — नए मजदूर जोड़ने के लिए सब्सक्रिप्शन लें</>
+          )}
         </div>
       )}
+
 
       <PremiumUpgradeDialog
         open={showUpgrade}

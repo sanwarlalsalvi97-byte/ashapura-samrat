@@ -6,7 +6,91 @@ import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "as_premium_v1";
 const RECEIPT_KEY = "as_premium_receipt_v1";
-export const FREE_WORKER_LIMIT = 2;
+const TRIAL_KEY = "as_trial_v1";
+/** Free trial: 3 months from sign-up, up to 7 workers. */
+export const FREE_WORKER_LIMIT = 7;
+export const TRIAL_MONTHS = 3;
+
+export type TrialInfo = {
+  trialEndsAt: string | null; // ISO
+  active: boolean;
+};
+
+let trialCache: TrialInfo = readTrialCache();
+
+function readTrialCache(): TrialInfo {
+  try {
+    const raw = localStorage.getItem(TRIAL_KEY);
+    const parsed = raw ? (JSON.parse(raw) as TrialInfo) : null;
+    if (!parsed?.trialEndsAt) return { trialEndsAt: null, active: false };
+    return { trialEndsAt: parsed.trialEndsAt, active: new Date(parsed.trialEndsAt).getTime() > Date.now() };
+  } catch {
+    return { trialEndsAt: null, active: false };
+  }
+}
+
+/** Synchronous trial state (from cache). Call `loadTrial()` to refresh. */
+export function getTrial(): TrialInfo {
+  trialCache = readTrialCache();
+  return trialCache;
+}
+
+export function isTrialActive(): boolean {
+  return getTrial().active;
+}
+
+export function trialDaysLeft(): number {
+  const t = getTrial();
+  if (!t.trialEndsAt) return 0;
+  const ms = new Date(t.trialEndsAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86_400_000));
+}
+
+/**
+ * Ensures the signed-in user has a subscription row (3-month trial from
+ * sign-up) and caches the trial end date locally.
+ */
+export async function loadTrial(): Promise<TrialInfo> {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
+    if (!user) return getTrial();
+
+    let { data: row } = await supabase
+      .from("subscriptions")
+      .select("trial_ends_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!row) {
+      const started = user.created_at ? new Date(user.created_at) : new Date();
+      const ends = new Date(started);
+      ends.setMonth(ends.getMonth() + TRIAL_MONTHS);
+      const { data: inserted } = await supabase
+        .from("subscriptions")
+        .insert({
+          user_id: user.id,
+          trial_started_at: started.toISOString(),
+          trial_ends_at: ends.toISOString(),
+        })
+        .select("trial_ends_at")
+        .maybeSingle();
+      row = inserted ?? { trial_ends_at: ends.toISOString() };
+    }
+
+    const info: TrialInfo = {
+      trialEndsAt: row.trial_ends_at,
+      active: new Date(row.trial_ends_at).getTime() > Date.now(),
+    };
+    localStorage.setItem(TRIAL_KEY, JSON.stringify(info));
+    trialCache = info;
+    window.dispatchEvent(new Event("premium-updated"));
+    return info;
+  } catch {
+    return getTrial();
+  }
+}
+
 
 export type PremiumReceipt = {
   productId: string;
@@ -118,5 +202,9 @@ export async function refreshPremiumFromReceipt(): Promise<boolean> {
 
 export function canAddWorker(currentCount: number): boolean {
   if (isPremium()) return true;
-  return currentCount < FREE_WORKER_LIMIT;
+  // Free trial (3 months from sign-up): up to FREE_WORKER_LIMIT workers.
+  if (isTrialActive()) return currentCount < FREE_WORKER_LIMIT;
+  // Trial over → subscription required.
+  return false;
 }
+
