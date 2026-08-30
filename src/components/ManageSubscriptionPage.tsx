@@ -44,20 +44,26 @@ function fmtDate(iso?: string) {
 export default function ManageSubscriptionPage({ onNavigate }: Props) {
   const [premium, setPremiumState] = useState<boolean>(isPremium());
   const [meta, setMeta] = useState<SubMeta>(readMeta());
+  const [trial, setTrial] = useState(getTrial());
+  const [daysLeft, setDaysLeft] = useState(trialDaysLeft());
   const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     const onUpd = () => {
       setPremiumState(isPremium());
       setMeta(readMeta());
+      setTrial(getTrial());
+      setDaysLeft(trialDaysLeft());
     };
     window.addEventListener("premium-updated", onUpd);
     window.addEventListener("storage", onUpd);
+    loadTrial();
     return () => {
       window.removeEventListener("premium-updated", onUpd);
       window.removeEventListener("storage", onUpd);
     };
   }, []);
+
 
   const restorePurchases = async () => {
     setRestoring(true);
