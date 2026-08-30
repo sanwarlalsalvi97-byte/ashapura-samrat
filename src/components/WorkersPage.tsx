@@ -40,8 +40,12 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
   const [sites, setSites] = useState<Site[]>(() => listSites());
   const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [planTick, setPlanTick] = useState(0);
   const premium = isPremium();
+  const trial = getTrial();
+  const daysLeft = trialDaysLeft();
   const blocked = !canAddWorker(workers.length);
+
 
   const load = async () => {
     try {
