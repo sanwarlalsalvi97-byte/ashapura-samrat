@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Crown, Leaf, RefreshCw, CheckCircle2, XCircle, Sparkles, ShieldCheck, CalendarClock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { isPremium, setPremium } from "@/lib/premium";
+import { isPremium, setPremium, loadTrial, getTrial, trialDaysLeft, FREE_WORKER_LIMIT, TRIAL_MONTHS } from "@/lib/premium";
 import type { TabId } from "./BottomNav";
 
 interface Props {
