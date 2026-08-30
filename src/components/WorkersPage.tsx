@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
 import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
-import { canAddWorker, isPremium, FREE_WORKER_LIMIT } from "@/lib/premium";
+import { canAddWorker, isPremium, FREE_WORKER_LIMIT, loadTrial, getTrial, trialDaysLeft } from "@/lib/premium";
 
 import {
   AlertDialog,
