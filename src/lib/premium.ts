@@ -202,5 +202,9 @@ export async function refreshPremiumFromReceipt(): Promise<boolean> {
 
 export function canAddWorker(currentCount: number): boolean {
   if (isPremium()) return true;
-  return currentCount < FREE_WORKER_LIMIT;
+  // Free trial (3 months from sign-up): up to FREE_WORKER_LIMIT workers.
+  if (isTrialActive()) return currentCount < FREE_WORKER_LIMIT;
+  // Trial over → subscription required.
+  return false;
 }
+
