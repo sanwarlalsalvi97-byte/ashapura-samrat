@@ -135,10 +135,15 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
       </div>
 
       {!premium && (
-        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2">
-          Free Plan: {workers.length}/{FREE_WORKER_LIMIT} मजदूर
+        <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2" data-tick={planTick}>
+          {trial.active ? (
+            <>फ्री ट्रायल: {workers.length}/{FREE_WORKER_LIMIT} मजदूर · {daysLeft} दिन बाकी</>
+          ) : (
+            <>फ्री ट्रायल समाप्त — नए मजदूर जोड़ने के लिए सब्सक्रिप्शन लें</>
+          )}
         </div>
       )}
+
 
       <PremiumUpgradeDialog
         open={showUpgrade}
