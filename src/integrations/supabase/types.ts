@@ -507,6 +507,39 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          plan: string
+          premium_until: string | null
+          trial_ends_at: string
+          trial_started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan?: string
+          premium_until?: string | null
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan?: string
+          premium_until?: string | null
+          trial_ends_at?: string
+          trial_started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
