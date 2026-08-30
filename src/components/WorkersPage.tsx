@@ -65,14 +65,19 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
 
   useEffect(() => {
     load();
+    loadTrial();
     const refresh = () => setSites(listSites());
+    const planRefresh = () => setPlanTick((t) => t + 1);
     window.addEventListener("sites-updated", refresh);
+    window.addEventListener("premium-updated", planRefresh);
     const unsub = subscribePaymentSources(load);
     return () => {
       window.removeEventListener("sites-updated", refresh);
+      window.removeEventListener("premium-updated", planRefresh);
       unsub();
     };
   }, []);
+
 
   const handleSiteChange = async (w: Worker, newSite: string) => {
     if (newSite === "__add__") {
