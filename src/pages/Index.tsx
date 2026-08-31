@@ -79,6 +79,14 @@ function IndexInner() {
     }
   }, [session]);
 
+  // Ensure the 3-month free trial record exists / is refreshed after sign-in
+  useEffect(() => {
+    if (!session) return;
+    loadTrial();
+  }, [session]);
+
+
+
   // GPS status check
   useEffect(() => {
     if (!navigator.geolocation) { setGpsOn(false); return; }
