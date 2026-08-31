@@ -3,7 +3,8 @@ name: Build Android Release
 on:
   push:
     branches:
-      - main  # या आपकी मुख्य ब्रांच का नाम
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,28 +19,27 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build web assets
-        run: npm run build
-
-      - name: Add Android platform
-        run: npx cap add android || true
-
-      - name: Ensure android/app directory exists
-        run: mkdir -p android/app
-
-      - name: Capacitor sync
-        run: npx cap sync android
-
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Prepare keystore (secret or generated fallback)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web assets
+        run: npm run build
+
+      # NOTE: the android/ folder is committed — never run `npx cap add android`,
+      # it would overwrite the customised manifest/gradle files.
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Prepare signing config
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -47,25 +47,58 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
-          mkdir -p android/app
-          
-          # यदि बेस64 सीक्रेट उपलब्ध है तो डिकोड करें, वरना नया कीस्टोर सही पाथ पर बनाएं
+          STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-androidkeystore}"
+          KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
+          ALIAS="${ANDROID_KEY_ALIAS:-ashapura}"
+
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+            echo "Using keystore from repository secret."
           else
-                      keytool -genkey -v -noprompt -keystore android/app/release.keystore \
-            -alias "${ANDROID_KEY_ALIAS:-my-key-alias}" \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass "${ANDROID_KEYSTORE_PASSWORD:-androidkeystore}" \
-            -keypass "${ANDROID_KEY_PASSWORD:-androidkeystore}" \
-            -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=US"
-
+            keytool -genkeypair -v -noprompt \
+              -keystore android/app/release.keystore \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+              -dname "CN=Ashapura Samrat, OU=Mobile, O=Ashapura, L=Unknown, ST=Unknown, C=IN"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret — generated a throwaway keystore. This build cannot be used for Play Store updates."
           fi
+
+          cat > android/keystore.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$STORE_PASS
+          keyAlias=$ALIAS
+          keyPassword=$KEY_PASS
+          EOF
 
       - name: Build AAB and APK
         run: |
           cd android
-          ./gradlew bundleRelease assembleRelease
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace
 
+      - name: Verify no advertising IDs
+        run: bash scripts/check-ad-id.sh || true
 
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload build reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: |
+            android/app/build/reports/**
+            android/build/reports/**
+          if-no-files-found: ignore
