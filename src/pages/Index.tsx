@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { loadTrial } from "@/lib/premium";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import Auth from "./Auth";
@@ -78,6 +79,14 @@ function IndexInner() {
       window.location.replace(next);
     }
   }, [session]);
+
+  // Ensure the 3-month free trial record exists / is refreshed after sign-in
+  useEffect(() => {
+    if (!session) return;
+    loadTrial();
+  }, [session]);
+
+
 
   // GPS status check
   useEffect(() => {

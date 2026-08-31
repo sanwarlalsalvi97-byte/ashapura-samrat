@@ -150,11 +150,15 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
                     : "bg-emerald-500/15 text-emerald-600"
                 }`}
               >
-                {isPro ? "ACTIVE" : "FREE"}
+                {isPro ? "ACTIVE" : trialActive ? "TRIAL" : "EXPIRED"}
               </span>
             </div>
             <p className="text-[12px] text-muted-foreground mt-0.5">
-              {isPro ? "सभी Premium फीचर्स अनलॉक हैं" : "अधिकतम 2 मजदूर तक सीमित"}
+              {isPro
+                ? "सभी Premium फीचर्स अनलॉक हैं"
+                : trialActive
+                ? `${TRIAL_MONTHS} महीने का फ्री ट्रायल — अधिकतम ${FREE_WORKER_LIMIT} मजदूर · ${daysLeft} दिन बाकी`
+                : "फ्री ट्रायल समाप्त — कृपया सब्सक्रिप्शन लें"}
             </p>
           </div>
         </div>
@@ -169,7 +173,7 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
           <MetaTile
             icon={<ShieldCheck className="w-4 h-4" />}
             label="स्रोत"
-            value={isPro ? (meta.source === "play" ? "Google Play" : meta.source === "trial" ? "Trial" : "Manual") : "—"}
+            value={isPro ? (meta.source === "play" ? "Google Play" : meta.source === "trial" ? "Trial" : "Manual") : trialActive ? "फ्री ट्रायल" : "—"}
           />
           <MetaTile
             icon={<CalendarClock className="w-4 h-4" />}
@@ -178,10 +182,15 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
           />
           <MetaTile
             icon={isPro && meta.autoRenew ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-muted-foreground" />}
-            label={isPro && meta.autoRenew ? "अगला रिन्यूअल" : "रिन्यूअल"}
-            value={isPro ? (meta.autoRenew ? fmtDate(meta.renewsAt) : "बंद (Cancelled)") : "—"}
+            label={isPro ? (meta.autoRenew ? "अगला रिन्यूअल" : "रिन्यूअल") : "ट्रायल खत्म"}
+            value={isPro
+              ? (meta.autoRenew ? fmtDate(meta.renewsAt) : "बंद (Cancelled)")
+              : trial.trialEndsAt
+              ? fmtDate(trial.trialEndsAt)
+              : "—"}
           />
         </div>
+
 
         {/* Actions */}
         <div className="mt-5 flex flex-col gap-2">
