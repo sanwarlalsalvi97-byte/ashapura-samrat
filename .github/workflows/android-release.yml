@@ -1,12 +1,14 @@
-name: Build Signed AAB + APK
+name: Build Android Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # या आपकी मुख्य ब्रांच का नाम
 
 jobs:
   build:
-    name: Build Signed Release
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -14,17 +16,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: 18
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build web bundle
+      - name: Build web assets
         run: npm run build
 
       - name: Add Android platform
         run: npx cap add android || true
+
+      - name: Ensure android/app directory exists
+        run: mkdir -p android/app
 
       - name: Capacitor sync
         run: npx cap sync android
@@ -43,74 +47,23 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
-          DEFAULT_PASS="androidkeystore"
-          DEFAULT_ALIAS="android"
+          mkdir -p android/app
+          
+          # यदि बेस64 सीक्रेट उपलब्ध है तो डिकोड करें, वरना नया कीस्टोर सही पाथ पर बनाएं
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Using release keystore from ANDROID_KEYSTORE_BASE64 secret."
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
-            STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-$DEFAULT_PASS}"
-            KEY_ALIAS="${ANDROID_KEY_ALIAS:-$DEFAULT_ALIAS}"
-            KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
-            echo "SIGNING_MODE=release-secret" >> "$GITHUB_ENV"
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
           else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - generating fallback keystore."
-            STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-$DEFAULT_PASS}"
-            KEY_ALIAS="${ANDROID_KEY_ALIAS:-$DEFAULT_ALIAS}"
-            KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
-            keytool -genkeypair -v \
-              -keystore android/release.keystore \
-              -storetype PKCS12 \
-              -alias "$KEY_ALIAS" \
+            keytool -genkey -v -keystore android/app/release.keystore \
+              -alias "${ANDROID_KEY_ALIAS:-my-key-alias}" \
               -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
-              -dname "CN=Ashapura Samrat, OU=Build, O=Ashapura, L=NA, S=NA, C=IN"
-            echo "SIGNING_MODE=fallback-generated" >> "$GITHUB_ENV"
+              -storepass "${ANDROID_KEYSTORE_PASSWORD:-androidkeystore}" \
+              -keypass "${ANDROID_KEY_PASSWORD:-androidkeystore}"
           fi
-          cat > android/keystore.properties << EOF
-          storeFile=release.keystore
-          storePassword=$STORE_PASS
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASS
-          EOF
-          cat > android/signing-config.json << EOF
-          {
-            "storeFile": "release.keystore",
-            "storePassword": "$STORE_PASS",
-            "keyAlias": "$KEY_ALIAS",
-            "keyPassword": "$KEY_PASS"
-          }
-          EOF
 
       - name: Build AAB and APK
         run: |
           cd android
-          chmod +x gradlew
           ./gradlew bundleRelease assembleRelease
 
-      - name: Verify no AD_ID / AdServices permissions
-        run: |
-          chmod +x scripts/check-ad-id.sh
-          ./scripts/check-ad-id.sh
-
-
-      - name: Signing summary
-        if: always()
-        run: 'echo "Signing mode: ${SIGNING_MODE:-unknown}" >> $GITHUB_STEP_SUMMARY'
-
-      - name: Clean up keystore
-        if: always()
-        run: rm -f android/release.keystore android/keystore.properties android/signing-config.json
-
-      - name: Upload Signed AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-signed-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
-
-      - name: Upload Signed APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-signed-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
 
 
