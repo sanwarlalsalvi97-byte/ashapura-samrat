@@ -53,7 +53,7 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
           else
-                      keytool -genkey -v -keystore android/app/release.keystore \
+                      keytool -genkey -v -noprompt -keystore android/app/release.keystore \
             -alias "${ANDROID_KEY_ALIAS:-my-key-alias}" \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "${ANDROID_KEYSTORE_PASSWORD:-androidkeystore}" \
