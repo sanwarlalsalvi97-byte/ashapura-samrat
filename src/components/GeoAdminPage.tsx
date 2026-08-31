@@ -178,20 +178,20 @@ export default function GeoAdminPage() {
 
   /** Undo a rejected punch from the main हाजिरी sheet. */
   const revertFromAttendance = async (log: LogRow) => {
-    const { data: existing } = await supabase
+    const { data: rows } = await supabase
       .from("attendance")
       .select("id, in_time, out_time")
       .eq("worker_id", log.worker_id)
       .eq("date", log.log_date)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const existing = rows?.[0];
     if (!existing) return;
     const inT = log.attendance_type === "in" ? null : existing.in_time;
     const outT = log.attendance_type === "out" ? null : existing.out_time;
-    if (!inT && !outT) {
-      await supabase.from("attendance").delete().eq("id", existing.id);
-      return;
-    }
     const total = calcHours(inT, outT);
+    // Only clear the punch times — never delete the row, it may hold
+    // manually entered status/advance/site data.
     await supabase.from("attendance").update({
       in_time: inT, out_time: outT,
       total_hours: total,
