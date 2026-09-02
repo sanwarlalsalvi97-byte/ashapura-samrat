@@ -136,7 +136,9 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
 
       {!premium && (
         <div className="text-xs text-muted-foreground bg-muted/60 rounded-md px-3 py-2" data-tick={planTick}>
-          {trial.active ? (
+          {!trial.known ? (
+            <>फ्री प्लान: {workers.length}/{FREE_WORKER_LIMIT} मजदूर · ट्रायल जानकारी लोड हो रही है…</>
+          ) : trial.active ? (
             <>फ्री ट्रायल: {workers.length}/{FREE_WORKER_LIMIT} मजदूर · {daysLeft} दिन बाकी</>
           ) : (
             <>फ्री ट्रायल समाप्त — नए मजदूर जोड़ने के लिए सब्सक्रिप्शन लें</>
