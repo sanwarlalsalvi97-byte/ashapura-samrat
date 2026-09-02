@@ -47,28 +47,26 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -e
-          STORE_PASS="${ANDROID_KEYSTORE_PASSWORD:-androidkeystore}"
-          KEY_PASS="${ANDROID_KEY_PASSWORD:-$STORE_PASS}"
-          ALIAS="${ANDROID_KEY_ALIAS:-ashapura}"
-
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
-            echo "Using keystore from repository secret."
-          else
-            keytool -genkeypair -v -noprompt \
-              -keystore android/app/release.keystore \
-              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
-              -dname "CN=Ashapura Samrat, OU=Mobile, O=Ashapura, L=Unknown, ST=Unknown, C=IN"
-            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret — generated a throwaway keystore. This build cannot be used for Play Store updates."
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing. Play Store expects the upload key with SHA1 D0:3E:73:A7:06:C5:C8:51:F6:E4:60:44:A5:FA:D6:E1:BB:A4:ED:78. Add the keystore secrets before building a release."
+            exit 1
           fi
+          : "${ANDROID_KEYSTORE_PASSWORD:?ANDROID_KEYSTORE_PASSWORD secret is missing}"
+          : "${ANDROID_KEY_ALIAS:?ANDROID_KEY_ALIAS secret is missing}"
+          KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+
+          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\n' | base64 --decode > android/app/release.keystore
 
           cat > android/keystore.properties <<EOF
           storeFile=release.keystore
-          storePassword=$STORE_PASS
-          keyAlias=$ALIAS
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$KEY_PASS
           EOF
+
+          echo "Keystore certificate fingerprints:"
+          keytool -list -v -keystore android/app/release.keystore \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "Alias name|SHA1:|SHA256:"
 
       - name: Build AAB and APK
         run: |
@@ -76,8 +74,17 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace
 
+      - name: Verify AAB signing certificate
+        run: |
+          set -e
+          AAB=$(ls android/app/build/outputs/bundle/release/*.aab | head -n1)
+          echo "Verifying $AAB"
+          unzip -p "$AAB" META-INF/*.RSA 2>/dev/null | keytool -printcert 2>/dev/null | grep -E "SHA1:|SHA256:" || \
+            echo "::warning::Could not read certificate from AAB; check Play Console fingerprint manually."
+
       - name: Verify no advertising IDs
         run: bash scripts/check-ad-id.sh || true
+
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
