@@ -14,7 +14,11 @@ export const TRIAL_MONTHS = 3;
 export type TrialInfo = {
   trialEndsAt: string | null; // ISO
   active: boolean;
+  /** false when no trial record has ever been loaded (offline / first render). */
+  known: boolean;
 };
+
+const UNKNOWN_TRIAL: TrialInfo = { trialEndsAt: null, active: false, known: false };
 
 let trialCache: TrialInfo = readTrialCache();
 
@@ -22,10 +26,14 @@ function readTrialCache(): TrialInfo {
   try {
     const raw = localStorage.getItem(TRIAL_KEY);
     const parsed = raw ? (JSON.parse(raw) as TrialInfo) : null;
-    if (!parsed?.trialEndsAt) return { trialEndsAt: null, active: false };
-    return { trialEndsAt: parsed.trialEndsAt, active: new Date(parsed.trialEndsAt).getTime() > Date.now() };
+    if (!parsed?.trialEndsAt) return UNKNOWN_TRIAL;
+    return {
+      trialEndsAt: parsed.trialEndsAt,
+      active: new Date(parsed.trialEndsAt).getTime() > Date.now(),
+      known: true,
+    };
   } catch {
-    return { trialEndsAt: null, active: false };
+    return UNKNOWN_TRIAL;
   }
 }
 
