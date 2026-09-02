@@ -89,6 +89,7 @@ export async function loadTrial(): Promise<TrialInfo> {
     const info: TrialInfo = {
       trialEndsAt: row.trial_ends_at,
       active: new Date(row.trial_ends_at).getTime() > Date.now(),
+      known: true,
     };
     localStorage.setItem(TRIAL_KEY, JSON.stringify(info));
     trialCache = info;
