@@ -14,7 +14,11 @@ export const TRIAL_MONTHS = 3;
 export type TrialInfo = {
   trialEndsAt: string | null; // ISO
   active: boolean;
+  /** false when no trial record has ever been loaded (offline / first render). */
+  known: boolean;
 };
+
+const UNKNOWN_TRIAL: TrialInfo = { trialEndsAt: null, active: false, known: false };
 
 let trialCache: TrialInfo = readTrialCache();
 
@@ -22,10 +26,14 @@ function readTrialCache(): TrialInfo {
   try {
     const raw = localStorage.getItem(TRIAL_KEY);
     const parsed = raw ? (JSON.parse(raw) as TrialInfo) : null;
-    if (!parsed?.trialEndsAt) return { trialEndsAt: null, active: false };
-    return { trialEndsAt: parsed.trialEndsAt, active: new Date(parsed.trialEndsAt).getTime() > Date.now() };
+    if (!parsed?.trialEndsAt) return UNKNOWN_TRIAL;
+    return {
+      trialEndsAt: parsed.trialEndsAt,
+      active: new Date(parsed.trialEndsAt).getTime() > Date.now(),
+      known: true,
+    };
   } catch {
-    return { trialEndsAt: null, active: false };
+    return UNKNOWN_TRIAL;
   }
 }
 
@@ -81,6 +89,7 @@ export async function loadTrial(): Promise<TrialInfo> {
     const info: TrialInfo = {
       trialEndsAt: row.trial_ends_at,
       active: new Date(row.trial_ends_at).getTime() > Date.now(),
+      known: true,
     };
     localStorage.setItem(TRIAL_KEY, JSON.stringify(info));
     trialCache = info;
@@ -202,8 +211,13 @@ export async function refreshPremiumFromReceipt(): Promise<boolean> {
 
 export function canAddWorker(currentCount: number): boolean {
   if (isPremium()) return true;
+  const trial = getTrial();
+  // Trial state unknown (offline / first load / fetch failed): don't block the
+  // user — apply the free-tier limit optimistically instead of wrongly
+  // reporting "trial expired".
+  if (!trial.known) return currentCount < FREE_WORKER_LIMIT;
   // Free trial (3 months from sign-up): up to FREE_WORKER_LIMIT workers.
-  if (isTrialActive()) return currentCount < FREE_WORKER_LIMIT;
+  if (trial.active) return currentCount < FREE_WORKER_LIMIT;
   // Trial over → subscription required.
   return false;
 }
