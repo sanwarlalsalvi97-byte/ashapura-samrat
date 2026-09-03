@@ -84,14 +84,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Storage & photos (backup files, worker photos) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <!-- NOTE: no READ_MEDIA_IMAGES / READ/WRITE_EXTERNAL_STORAGE — Google Play policy.
+         Photo/backup file access uses the system picker (SAF) / camera capture instead. -->
 
     <!-- Microphone (voice notes) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

@@ -77,16 +77,9 @@ public class NativePermissionsPlugin extends Plugin {
                 return new String[] {};
             case "photos":
             case "storage":
-                if (Build.VERSION.SDK_INT >= 33) {
-                    return new String[] { Manifest.permission.READ_MEDIA_IMAGES };
-                }
-                if (Build.VERSION.SDK_INT >= 29) {
-                    return new String[] { Manifest.permission.READ_EXTERNAL_STORAGE };
-                }
-                return new String[] {
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                };
+                // Broad media/storage permissions removed for Google Play policy.
+                // File/photo access goes through the system picker (SAF) — no runtime permission needed.
+                return new String[] {};
             default:
                 return null;
         }
@@ -169,7 +162,7 @@ public class NativePermissionsPlugin extends Plugin {
     /** Snapshot of every group — useful for a settings/diagnostics screen. */
     @PluginMethod
     public void checkAll(PluginCall call) {
-        String[] groups = { "camera", "microphone", "location", "photos", "storage", "contacts", "notifications" };
+        String[] groups = { "camera", "microphone", "location", "contacts", "notifications" };
         JSObject ret = new JSObject();
         JSArray denied = new JSArray();
         for (String g : groups) {

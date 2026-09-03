@@ -12,8 +12,6 @@ export type PermissionGroup =
   | "camera"
   | "microphone"
   | "location"
-  | "photos"
-  | "storage"
   | "contacts"
   | "notifications";
 
@@ -33,8 +31,6 @@ export const PERMISSION_LABELS: Record<PermissionGroup, string> = {
   camera: "कैमरा / Camera",
   microphone: "माइक्रोफ़ोन / Microphone",
   location: "लोकेशन / Location",
-  photos: "फ़ोटो / Photos",
-  storage: "स्टोरेज / Storage",
   contacts: "कॉन्टैक्ट्स / Contacts",
   notifications: "नोटिफिकेशन / Notifications",
 };
@@ -69,9 +65,6 @@ async function webRequest(group: PermissionGroup): Promise<boolean> {
       }
       case "contacts":
         return "contacts" in navigator;
-      case "photos":
-      case "storage":
-        return true; // file input / download API needs no permission on web
       default:
         return false;
     }
@@ -122,8 +115,6 @@ export async function checkAllPermissions(): Promise<Record<PermissionGroup, boo
     "camera",
     "microphone",
     "location",
-    "photos",
-    "storage",
     "contacts",
     "notifications",
   ];
@@ -153,7 +144,6 @@ export async function openAppSettings(): Promise<void> {
  */
 export const ensureCameraPermission = () => requestPermission("camera");
 export const ensureMicrophonePermission = () => requestPermission("microphone");
-export const ensurePhotosPermission = () => requestPermission("photos");
 export const ensureContactsPermission = () => requestPermission("contacts");
 export const ensureLocationPermissionNative = () => requestPermission("location");
 export const ensureNotificationsPermission = () => requestPermission("notifications");
