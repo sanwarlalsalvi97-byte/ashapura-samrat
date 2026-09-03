@@ -27,3 +27,8 @@ dist-ssr
 *.keystore
 *.jks
 keystore.properties
+keystore*.txt
+keystore_base*
+keycode.txt
+upload_certificate.pem
+public/keystore*
