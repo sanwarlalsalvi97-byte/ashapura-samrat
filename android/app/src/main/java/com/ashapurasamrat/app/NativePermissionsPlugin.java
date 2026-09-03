@@ -162,7 +162,7 @@ public class NativePermissionsPlugin extends Plugin {
     /** Snapshot of every group — useful for a settings/diagnostics screen. */
     @PluginMethod
     public void checkAll(PluginCall call) {
-        String[] groups = { "camera", "microphone", "location", "photos", "storage", "contacts", "notifications" };
+        String[] groups = { "camera", "microphone", "location", "contacts", "notifications" };
         JSObject ret = new JSObject();
         JSArray denied = new JSArray();
         for (String g : groups) {

@@ -12,8 +12,6 @@ export type PermissionGroup =
   | "camera"
   | "microphone"
   | "location"
-  | "photos"
-  | "storage"
   | "contacts"
   | "notifications";
 
