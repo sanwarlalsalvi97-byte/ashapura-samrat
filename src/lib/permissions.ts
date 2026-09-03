@@ -115,8 +115,6 @@ export async function checkAllPermissions(): Promise<Record<PermissionGroup, boo
     "camera",
     "microphone",
     "location",
-    "photos",
-    "storage",
     "contacts",
     "notifications",
   ];
@@ -146,7 +144,6 @@ export async function openAppSettings(): Promise<void> {
  */
 export const ensureCameraPermission = () => requestPermission("camera");
 export const ensureMicrophonePermission = () => requestPermission("microphone");
-export const ensurePhotosPermission = () => requestPermission("photos");
 export const ensureContactsPermission = () => requestPermission("contacts");
 export const ensureLocationPermissionNative = () => requestPermission("location");
 export const ensureNotificationsPermission = () => requestPermission("notifications");
