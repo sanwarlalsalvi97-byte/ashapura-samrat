@@ -77,16 +77,9 @@ public class NativePermissionsPlugin extends Plugin {
                 return new String[] {};
             case "photos":
             case "storage":
-                if (Build.VERSION.SDK_INT >= 33) {
-                    return new String[] { Manifest.permission.READ_MEDIA_IMAGES };
-                }
-                if (Build.VERSION.SDK_INT >= 29) {
-                    return new String[] { Manifest.permission.READ_EXTERNAL_STORAGE };
-                }
-                return new String[] {
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                };
+                // Broad media/storage permissions removed for Google Play policy.
+                // File/photo access goes through the system picker (SAF) — no runtime permission needed.
+                return new String[] {};
             default:
                 return null;
         }
