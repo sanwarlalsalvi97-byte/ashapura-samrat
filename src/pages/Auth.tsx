@@ -29,8 +29,12 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
+      // In the native Capacitor app window.location.origin is capacitor://localhost,
+      // which Google rejects / can't redirect back to. Always use the absolute
+      // published HTTPS origin there (App Links open the app from that domain).
+      const oauthRedirect = isNative() ? PUBLISHED_URL : window.location.origin;
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: oauthRedirect,
       });
       if (result.error) {
         toast({
