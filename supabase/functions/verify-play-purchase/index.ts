@@ -13,6 +13,7 @@
 //        or { ok: false, error }
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 type Body = {
   productId?: string;
