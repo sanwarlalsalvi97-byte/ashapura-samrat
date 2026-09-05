@@ -22,8 +22,9 @@ export async function initNative(onBack?: () => boolean) {
   initialised = true;
 
   try {
+    // Android 15+ (edge-to-edge): system bars are transparent and the
+    // deprecated window colour APIs are no-ops — only the icon style is set.
     await StatusBar.setStyle({ style: Style.Light });
-    await StatusBar.setBackgroundColor({ color: "#0E7A3A" });
   } catch {}
 
   try {
