@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    // Android 15+ enforces edge-to-edge: let Capacitor apply window insets
+    // as margins so content never sits under the status/navigation bars.
+    adjustMarginsForEdgeToEdge: 'auto',
   },
   // Custom URL scheme used for OAuth / password-recovery callbacks.
   // Must match `custom_url_scheme` in android/app/src/main/res/values/strings.xml

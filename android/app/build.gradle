@@ -37,7 +37,9 @@ android {
             if (keystoreProperties['storeFile']) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled false
+            // Code obfuscation + resource shrinking (see proguard-rules.pro)
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

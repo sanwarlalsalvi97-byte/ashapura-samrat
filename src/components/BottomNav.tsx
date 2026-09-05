@@ -21,7 +21,7 @@ const tabs = [
 export default function BottomNav({ active, onNavigate, allowed }: Props) {
   const visible = allowed ? tabs.filter((t) => allowed.includes(t.id)) : tabs;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-bottom safe-x">
       <div className="flex overflow-x-auto items-center h-16 max-w-lg mx-auto px-1 no-scrollbar">
         {visible.map(({ id, label, icon: Icon }) => (
           <button
