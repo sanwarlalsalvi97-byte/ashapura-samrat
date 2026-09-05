@@ -13,6 +13,7 @@
 //        or { ok: false, error }
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 type Body = {
   productId?: string;
@@ -93,6 +94,27 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Require an authenticated user so we know whose subscription to update.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Missing authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: { user }, error: userErr } = await admin.auth.getUser(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (userErr || !user) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Invalid or expired session" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { productId, purchaseToken, type = "subs" } = (await req.json()) as Body;
     if (!productId || !purchaseToken) {
       return new Response(
@@ -156,13 +178,40 @@ Deno.serve(async (req) => {
       premium = data.purchaseState === 0;
     }
 
+    // Persist verified premium server-side so the client cannot self-grant it.
+    if (premium) {
+      const premiumUntil = expiryTimeMillis
+        ? new Date(expiryTimeMillis).toISOString()
+        : new Date(Date.now() + 100 * 365 * 24 * 3600 * 1000).toISOString(); // lifetime inapp
+      const { error: upErr } = await admin
+        .from("subscriptions")
+        .upsert(
+          { user_id: user.id, premium_until: premiumUntil, plan: "premium" },
+          { onConflict: "user_id" },
+        );
+      if (upErr) {
+        console.error("subscriptions upsert failed:", upErr.message);
+        return new Response(
+          JSON.stringify({ ok: false, error: "Could not record subscription" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    } else if (type === "subs") {
+      // Google says it's no longer active — clear any stale premium record.
+      await admin
+        .from("subscriptions")
+        .update({ premium_until: null, plan: "trial" })
+        .eq("user_id", user.id);
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, premium, expiryTimeMillis, autoRenewing, raw: data }),
+      JSON.stringify({ ok: true, premium, expiryTimeMillis, autoRenewing }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    console.error("verify-play-purchase error:", (e as Error).message);
     return new Response(
-      JSON.stringify({ ok: false, error: (e as Error).message }),
+      JSON.stringify({ ok: false, error: "Verification failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

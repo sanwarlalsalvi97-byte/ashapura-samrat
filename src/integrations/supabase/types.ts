@@ -704,6 +704,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_premium_user: { Args: { _user_id: string }; Returns: boolean }
       link_worker_account: {
         Args: { _phone: string; _worker_code: string }
         Returns: string

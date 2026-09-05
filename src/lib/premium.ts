@@ -66,7 +66,7 @@ export async function loadTrial(): Promise<TrialInfo> {
 
     let { data: row } = await supabase
       .from("subscriptions")
-      .select("trial_ends_at")
+      .select("trial_ends_at, premium_until")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -81,9 +81,9 @@ export async function loadTrial(): Promise<TrialInfo> {
           trial_started_at: started.toISOString(),
           trial_ends_at: ends.toISOString(),
         })
-        .select("trial_ends_at")
+        .select("trial_ends_at, premium_until")
         .maybeSingle();
-      row = inserted ?? { trial_ends_at: ends.toISOString() };
+      row = inserted ?? { trial_ends_at: ends.toISOString(), premium_until: null };
     }
 
     const info: TrialInfo = {
@@ -93,6 +93,15 @@ export async function loadTrial(): Promise<TrialInfo> {
     };
     localStorage.setItem(TRIAL_KEY, JSON.stringify(info));
     trialCache = info;
+
+    // Server-verified premium is the source of truth: the database only gets
+    // premium_until from the verify-play-purchase function after Google
+    // confirms the purchase, so a tampered localStorage flag gets corrected
+    // here on every load.
+    const serverPremium =
+      !!row.premium_until && new Date(row.premium_until).getTime() > Date.now();
+    if (serverPremium !== isPremium()) setPremium(serverPremium);
+
     window.dispatchEvent(new Event("premium-updated"));
     return info;
   } catch {
