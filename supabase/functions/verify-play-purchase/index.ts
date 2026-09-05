@@ -94,6 +94,27 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Require an authenticated user so we know whose subscription to update.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Missing authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: { user }, error: userErr } = await admin.auth.getUser(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (userErr || !user) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Invalid or expired session" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { productId, purchaseToken, type = "subs" } = (await req.json()) as Body;
     if (!productId || !purchaseToken) {
       return new Response(
