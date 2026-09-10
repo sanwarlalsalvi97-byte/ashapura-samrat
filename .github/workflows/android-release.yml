@@ -68,13 +68,13 @@ jobs:
           keytool -list -v -keystore android/app/release.keystore \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "Alias name|SHA1:|SHA256:"
 
-      - name: Build AAB and APK
+            - name: Build AAB and APK
         env:
-          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx6144m -XX:MetaspaceSize=1024m -XX:MaxMetaspaceSize=2048m"
+          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx6144m -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC"
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace
+          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace --no-parallel
 
       - name: Verify AAB signing certificate
         run: |
