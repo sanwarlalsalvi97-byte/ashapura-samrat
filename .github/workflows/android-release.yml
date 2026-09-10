@@ -68,14 +68,9 @@ jobs:
           keytool -list -v -keystore android/app/release.keystore \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "Alias name|SHA1:|SHA256:"
 
-            - name: Build AAB and APK
+      - name: Build AAB and APK
         env:
           ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx4096m"
-        run: |
-          cd android
-          chmod +x ./gradlew
-          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace
-
         run: |
           cd android
           chmod +x ./gradlew
@@ -91,7 +86,6 @@ jobs:
 
       - name: Verify no advertising IDs
         run: bash scripts/check-ad-id.sh || true
-
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
@@ -116,3 +110,4 @@ jobs:
             android/app/build/reports/**
             android/build/reports/**
           if-no-files-found: ignore
+
