@@ -70,7 +70,7 @@ jobs:
 
       - name: Build AAB and APK
         env:
-          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx4096m"
+          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx6144m -XX:MetaspaceSize=1024m -XX:MaxMetaspaceSize=2048m"
         run: |
           cd android
           chmod +x ./gradlew
@@ -110,4 +110,5 @@ jobs:
             android/app/build/reports/**
             android/build/reports/**
           if-no-files-found: ignore
+
 
