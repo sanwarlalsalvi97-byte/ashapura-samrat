@@ -13,8 +13,8 @@ android {
         applicationId "com.ashapura.samrat"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.0.5"
+        versionCode 7
+        versionName "1.0.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -39,7 +39,7 @@ android {
             }
             // Code obfuscation + resource shrinking (see proguard-rules.pro)
             minifyEnabled true
-            shrinkResources true
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -97,3 +97,4 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, Firebase plugins not applied. Crashlytics/Push won't work")
 }
+android { buildTypes { release { minifyEnabled false } } }
