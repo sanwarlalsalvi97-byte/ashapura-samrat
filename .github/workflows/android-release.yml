@@ -68,7 +68,14 @@ jobs:
           keytool -list -v -keystore android/app/release.keystore \
             -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "Alias name|SHA1:|SHA256:"
 
-      - name: Build AAB and APK
+            - name: Build AAB and APK
+        env:
+          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx4096m"
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace
+
         run: |
           cd android
           chmod +x ./gradlew
