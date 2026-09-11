@@ -70,12 +70,15 @@ jobs:
 
       - name: Build AAB and APK
         env:
-          ORG_GRADLE_PROJECT_org_gradle_jvmargs: "-Xmx5600m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC"
-          ORG_GRADLE_PROJECT_android_enablePngCrunchInReleaseBuilds: "false"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx5600m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC -Dfile.encoding=UTF-8"
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew --no-daemon clean bundleRelease assembleRelease --stacktrace -Pandroid.enableBuildCache=false
+          ./gradlew --no-daemon clean --stacktrace
+          ./gradlew --no-daemon bundleRelease assembleRelease --stacktrace \
+            -Dorg.gradle.jvmargs="-Xmx5600m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC" \
+            -Pandroid.enablePngCrunchInReleaseBuilds=false \
+            --no-parallel --no-configuration-cache
 
       - name: Verify AAB signing certificate
         run: |
