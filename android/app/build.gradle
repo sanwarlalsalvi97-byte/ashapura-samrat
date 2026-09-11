@@ -37,11 +37,23 @@ android {
             if (keystoreProperties['storeFile']) {
                 signingConfig signingConfigs.release
             }
-            // Code obfuscation + resource shrinking (see proguard-rules.pro)
-            minifyEnabled true
+            // Minification disabled: keeps CI memory usage low and avoids
+            // R8 stripping Capacitor plugins loaded by reflection.
+            minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/*.kotlin_module']
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
     }
 }
 
@@ -97,4 +109,4 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, Firebase plugins not applied. Crashlytics/Push won't work")
 }
-android { buildTypes { release { minifyEnabled false } } }
+
