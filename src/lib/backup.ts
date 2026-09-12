@@ -26,6 +26,8 @@ const PREF_KEYS = [
   "hajiri-font-size",
   "hajiri-work-time",
   "hajiri-grouping",
+  "hajiri-material-stock",
+  "ashapura-samrat-sites-v2",
 ];
 
 export function backupFilename(now = new Date()) {

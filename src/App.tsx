@@ -12,6 +12,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PinLockGate from "./components/PinLockGate";
 import AuthRedirectHandler from "./components/AuthRedirectHandler";
+import GoogleDriveOAuthReturn from "./pages/GoogleDriveOAuthReturn";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+            <Route path="/oauth/google-drive/return" element={<GoogleDriveOAuthReturn />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -83,7 +83,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [restorePassword, setRestorePassword] = useState("");
   const [restorePreview, setRestorePreview] = useState<ReturnType<typeof previewEnvelope> | null>(null);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => localStorage.getItem("last-backup-at"));
-  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem(AUTO_BACKUP_FREQ_KEY) || "manual");
+  const [autoBackup, setAutoBackup] = useState<string>(() => localStorage.getItem(AUTO_BACKUP_FREQ_KEY) || "daily");
   const [pending, setPending] = useState(() => readPendingBackup());
 
   // Auto-flush pending backup when back online
