@@ -668,6 +668,7 @@ export type Database = {
           linked_user_id: string | null
           name: string
           phone: string | null
+          photo_url: string | null
           role: Database["public"]["Enums"]["worker_role"]
           site_name: string | null
           updated_at: string
@@ -683,6 +684,7 @@ export type Database = {
           linked_user_id?: string | null
           name: string
           phone?: string | null
+          photo_url?: string | null
           role?: Database["public"]["Enums"]["worker_role"]
           site_name?: string | null
           updated_at?: string
@@ -698,6 +700,7 @@ export type Database = {
           linked_user_id?: string | null
           name?: string
           phone?: string | null
+          photo_url?: string | null
           role?: Database["public"]["Enums"]["worker_role"]
           site_name?: string | null
           updated_at?: string
