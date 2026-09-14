@@ -49,7 +49,12 @@ export async function deleteWorker(workerId: string) {
   if (error) throw error;
 }
 
-export async function updateWorker(workerId: string, updates: { name: string; role: WorkerRole; daily_rate: number; site_name: string | null; phone: string | null; upi_id?: string | null }) {
+export async function deleteWorkerPermanently(workerId: string) {
+  const { error } = await supabase.from("workers").delete().eq("id", workerId);
+  if (error) throw error;
+}
+
+export async function updateWorker(workerId: string, updates: { name: string; role: WorkerRole; daily_rate: number; site_name: string | null; phone: string | null; upi_id?: string | null; photo_url?: string | null }) {
   const { error } = await supabase
     .from("workers")
     .update(updates)

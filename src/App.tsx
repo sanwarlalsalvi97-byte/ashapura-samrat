@@ -13,6 +13,8 @@ import OAuthConsent from "./pages/OAuthConsent.tsx";
 import PinLockGate from "./components/PinLockGate";
 import AuthRedirectHandler from "./components/AuthRedirectHandler";
 import GoogleDriveOAuthReturn from "./pages/GoogleDriveOAuthReturn";
+import LandingPage from "./pages/LandingPage";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient();
 
@@ -21,11 +23,12 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PinLockGate>
-        <BrowserRouter>
+      <BrowserRouter>
           <AuthRedirectHandler />
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/app" element={<PinLockGate><Index /></PinLockGate>} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/trust" element={<Trust />} />
             <Route path="/privacy" element={<Privacy />} />
@@ -35,8 +38,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </PinLockGate>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

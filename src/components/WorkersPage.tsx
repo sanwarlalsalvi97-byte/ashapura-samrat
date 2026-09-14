@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { listSites, type Site, createSite } from "@/lib/sites";
 import { computeWorkerPayments, subscribePaymentSources, type WorkerPayment } from "@/lib/payment-engine";
 import { canAddWorker, isPremium, FREE_WORKER_LIMIT, loadTrial, getTrial, trialDaysLeft } from "@/lib/premium";
+import { createWorkerPhotoUrls } from "@/lib/worker-photos";
 
 import {
   AlertDialog,
@@ -41,6 +42,7 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
   const [paymentsMap, setPaymentsMap] = useState<Map<string, WorkerPayment>>(new Map());
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [planTick, setPlanTick] = useState(0);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const premium = isPremium();
   const trial = getTrial();
   const daysLeft = trialDaysLeft();
@@ -51,6 +53,8 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
     try {
       const ws = await getWorkers();
       setWorkers(ws);
+      const paths = ws.map((worker) => worker.photo_url).filter((path): path is string => Boolean(path));
+      createWorkerPhotoUrls(paths).then(setPhotoUrls).catch(() => setPhotoUrls({}));
       setSites(listSites());
 
       const now = new Date();
@@ -169,7 +173,13 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
               <Card>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      {w.photo_url && photoUrls[w.photo_url] ? (
+                        <img src={photoUrls[w.photo_url]} alt={`${w.name} की फोटो`} className="h-12 w-12 shrink-0 rounded-full border border-border object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary/10 font-bold text-primary">{w.name.trim().slice(0, 1)}</div>
+                      )}
+                      <div className="min-w-0">
                       <h3 className="font-semibold truncate">{w.name}</h3>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[w.role] || ""}`}>
@@ -189,6 +199,7 @@ export default function WorkersPage({ onNavigate }: { onNavigate?: (tab: any) =>
                         )}
                       </div>
 
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">

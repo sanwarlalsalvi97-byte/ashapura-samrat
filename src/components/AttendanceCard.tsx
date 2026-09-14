@@ -2,7 +2,8 @@ import { daysInMonth, isoDateFromParts, monthBoundsISO, toISODate, weekdayOfISO 
 import { useEffect, useMemo, useState } from "react";
 import { markAttendance, type Worker, type AttendanceStatus } from "@/lib/supabase-helpers";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, MapPin, Loader2, Pencil, Clock, Timer, Check } from "lucide-react";
+import { CalendarDays, MapPin, Loader2, Pencil, Clock, Timer, Check, ScanFace } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listSites, createSite, type Site } from "@/lib/sites";
@@ -55,6 +56,7 @@ interface Props {
   onSiteChange?: (workerId: string, site: string) => void;
   onGpsChange?: (workerId: string, gps: { lat: number; lng: number } | undefined) => void;
   onTimesChange?: (workerId: string, times: WorkerTimes) => void;
+  onFaceScan?: (worker: Worker) => void;
 }
 
 const HINDI_MONTHS = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
@@ -140,7 +142,7 @@ function codeToPayload(code: AttCode, otHours: number, checkIn: string, checkOut
 export default function AttendanceCard({
   worker, date, currentStatus, currentCreatedAt, currentUpdatedAt,
   currentInTime, currentOutTime, currentOvertimeHours, currentNotes,
-  mode = "manual", onMarked, onSiteChange, onGpsChange, readOnly = false,
+  mode = "manual", onMarked, onSiteChange, onGpsChange, onFaceScan, readOnly = false,
 }: Props) {
   const derivedCode = deriveCode(currentStatus, currentOvertimeHours, currentNotes);
   const [code, setCode] = useState<AttCode | undefined>(derivedCode);
@@ -308,6 +310,11 @@ export default function AttendanceCard({
           >
             {gpsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
           </button>
+        )}
+        {!readOnly && onFaceScan && (
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 bg-accent/10 text-accent hover:bg-accent/20" onClick={() => onFaceScan(worker)} aria-label={`${worker.name} की फेस स्कैन हाजिरी`} title="फेस स्कैन हाजिरी">
+            <ScanFace className="h-4 w-4" />
+          </Button>
         )}
         <button
           onClick={() => setCalOpen(true)}
