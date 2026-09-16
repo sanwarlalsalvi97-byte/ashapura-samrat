@@ -42,7 +42,7 @@ export default function OAuthConsent() {
         if (sameOriginRelative(next)) {
           try { sessionStorage.setItem(CONSENT_NEXT_KEY, next); } catch {}
         }
-        window.location.href = "/";
+        window.location.href = "/app";
         return;
       }
       const api = oauthApi();

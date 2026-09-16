@@ -193,7 +193,7 @@ export default function ResetPassword() {
       if (error) throw error;
       toast({ title: "पासवर्ड बदल गया!", description: "अब लॉगिन करें।" });
       await supabase.auth.signOut();
-      navigate("/");
+      navigate("/app");
     } catch (err: any) {
       toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
     } finally {
@@ -260,7 +260,7 @@ export default function ResetPassword() {
               </form>
 
 
-              <Button variant="outline" className="w-full" onClick={() => navigate("/")}>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/app")}>
                 लॉगिन पर वापस जाएं
               </Button>
             </div>
