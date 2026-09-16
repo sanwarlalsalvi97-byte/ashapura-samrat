@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import TithiBadge from "./TithiBadge";
 import { useRole } from "@/lib/roles";
+import FaceScanDialog from "./FaceScanDialog";
+import { getCurrentCoords } from "@/lib/geo";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_LABEL: Record<string, string> = {
   Present: "हाजिर",
@@ -53,8 +56,85 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const { readOnly } = useRole();
   const [mode, setMode] = useState<"manual" | "gps">(() => (localStorage.getItem("att-mode") as "manual" | "gps") || "manual");
+  const [faceWorker, setFaceWorker] = useState<Worker | null>(null);
+  const [faceSaving, setFaceSaving] = useState(false);
 
   useEffect(() => { localStorage.setItem("att-mode", mode); }, [mode]);
+
+  const saveFaceAttendance = async (photo: Blob) => {
+    const worker = faceWorker;
+    if (!worker || faceSaving) return;
+    setFaceSaving(true);
+    try {
+      const [{ data: auth }, coords] = await Promise.all([
+        supabase.auth.getUser(),
+        getCurrentCoords(),
+      ]);
+      const uid = auth.user?.id;
+      if (!uid) throw new Error("फेस स्कैन सेव करने के लिए लॉगिन ज़रूरी है।");
+
+      const selectedDate = formatDate(date);
+      const loggedAt = new Date().toISOString();
+      const path = `${uid}/${worker.id}/${selectedDate}-board-${Date.now()}.jpg`;
+      const { error: photoError } = await supabase.storage
+        .from("attendance-photos")
+        .upload(path, photo, { contentType: "image/jpeg", upsert: false });
+      if (photoError) throw photoError;
+
+      try {
+        const now = new Date();
+        const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const { error: logError } = await supabase.from("attendance_logs").insert({
+          user_id: uid,
+          worker_id: worker.id,
+          attendance_type: "in",
+          logged_at: loggedAt,
+          log_date: selectedDate,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy_meters: coords.accuracy == null ? null : Math.round(coords.accuracy),
+          face_verified: true,
+          photo_url: path,
+          site_name: worker.site_name,
+          is_suspicious: false,
+          review_status: "approved",
+        });
+        if (logError) throw logError;
+
+        const existing = attendance[worker.id];
+        await markAttendance({
+          worker_id: worker.id,
+          date: selectedDate,
+          status: "Present",
+          advance: existing?.advance ?? 0,
+          site_name: worker.site_name,
+          gps_status: "verified",
+          gps_lat: coords.latitude,
+          gps_lng: coords.longitude,
+          in_time: existing?.in_time ?? time,
+          out_time: existing?.out_time ?? null,
+          total_hours: existing?.total_hours ?? 0,
+          overtime_hours: existing?.overtime_hours ?? 0,
+          notes: existing?.notes ?? null,
+        });
+      } catch (saveError) {
+        await supabase.storage.from("attendance-photos").remove([path]).catch(() => undefined);
+        throw saveError;
+      }
+
+      toast({ title: "फेस स्कैन हाजिरी सेव हो गई ✅", description: `${worker.name} • फोटो, GPS और समय सेव हुआ` });
+      setFaceWorker(null);
+      await loadData();
+    } catch (error) {
+      toast({
+        title: "फेस स्कैन सेव नहीं हुआ",
+        description: error instanceof Error ? error.message : "दोबारा कोशिश करें।",
+        variant: "destructive",
+      });
+    } finally {
+      setFaceSaving(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -530,6 +610,7 @@ export default function AttendancePage() {
                     onSiteChange={handleSiteChange}
                     onGpsChange={handleGpsChange}
                     onTimesChange={handleTimesChange}
+                    onFaceScan={setFaceWorker}
                   />
                 ))}
               </div>
@@ -562,6 +643,11 @@ export default function AttendancePage() {
           )}
         </>
       )}
+      <FaceScanDialog
+        open={Boolean(faceWorker)}
+        onOpenChange={(open) => { if (!open && !faceSaving) setFaceWorker(null); }}
+        onCaptured={(photo) => { void saveFaceAttendance(photo); }}
+      />
     </div>
   );
 }

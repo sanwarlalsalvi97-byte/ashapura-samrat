@@ -23,7 +23,7 @@ export default function Auth() {
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
   })();
-  const redirectTarget = window.location.origin + "/";
+  const redirectTarget = window.location.origin + "/app";
   const PUBLISHED_URL = "https://ashapurapro.com";
 
   const handleGoogleLogin = async () => {
@@ -32,7 +32,7 @@ export default function Auth() {
       // In the native Capacitor app window.location.origin is capacitor://localhost,
       // which Google rejects / can't redirect back to. Always use the absolute
       // published HTTPS origin there (App Links open the app from that domain).
-      const oauthRedirect = isNative() ? PUBLISHED_URL : window.location.origin;
+      const oauthRedirect = isNative() ? `${PUBLISHED_URL}/app` : redirectTarget;
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: oauthRedirect,
       });
@@ -72,7 +72,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: isNative() ? `${PUBLISHED_URL}/` : redirectTarget },
+          options: { emailRedirectTo: isNative() ? `${PUBLISHED_URL}/app` : redirectTarget },
         });
         if (error) throw error;
         toast({ title: "अकाउंट बन गया!", description: "ईमेल चेक करें।" });
