@@ -70,6 +70,14 @@ async function ensureConnected(interactive: boolean): Promise<boolean> {
   return true;
 }
 
+export async function isGoogleDriveConnected(): Promise<boolean> {
+  try {
+    return Boolean((await invoke({ action: "status" })).connected);
+  } catch {
+    return false;
+  }
+}
+
 export async function uploadBackupToGoogleDrive(
   filename: string,
   fileText: string,

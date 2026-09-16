@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 /**
  * Some OAuth / email links can land on a path the SPA router doesn't know
  * (e.g. /index or a provider callback path). If the URL carries auth tokens,
- * bounce back to "/" keeping the hash/query so the session can be picked up.
+ * bounce back to "/app" keeping the hash/query so the session can be picked up.
  */
 const NotFound = () => {
   const [recovering, setRecovering] = useState(false);
@@ -21,13 +21,13 @@ const NotFound = () => {
     // falls through to the SPA router, go home instead of showing a 404.
     if (path.startsWith("/~oauth")) {
       setRecovering(true);
-      window.location.replace("/");
+      window.location.replace("/app");
       return;
     }
 
     if (hasAuthPayload || path === "/index") {
       setRecovering(true);
-      window.location.replace(`/${search}${hash}`);
+      window.location.replace(`/app${search}${hash}`);
     }
   }, []);
 

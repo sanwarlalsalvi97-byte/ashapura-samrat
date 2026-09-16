@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { backupFilename, buildBackup, clearPendingBackup, downloadText, encryptBackup, readPendingBackup, savePendingBackup } from "@/lib/backup";
 import { toast } from "@/hooks/use-toast";
-import { uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
+import { isGoogleDriveConnected, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
 
 export type AutoBackupFreq = "manual" | "daily" | "weekly" | "monthly";
 
@@ -94,7 +94,12 @@ export function useAutoBackup(enabled: boolean) {
         const text = await encryptBackup(payload);
         const name = backupFilename();
         if (navigator.onLine) {
-          await uploadBackupToGoogleDrive(name, text, false);
+          const driveConnected = await isGoogleDriveConnected();
+          if (driveConnected) {
+            await uploadBackupToGoogleDrive(name, text, false);
+          } else {
+            downloadText(name, text);
+          }
         } else {
           savePendingBackup(text, name);
         }
@@ -102,7 +107,7 @@ export function useAutoBackup(enabled: boolean) {
         writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
         writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
         window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
-        toast({ title: "✅ Google Drive ऑटो बैकअप सेव / Daily Drive backup saved" });
+        toast({ title: navigator.onLine ? "✅ दैनिक बैकअप सेव हो गया / Daily backup saved" : "ऑफलाइन बैकअप तैयार है / Offline backup queued" });
       } catch (err: any) {
         toast({ title: "Auto backup failed", description: err?.message || String(err), variant: "destructive" });
       } finally {

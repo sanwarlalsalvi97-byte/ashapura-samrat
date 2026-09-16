@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addWorker, deleteWorkerPermanently, updateWorker, type WorkerRole } from "@/lib/supabase-helpers";
+import { addWorker, updateWorker, type WorkerRole } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { Camera, ImagePlus, Trash2, UserPlus } from "lucide-react";
 import SiteNameInput from "./SiteNameInput";
@@ -62,6 +62,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
         upi_id: upiId.trim() || null,
       });
       let uploadedPath: string | null = null;
+      let photoWarning: string | null = null;
       try {
         if (photo) {
           uploadedPath = await uploadWorkerPhoto(worker.id, photo);
@@ -77,10 +78,12 @@ export default function AddWorkerDialog({ onAdded }: Props) {
         }
       } catch (photoError) {
         if (uploadedPath) await removeWorkerPhoto(uploadedPath).catch(() => undefined);
-        await deleteWorkerPermanently(worker.id).catch(() => undefined);
-        throw photoError;
+        photoWarning = photoError instanceof Error ? photoError.message : "फोटो सेव नहीं हुई";
       }
-      toast({ title: "✅ मजदूर जोड़ दिया गया!" });
+      toast({
+        title: "✅ मजदूर जोड़ दिया गया!",
+        description: photoWarning ? `फोटो सेव नहीं हुई, लेकिन मजदूर सुरक्षित है। ${photoWarning}` : undefined,
+      });
       setName("");
       setDailyRate("500");
       setSiteName("");
