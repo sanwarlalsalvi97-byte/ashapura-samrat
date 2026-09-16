@@ -63,14 +63,14 @@ export async function initNative(onBack?: () => boolean) {
           const code = query.get("code");
           if (access_token && refresh_token) {
             await supabase.auth.setSession({ access_token, refresh_token });
-            window.history.replaceState({}, "", "/");
+            window.history.replaceState({}, "", "/app");
             window.dispatchEvent(new PopStateEvent("popstate"));
             return;
           }
           if (code) {
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (!error) {
-              window.history.replaceState({}, "", "/");
+              window.history.replaceState({}, "", "/app");
               window.dispatchEvent(new PopStateEvent("popstate"));
               return;
             }
@@ -83,7 +83,7 @@ export async function initNative(onBack?: () => boolean) {
         ? "/reset-password"
         : parsed.protocol.startsWith("http")
         ? parsed.pathname || "/"
-        : "/";
+        : "/app";
       window.history.pushState({}, "", `${path}${parsed.search}${parsed.hash}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch {}
