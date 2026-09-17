@@ -15,6 +15,7 @@ import AuthRedirectHandler from "./components/AuthRedirectHandler";
 import GoogleDriveOAuthReturn from "./pages/GoogleDriveOAuthReturn";
 import LandingPage from "./pages/LandingPage";
 import Terms from "./pages/Terms";
+import NotificationSettings from "./pages/NotificationSettings";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/app" element={<PinLockGate><Index /></PinLockGate>} />
+            <Route path="/notification-settings" element={<PinLockGate><NotificationSettings /></PinLockGate>} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/trust" element={<Trust />} />

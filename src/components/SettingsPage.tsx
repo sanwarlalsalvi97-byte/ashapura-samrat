@@ -466,6 +466,23 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
 
       {/* Work Time + Alarm */}
       <Card>
+        <CardContent className="p-0">
+          <Button asChild variant="ghost" className="h-auto w-full justify-start gap-3 px-4 py-4 text-left">
+            <Link to="/notification-settings">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Bell className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{t("सूचना सेटिंग्स", "Notification Settings")}</span>
+                <span className="block text-xs font-normal text-muted-foreground">{t("हाज़िरी और कैशबुक रिमाइंडर", "Attendance and cashbook reminders")}</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Clock className="w-4 h-4" />
