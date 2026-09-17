@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,6 @@ import {
 import { getWorkers, getMonthlyReport } from "@/lib/supabase-helpers";
 import { exportCSV } from "@/lib/export-utils";
 import { getWorkTime, setWorkTime, formatTime12h } from "@/lib/work-time";
-import { requestNotificationPermission } from "@/hooks/use-attendance-alarm";
 import { isSimulatedOffline, setSimulatedOffline } from "@/lib/offline-queue";
 import { getGroupingMode, setGroupingMode, type GroupingMode } from "@/lib/grouping-prefs";
 import RolesSection from "./RolesSection";
@@ -42,6 +43,8 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
+  const isNativePlatform = Capacitor.isNativePlatform();
+  const notificationSupported = isNativePlatform || typeof window.Notification !== "undefined";
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const [fontSize, setFontSizeState] = useState<FontSize>(getFontSize());
   const [email, setEmail] = useState("");
@@ -61,7 +64,11 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const [alarmTime, setAlarmTime] = useState("09:00");
   const [alarmEnabled, setAlarmEnabled] = useState(true);
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
-    typeof Notification === "undefined" ? "unsupported" : Notification.permission
+    notificationSupported
+      ? isNativePlatform
+        ? "default"
+        : window.Notification.permission
+      : "unsupported"
   );
 
   const [simOffline, setSimOffline] = useState(isSimulatedOffline());
@@ -112,7 +119,31 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
     setCheckOut(wt.checkOut);
     setAlarmTime(wt.alarmTime);
     setAlarmEnabled(wt.alarmEnabled);
+
+    if (isNativePlatform) {
+      void LocalNotifications.checkPermissions()
+        .then(({ display }) => setNotifPerm(display === "granted" ? "granted" : display === "denied" ? "denied" : "default"))
+        .catch(() => setNotifPerm("denied"));
+    }
   }, []);
+
+  const requestNotifications = async (): Promise<boolean> => {
+    if (isNativePlatform) {
+      try {
+        const current = await LocalNotifications.checkPermissions();
+        if (current.display === "granted") return true;
+        const requested = await LocalNotifications.requestPermissions();
+        return requested.display === "granted";
+      } catch {
+        return false;
+      }
+    }
+
+    if (!notificationSupported) return false;
+    if (window.Notification.permission === "granted") return true;
+    if (window.Notification.permission === "denied") return false;
+    return (await window.Notification.requestPermission()) === "granted";
+  };
 
   const loadProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -146,7 +177,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const saveWorkTimeHandler = async () => {
     setWorkTime({ checkIn, checkOut, alarmTime, alarmEnabled });
     if (alarmEnabled && notifPerm !== "granted" && notifPerm !== "unsupported") {
-      const ok = await requestNotificationPermission();
+      const ok = await requestNotifications();
       setNotifPerm(ok ? "granted" : "denied");
     }
     toast({ title: isHindi ? "✅ समय और अलार्म सेव हो गया" : "✅ Time & alarm saved" });
@@ -155,12 +186,14 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
   const enableAlarm = async (checked: boolean) => {
     setAlarmEnabled(checked);
     if (checked && notifPerm !== "granted" && notifPerm !== "unsupported") {
-      const ok = await requestNotificationPermission();
+      const ok = await requestNotifications();
       setNotifPerm(ok ? "granted" : "denied");
       if (!ok) {
         toast({
           title: isHindi ? "नोटिफिकेशन की अनुमति नहीं मिली" : "Notification permission denied",
-          description: isHindi ? "Browser settings में जाकर अनुमति दें" : "Please allow in browser settings",
+          description: isNativePlatform
+            ? isHindi ? "फ़ोन सेटिंग्स में सूचना की अनुमति दें" : "Please allow notifications in phone settings"
+            : isHindi ? "Browser settings में जाकर अनुमति दें" : "Please allow in browser settings",
           variant: "destructive",
         });
       }
@@ -521,7 +554,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
                   {t("⚠ Browser में नोटिफिकेशन की अनुमति दें", "⚠ Allow notifications in browser")}
                 </p>
               )}
-              {notifPerm === "unsupported" && (
+              {!isNativePlatform && notifPerm === "unsupported" && (
                 <p className="text-xs text-warning mt-1">
                   {t("इस ब्राउज़र में नोटिफिकेशन नहीं चलते", "Notifications not supported in this browser")}
                 </p>
