@@ -89,16 +89,29 @@ export function useAutoBackup(enabled: boolean) {
       if (!isAutoBackupDue(freq, new Date(), lastRun)) return;
 
       runningRef.current = true;
+      let fallbackName: string | null = null;
+      let fallbackText: string | null = null;
       try {
         const payload = await buildBackup();
         const text = await encryptBackup(payload);
         const name = backupFilename();
+        fallbackName = name;
+        fallbackText = text;
         if (navigator.onLine) {
           const driveConnected = await isGoogleDriveConnected();
           if (driveConnected) {
             await uploadBackupToGoogleDrive(name, text, false);
           } else {
             downloadText(name, text);
+            const at = new Date().toISOString();
+            writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
+            writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
+            window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
+            toast({
+              title: "Google Drive जुड़ा नहीं है",
+              description: "बैकअप इस डिवाइस पर सेव कर दिया गया है।",
+            });
+            return;
           }
         } else {
           savePendingBackup(text, name);
@@ -109,7 +122,17 @@ export function useAutoBackup(enabled: boolean) {
         window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
         toast({ title: navigator.onLine ? "✅ दैनिक बैकअप सेव हो गया / Daily backup saved" : "ऑफलाइन बैकअप तैयार है / Offline backup queued" });
       } catch (err: any) {
-        toast({ title: "Auto backup failed", description: err?.message || String(err), variant: "destructive" });
+        if (fallbackName && fallbackText) downloadText(fallbackName, fallbackText);
+        const at = new Date().toISOString();
+        writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
+        writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
+        window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
+        toast({
+          title: "Google Drive बैकअप पूरा नहीं हुआ",
+          description: fallbackText
+            ? "बैकअप इस डिवाइस पर सेव कर दिया गया है। बाद में Drive दोबारा जोड़ें।"
+            : err?.message || String(err),
+        });
       } finally {
         runningRef.current = false;
       }
