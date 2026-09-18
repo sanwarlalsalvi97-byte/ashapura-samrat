@@ -32,6 +32,14 @@
                 <data android:scheme="@string/custom_url_scheme" />
             </intent-filter>
 
+            <!-- Google OAuth callback from the system browser / Chrome Custom Tab -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ashapurasamrat" android:host="google-auth" />
+            </intent-filter>
+
             <!-- App Links: https deep links from emails open the installed app -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

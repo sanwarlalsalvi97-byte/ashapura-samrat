@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound } from "lucide-react";
-import { isNative } from "@/lib/native";
+import { Capacitor } from "@capacitor/core";
+import { openNativeGoogleSignIn } from "@/lib/native-oauth";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -29,12 +30,13 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      // In the native Capacitor app window.location.origin is capacitor://localhost,
-      // which Google rejects / can't redirect back to. Always use the absolute
-      // published HTTPS origin there (App Links open the app from that domain).
-      const oauthRedirect = isNative() ? `${PUBLISHED_URL}/app` : redirectTarget;
+      if (Capacitor.isNativePlatform()) {
+        await openNativeGoogleSignIn();
+        return;
+      }
+
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: oauthRedirect,
+        redirect_uri: redirectTarget,
       });
       if (result.error) {
         toast({
@@ -57,7 +59,7 @@ export default function Auth() {
     try {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: isNative()
+          redirectTo: Capacitor.isNativePlatform()
             ? `${PUBLISHED_URL}/reset-password`
             : `${window.location.origin}/reset-password`,
         });
@@ -72,7 +74,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: isNative() ? `${PUBLISHED_URL}/app` : redirectTarget },
+          options: { emailRedirectTo: Capacitor.isNativePlatform() ? `${PUBLISHED_URL}/app` : redirectTarget },
         });
         if (error) throw error;
         toast({ title: "अकाउंट बन गया!", description: "ईमेल चेक करें।" });
