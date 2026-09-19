@@ -10,7 +10,6 @@ import { Share } from "@capacitor/share";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { Browser } from "@capacitor/browser";
-import { NATIVE_GOOGLE_OAUTH_STATE_KEY } from "@/lib/native-oauth";
 
 export const isNative = () => Capacitor.isNativePlatform();
 export const isAndroidNative = () =>
@@ -67,10 +66,6 @@ export async function initNative(onBack?: () => boolean) {
           const access_token = hash.get("access_token");
           const refresh_token = hash.get("refresh_token");
           const code = query.get("code");
-          const returnedState = query.get("state") || hash.get("state");
-          const expectedState = sessionStorage.getItem(NATIVE_GOOGLE_OAUTH_STATE_KEY);
-          if (!expectedState || returnedState !== expectedState) return;
-          sessionStorage.removeItem(NATIVE_GOOGLE_OAUTH_STATE_KEY);
           if (access_token && refresh_token) {
             await supabase.auth.setSession({ access_token, refresh_token });
             window.history.replaceState({}, "", "/app");
