@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { backupFilename, buildBackup, encryptBackup, savePendingBackup } from "@/lib/backup";
+import { backupFilename, buildBackup, clearPendingBackup, encryptBackup, readPendingBackup, savePendingBackup } from "@/lib/backup";
 import { toast } from "@/hooks/use-toast";
 import { isGoogleDriveConnected, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
 
@@ -67,11 +67,33 @@ export function isAutoBackupDue(freq: AutoBackupFreq, now = new Date(), lastRunR
 
 export function useAutoBackup(enabled: boolean) {
   const runningRef = useRef(false);
+  const flushingRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
     let cancelled = false;
+
+    const flushPendingUpload = async () => {
+      if (!navigator.onLine || flushingRef.current) return;
+      const pending = readPendingBackup();
+      if (!pending) return;
+      flushingRef.current = true;
+      try {
+        if (!(await isGoogleDriveConnected())) return;
+        await uploadBackupToGoogleDrive(pending.name, pending.text, false);
+        clearPendingBackup();
+        const at = new Date().toISOString();
+        writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
+        writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
+        window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
+        toast({ title: "✅ दैनिक बैकअप Google Drive में सेव हो गया" });
+      } catch {
+        // Keep the pending backup for the next online retry.
+      } finally {
+        flushingRef.current = false;
+      }
+    };
 
     const runIfDue = async () => {
       if (cancelled || runningRef.current) return;
@@ -93,6 +115,7 @@ export function useAutoBackup(enabled: boolean) {
           if (driveConnected) {
             await uploadBackupToGoogleDrive(name, text, false);
           } else {
+            savePendingBackup(text, name);
             // Record the attempt so focus/visibility events do not create a retry
             // loop, but do not claim that a backup was completed.
             const at = new Date().toISOString();
@@ -112,6 +135,7 @@ export function useAutoBackup(enabled: boolean) {
         window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
         toast({ title: navigator.onLine ? "✅ दैनिक बैकअप सेव हो गया / Daily backup saved" : "ऑफलाइन बैकअप तैयार है / Offline backup queued" });
       } catch (err: any) {
+        if (fallbackName && fallbackText) savePendingBackup(fallbackText, fallbackName);
         // Keep the attempt timestamp to prevent an immediate re-fail loop. A
         // failed attempt must never update the last successful backup status.
         const at = new Date().toISOString();
@@ -126,14 +150,15 @@ export function useAutoBackup(enabled: boolean) {
       }
     };
 
-    const check = () => {
-      void runIfDue();
+    const check = async () => {
+      await flushPendingUpload();
+      await runIfDue();
     };
     const onVisible = () => {
       if (document.visibilityState === "visible") check();
     };
 
-    check();
+    void check();
     const interval = window.setInterval(check, CHECK_EVERY_MS);
     window.addEventListener("online", check);
     window.addEventListener("focus", check);
