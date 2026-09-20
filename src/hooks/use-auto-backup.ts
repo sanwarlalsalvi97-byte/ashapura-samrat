@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { backupFilename, buildBackup, clearPendingBackup, downloadText, encryptBackup, readPendingBackup, savePendingBackup } from "@/lib/backup";
+import { backupFilename, buildBackup, encryptBackup, savePendingBackup } from "@/lib/backup";
 import { toast } from "@/hooks/use-toast";
 import { isGoogleDriveConnected, uploadBackupToGoogleDrive } from "@/lib/google-drive-backup";
 
@@ -73,15 +73,6 @@ export function useAutoBackup(enabled: boolean) {
 
     let cancelled = false;
 
-    const flushPendingDownload = () => {
-      if (!navigator.onLine) return;
-      const pending = readPendingBackup();
-      if (!pending) return;
-      downloadText(pending.name, pending.text);
-      clearPendingBackup();
-      toast({ title: "ऑफलाइन बैकअप डाउनलोड हो गया / Offline backup downloaded" });
-    };
-
     const runIfDue = async () => {
       if (cancelled || runningRef.current) return;
       const freq = getAutoBackupFreq();
@@ -102,14 +93,13 @@ export function useAutoBackup(enabled: boolean) {
           if (driveConnected) {
             await uploadBackupToGoogleDrive(name, text, false);
           } else {
-            downloadText(name, text);
+            // Record the attempt so focus/visibility events do not create a retry
+            // loop, but do not claim that a backup was completed.
             const at = new Date().toISOString();
             writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
-            writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
-            window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
             toast({
               title: "Google Drive जुड़ा नहीं है",
-              description: "बैकअप इस डिवाइस पर सेव कर दिया गया है।",
+              description: "ऑटो बैकअप सेव नहीं हुआ। Settings में Google Drive जोड़ें।",
             });
             return;
           }
@@ -122,16 +112,14 @@ export function useAutoBackup(enabled: boolean) {
         window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
         toast({ title: navigator.onLine ? "✅ दैनिक बैकअप सेव हो गया / Daily backup saved" : "ऑफलाइन बैकअप तैयार है / Offline backup queued" });
       } catch (err: any) {
-        if (fallbackName && fallbackText) downloadText(fallbackName, fallbackText);
+        // Keep the attempt timestamp to prevent an immediate re-fail loop. A
+        // failed attempt must never update the last successful backup status.
         const at = new Date().toISOString();
         writeStorage(window.localStorage, AUTO_BACKUP_LAST_RUN_KEY, at);
-        writeStorage(window.localStorage, LAST_BACKUP_KEY, at);
-        window.dispatchEvent(new CustomEvent("auto-backup-completed", { detail: { at } }));
         toast({
           title: "Google Drive बैकअप पूरा नहीं हुआ",
-          description: fallbackText
-            ? "बैकअप इस डिवाइस पर सेव कर दिया गया है। बाद में Drive दोबारा जोड़ें।"
-            : err?.message || String(err),
+          description: err?.message || String(err),
+          variant: "destructive",
         });
       } finally {
         runningRef.current = false;
@@ -139,7 +127,6 @@ export function useAutoBackup(enabled: boolean) {
     };
 
     const check = () => {
-      flushPendingDownload();
       void runIfDue();
     };
     const onVisible = () => {
