@@ -58,10 +58,11 @@ export async function initNative(onBack?: () => boolean) {
       const isNativeGoogleCallback =
         parsed.protocol === "ashapurasamrat:" && parsed.hostname === "google-auth";
 
-      // Native Google OAuth callback (custom scheme) → establish the session here.
-      if (!isRecovery && isNativeGoogleCallback) {
+      // Non-recovery auth callbacks (Google and email confirmation App Links)
+      // must establish the session before the SPA route consumes the URL.
+      if (!isRecovery) {
         try {
-          await Browser.close();
+          if (isNativeGoogleCallback) await Browser.close();
           const { supabase } = await import("@/integrations/supabase/client");
           const access_token = hash.get("access_token");
           const refresh_token = hash.get("refresh_token");
