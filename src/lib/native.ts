@@ -17,10 +17,114 @@ export const isAndroidNative = () =>
 
 let initialised = false;
 
+const handledAuthUrls = new Set<string>();
+
+function openNativeRoute(path: string, replace = true) {
+  if (replace) {
+    window.history.replaceState({}, "", path);
+  } else {
+    window.history.pushState({}, "", path);
+  }
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+async function handleNativeAppUrl(url: string) {
+  if (handledAuthUrls.has(url)) return;
+
+  const parsed = new URL(url);
+  const hash = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+  const query = parsed.searchParams;
+  const isRecovery =
+    hash.get("type") === "recovery" ||
+    query.get("type") === "recovery" ||
+    parsed.pathname.includes("reset-password");
+  const isNativeGoogleCallback =
+    parsed.protocol === "ashapurasamrat:" && parsed.hostname === "google-auth";
+
+  // Mark only recognised auth URLs, so unrelated links can still be handled again.
+  if (isNativeGoogleCallback || isRecovery || parsed.protocol.startsWith("http")) {
+    handledAuthUrls.add(url);
+  }
+
+  if (isNativeGoogleCallback) {
+    // Close the Chrome Custom Tab as soon as Android hands the callback to us.
+    await Browser.close().catch(() => {});
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const accessToken = hash.get("access_token") || query.get("access_token");
+    const refreshToken = hash.get("refresh_token") || query.get("refresh_token");
+    const code = query.get("code") || hash.get("code");
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) throw error;
+      openNativeRoute("/app");
+      return;
+    }
+
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      openNativeRoute("/app");
+      return;
+    }
+
+    throw new Error("Google लॉगिन का जवाब अधूरा मिला। दोबारा कोशिश करें।");
+  }
+
+  // Email confirmation App Links can also carry a session or PKCE code.
+  if (!isRecovery) {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const accessToken = hash.get("access_token") || query.get("access_token");
+    const refreshToken = hash.get("refresh_token") || query.get("refresh_token");
+    const code = query.get("code") || hash.get("code");
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) throw error;
+      openNativeRoute("/app");
+      return;
+    }
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+      openNativeRoute("/app");
+      return;
+    }
+  }
+
+  const path = isRecovery
+    ? "/reset-password"
+    : parsed.protocol.startsWith("http")
+    ? parsed.pathname || "/"
+    : "/app";
+  openNativeRoute(`${path}${parsed.search}${parsed.hash}`, false);
+}
+
 /** Boot native-only setup: splash, status bar, back button, keyboard. */
 export async function initNative(onBack?: () => boolean) {
   if (initialised || !isNative()) return;
   initialised = true;
+
+  // Register first so an OAuth callback cannot arrive during awaited startup work.
+  CapApp.addListener("appUrlOpen", ({ url }) => {
+    void handleNativeAppUrl(url).catch((error: unknown) => {
+      console.error("Native auth callback failed", error);
+    });
+  });
+
+  // `appUrlOpen` is not replayed when a deep link cold-starts the process.
+  void CapApp.getLaunchUrl()
+    .then((launch) => launch?.url ? handleNativeAppUrl(launch.url) : undefined)
+    .catch((error: unknown) => {
+      console.error("Native launch URL failed", error);
+    });
 
   try {
     // Android 15+ (edge-to-edge): system bars are transparent and the
@@ -41,58 +145,6 @@ export async function initNative(onBack?: () => boolean) {
     } else {
       CapApp.exitApp();
     }
-  });
-
-  // Deep links (OAuth callbacks, password reset emails): carry path + tokens into the SPA.
-  CapApp.addListener("appUrlOpen", async ({ url }) => {
-    try {
-      const parsed = new URL(url);
-      const hash = new URLSearchParams(parsed.hash.replace(/^#/, ""));
-      const query = parsed.searchParams;
-
-      const isRecovery =
-        hash.get("type") === "recovery" ||
-        query.get("type") === "recovery" ||
-        parsed.pathname.includes("reset-password");
-
-      const isNativeGoogleCallback =
-        parsed.protocol === "ashapurasamrat:" && parsed.hostname === "google-auth";
-
-      // Non-recovery auth callbacks (Google and email confirmation App Links)
-      // must establish the session before the SPA route consumes the URL.
-      if (!isRecovery) {
-        try {
-          if (isNativeGoogleCallback) await Browser.close();
-          const { supabase } = await import("@/integrations/supabase/client");
-          const access_token = hash.get("access_token");
-          const refresh_token = hash.get("refresh_token");
-          const code = query.get("code");
-          if (access_token && refresh_token) {
-            await supabase.auth.setSession({ access_token, refresh_token });
-            window.history.replaceState({}, "", "/app");
-            window.dispatchEvent(new PopStateEvent("popstate"));
-            return;
-          }
-          if (code) {
-            const { error } = await supabase.auth.exchangeCodeForSession(code);
-            if (!error) {
-              window.history.replaceState({}, "", "/app");
-              window.dispatchEvent(new PopStateEvent("popstate"));
-              return;
-            }
-          }
-        } catch {}
-      }
-
-      // Fallback: forward path + params into the SPA router.
-      const path = isRecovery
-        ? "/reset-password"
-        : parsed.protocol.startsWith("http")
-        ? parsed.pathname || "/"
-        : "/app";
-      window.history.pushState({}, "", `${path}${parsed.search}${parsed.hash}`);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    } catch {}
   });
 
   // Hide the native splash after first paint.
