@@ -31,6 +31,7 @@
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
+    "@capgo/capacitor-social-login": "^8.5.10",
     "@hookform/resolvers": "^3.10.0",
     "@ishubhamx/panchangam-js": "^3.0.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
