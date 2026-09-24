@@ -6,6 +6,7 @@
 // App Settings → Permissions. On web it degrades to the closest browser API.
 
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Camera } from "@capacitor/camera";
 import { isNative } from "@/lib/native";
 
 export type PermissionGroup =
@@ -93,6 +94,12 @@ export async function checkPermission(group: PermissionGroup): Promise<boolean> 
 export async function requestPermission(group: PermissionGroup): Promise<boolean> {
   if (!isAndroid()) return webRequest(group);
   try {
+    if (group === "camera") {
+      const current = await Camera.checkPermissions();
+      if (current.camera === "granted") return true;
+      const requested = await Camera.requestPermissions({ permissions: ["camera"] });
+      return requested.camera === "granted";
+    }
     const res = await NativePermissions.request({ group });
     return !!res.granted;
   } catch {

@@ -9,7 +9,6 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Share } from "@capacitor/share";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { Browser } from "@capacitor/browser";
 
 export const isNative = () => Capacitor.isNativePlatform();
 export const isAndroidNative = () =>
@@ -38,41 +37,9 @@ async function handleNativeAppUrl(url: string) {
     hash.get("type") === "recovery" ||
     query.get("type") === "recovery" ||
     parsed.pathname.includes("reset-password");
-  const isNativeGoogleCallback =
-    parsed.protocol === "ashapurasamrat:" && parsed.hostname === "google-auth";
-
   // Mark only recognised auth URLs, so unrelated links can still be handled again.
-  if (isNativeGoogleCallback || isRecovery || parsed.protocol.startsWith("http")) {
+  if (isRecovery || parsed.protocol.startsWith("http")) {
     handledAuthUrls.add(url);
-  }
-
-  if (isNativeGoogleCallback) {
-    // Close the Chrome Custom Tab as soon as Android hands the callback to us.
-    await Browser.close().catch(() => {});
-
-    const { supabase } = await import("@/integrations/supabase/client");
-    const accessToken = hash.get("access_token") || query.get("access_token");
-    const refreshToken = hash.get("refresh_token") || query.get("refresh_token");
-    const code = query.get("code") || hash.get("code");
-
-    if (accessToken && refreshToken) {
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      if (error) throw error;
-      openNativeRoute("/app");
-      return;
-    }
-
-    if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
-      openNativeRoute("/app");
-      return;
-    }
-
-    throw new Error("Google लॉगिन का जवाब अधूरा मिला। दोबारा कोशिश करें।");
   }
 
   // Email confirmation App Links can also carry a session or PKCE code.

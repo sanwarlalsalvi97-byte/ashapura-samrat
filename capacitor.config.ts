@@ -19,6 +19,15 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   plugins: {
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+      logLevel: 1,
+    },
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,

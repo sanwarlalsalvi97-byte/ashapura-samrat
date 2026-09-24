@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { getCurrentCoords } from "@/lib/geo";
 
 /**
  * Attendance codes — encoded on top of the DB enum + overtime_hours + notes:
@@ -233,27 +234,20 @@ export default function AttendanceCard({
     onSiteChange?.(worker.id, val);
   };
 
-  const captureGps = () => {
-    if (!("geolocation" in navigator)) {
-      toast({ title: "इस फोन में GPS नहीं है", variant: "destructive" });
-      return;
-    }
+  const captureGps = async () => {
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const g = { lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) };
-        setGps(g);
-        onGpsChange?.(worker.id, g);
-        setGpsLoading(false);
-        if (mode === "gps") void doSave("P");
-        else toast({ title: `📍 GPS सेव हुआ` });
-      },
-      (err) => {
-        setGpsLoading(false);
-        toast({ title: "GPS नहीं मिला", description: err.message, variant: "destructive" });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    try {
+      const pos = await getCurrentCoords();
+      const g = { lat: +pos.latitude.toFixed(5), lng: +pos.longitude.toFixed(5) };
+      setGps(g);
+      onGpsChange?.(worker.id, g);
+      if (mode === "gps") void doSave("P");
+      else toast({ title: "📍 GPS सेव हुआ" });
+    } catch (error) {
+      toast({ title: "GPS नहीं मिला", description: error instanceof Error ? error.message : "लोकेशन अनुमति दें।", variant: "destructive" });
+    } finally {
+      setGpsLoading(false);
+    }
   };
 
   const wasEdited = !!currentCreatedAt && !!currentUpdatedAt && Math.abs(new Date(currentUpdatedAt).getTime() - new Date(currentCreatedAt).getTime()) > 1000;

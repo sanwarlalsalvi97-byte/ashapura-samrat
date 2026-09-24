@@ -23,6 +23,7 @@ import TithiBadge from "./TithiBadge";
 import { useRole } from "@/lib/roles";
 import FaceScanDialog from "./FaceScanDialog";
 import { getCurrentCoords } from "@/lib/geo";
+import { ensureLocationPermissionNative } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -58,6 +59,10 @@ export default function AttendancePage() {
   const [mode, setMode] = useState<"manual" | "gps">(() => (localStorage.getItem("att-mode") as "manual" | "gps") || "manual");
   const [faceWorker, setFaceWorker] = useState<Worker | null>(null);
   const [faceSaving, setFaceSaving] = useState(false);
+
+  useEffect(() => {
+    void ensureLocationPermissionNative();
+  }, []);
 
   useEffect(() => { localStorage.setItem("att-mode", mode); }, [mode]);
 
