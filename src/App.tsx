@@ -29,39 +29,38 @@ const App = () => {
   const [deepLinkUrl, setDeepLinkUrl] = useState("");
 
   useEffect(() => {
-    // 1. Native App Deep Link Handler
+    // 1. Native App Deep Link & App Link Handler
     const listener = CapacitorApp.addListener("appUrlOpen", async (data) => {
-      if (data.url.includes("ashapurasamrat") || data.url.includes("google-auth")) {
-        try { await Browser.close(); } catch (e) {}
+      try {
+        await Browser.close();
+      } catch (e) {}
 
-        const rawUrl = data.url;
-        const hashIndex = rawUrl.indexOf("#");
-        const hash = hashIndex !== -1 ? rawUrl.substring(hashIndex) : window.location.hash;
+      const rawUrl = data.url;
+      const hashIndex = rawUrl.indexOf("#");
+      const queryIndex = rawUrl.indexOf("?");
+      const hashOrQuery = hashIndex !== -1 ? rawUrl.substring(hashIndex) : (queryIndex !== -1 ? rawUrl.substring(queryIndex) : "");
 
-        if (hash) {
-          const params = new URLSearchParams(hash.replace("#", "?"));
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
+      if (hashOrQuery) {
+        const params = new URLSearchParams(hashOrQuery.replace("#", "?"));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
 
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            window.location.href = "/app";
-          }
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          window.location.href = "/app";
         }
       }
     });
 
-    // 2. Web Browser Handler: If opened in mobile Chrome post-OAuth, force launch native app
+    // 2. Web Browser Fallback: If opened in mobile browser post-OAuth, display button to route into app
     const hash = window.location.hash;
     if (!Capacitor.isNativePlatform() && hash && hash.includes("access_token")) {
       const targetAppUri = `ashapurasamrat://google-auth${hash}`;
       setDeepLinkUrl(targetAppUri);
       setShowAppRedirect(true);
-
-      // Auto trigger app launch
       window.location.href = targetAppUri;
     }
 
@@ -109,6 +108,7 @@ const App = () => {
 };
 
 export default App;
+        
 
 
 
