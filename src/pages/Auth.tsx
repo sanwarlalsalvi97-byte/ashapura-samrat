@@ -30,14 +30,12 @@ export default function Auth() {
     setGoogleLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        // Native Android Google Sheet / Account Picker खोलें (बिना Chrome Custom Tab के)
+                // Native Android Google Sheet / Account Picker खोलें (बिना Chrome Custom Tab के)
         const res = await SocialLogin.login({
           provider: "google",
-          options: {
-            scopes: ["email", "profile"],
-          },
+          options: {},
         });
-
+        
         const idToken = res.result?.idToken;
         if (idToken) {
           const { error } = await supabase.auth.signInWithIdToken({
