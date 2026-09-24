@@ -33,7 +33,7 @@ export default function Auth() {
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: "ashapurasamrat://google-auth",
+            redirectTo: "https://ashapurapro.com/app",
             skipBrowserRedirect: true,
           },
         });
@@ -223,6 +223,7 @@ export default function Auth() {
     </div>
   );
 }
+
 
 
 
