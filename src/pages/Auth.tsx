@@ -31,9 +31,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: Capacitor.isNativePlatform()
-            ? `${PUBLISHED_URL}/app`
-            : redirectTarget,
+          redirectTo: Capacitor.isNativePlatform() ? "ashapurasamrat://google-auth" : redirectTarget,
         },
       });
 
