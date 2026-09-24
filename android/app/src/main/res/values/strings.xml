@@ -5,8 +5,9 @@
     <string name="package_name">com.ashapurasamrat.app</string>
     <string name="custom_url_scheme">com.ashapurasamrat.app</string>
     
-    <!-- ये दो लाइनें सबसे महत्वपूर्ण हैं जो आपको जोड़नी हैं -->
-    <string name="google_client_id">1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com</string>
+    <!-- Android Client ID -->
+    <string name="google_client_id">1006500502499-pf356eevpmli4orohgihafqn4fja25q9.apps.googleusercontent.com</string>
+    <!-- Web Client ID -->
     <string name="default_web_client_id">1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com</string>
 </resources>
 
