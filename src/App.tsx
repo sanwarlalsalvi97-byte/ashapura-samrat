@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -24,9 +25,15 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    // Chrome ब्राउज़र से ashapurasamrat://google-auth वापस ऐप में आने पर टोकन सेट करता है
+    // इन-ऐप ब्राउज़र से ashapurasamrat://google-auth वापस आने पर ब्राउज़र बंद करके सेशन सेट करता है
     const listener = CapacitorApp.addListener("appUrlOpen", async (data) => {
       if (data.url.includes("ashapurasamrat") || data.url.includes("google-auth")) {
+        try {
+          await Browser.close();
+        } catch (e) {
+          // ब्राउज़र पहले से बंद हो तो एरर इग्नोर करें
+        }
+
         const url = new URL(data.url);
         const hash = url.hash || url.search;
         if (hash) {
@@ -78,4 +85,5 @@ const App = () => {
 };
 
 export default App;
+
 
