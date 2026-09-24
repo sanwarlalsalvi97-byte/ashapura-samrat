@@ -28,34 +28,47 @@ const App = () => {
   const [showAppRedirect, setShowAppRedirect] = useState(false);
   const [deepLinkUrl, setDeepLinkUrl] = useState("");
 
-  useEffect(() => {
-    // 1. Native App Deep Link & App Link Handler
+   useEffect(() => {
+    // Native App Scheme & Deep Link Interceptor
     const listener = CapacitorApp.addListener("appUrlOpen", async (data) => {
+      // 1. ओपन कस्टम टैब/ब्राउज़र को तुरंत बंद करें
       try {
         await Browser.close();
       } catch (e) {}
 
+      // 2. यूआरएल से OAuth टोकन निकालें
       const rawUrl = data.url;
-      const hashIndex = rawUrl.indexOf("#");
-      const queryIndex = rawUrl.indexOf("?");
-      const hashOrQuery = hashIndex !== -1 ? rawUrl.substring(hashIndex) : (queryIndex !== -1 ? rawUrl.substring(queryIndex) : "");
+      if (
+        rawUrl.includes("ashapurasamrat") ||
+        rawUrl.includes("google-auth") ||
+        rawUrl.includes("access_token")
+      ) {
+        const hashIndex = rawUrl.indexOf("#");
+        const queryIndex = rawUrl.indexOf("?");
+        const hashOrQuery =
+          hashIndex !== -1
+            ? rawUrl.substring(hashIndex)
+            : queryIndex !== -1
+            ? rawUrl.substring(queryIndex)
+            : "";
 
-      if (hashOrQuery) {
-        const params = new URLSearchParams(hashOrQuery.replace("#", "?"));
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
+        if (hashOrQuery) {
+          const params = new URLSearchParams(hashOrQuery.replace("#", "?"));
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
 
-        if (accessToken && refreshToken) {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          window.location.href = "/app";
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            window.location.href = "/app";
+          }
         }
       }
     });
 
-    // 2. Web Browser Fallback: If opened in mobile browser post-OAuth, display button to route into app
+    // Web Browser Fallback
     const hash = window.location.hash;
     if (!Capacitor.isNativePlatform() && hash && hash.includes("access_token")) {
       const targetAppUri = `ashapurasamrat://google-auth${hash}`;
@@ -68,7 +81,7 @@ const App = () => {
       listener.then((l) => l.remove());
     };
   }, []);
-
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
