@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { getCurrentCoords } from "@/lib/geo";
 
 /**
  * Attendance codes — encoded on top of the DB enum + overtime_hours + notes:
