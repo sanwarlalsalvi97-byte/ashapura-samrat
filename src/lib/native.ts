@@ -9,6 +9,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Share } from "@capacitor/share";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 
 export const isNative = () => Capacitor.isNativePlatform();
 export const isAndroidNative = () =>
@@ -74,10 +75,45 @@ async function handleNativeAppUrl(url: string) {
   openNativeRoute(`${path}${parsed.search}${parsed.hash}`, false);
 }
 
+/** Initialize Social Login for Native Android */
+export async function initSocialLogin() {
+  if (!isNative()) return;
+  try {
+    await SocialLogin.initialize({
+      google: {
+        webClientId: "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com", // यहाँ अपनी Google Web Client ID डालें
+      },
+    });
+  } catch (err) {
+    console.error("Social login initialization failed", err);
+  }
+}
+
+/** Native Google Sign In helper using @capgo/capacitor-social-login */
+export async function nativeGoogleLogin() {
+  if (!isNative()) return null;
+  try {
+    await initSocialLogin();
+    const result = await SocialLogin.login({
+      provider: "google",
+      options: {
+        scopes: ["email", "profile"],
+      },
+    });
+    return result;
+  } catch (error) {
+    console.error("Google sign-in error", error);
+    throw error;
+  }
+}
+
 /** Boot native-only setup: splash, status bar, back button, keyboard. */
 export async function initNative(onBack?: () => boolean) {
   if (initialised || !isNative()) return;
   initialised = true;
+
+  // Social login plugin initialization
+  void initSocialLogin();
 
   // Register first so an OAuth callback cannot arrive during awaited startup work.
   CapApp.addListener("appUrlOpen", ({ url }) => {
