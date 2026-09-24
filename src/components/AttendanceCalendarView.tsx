@@ -251,28 +251,20 @@ function DayDetails({ iso, onChanged }: { iso: string; onChanged: () => void }) 
     }
   };
 
-  const captureGps = (row: DayRow) => {
-    if (!("geolocation" in navigator)) {
-      updateLocal(row.worker.id, { gps_status: "OFF" });
-      toast({ title: "GPS नहीं मिला", variant: "destructive" });
-      return;
-    }
+  const captureGps = async (row: DayRow) => {
     setSavingId(row.worker.id);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = +pos.coords.latitude.toFixed(5);
-        const lng = +pos.coords.longitude.toFixed(5);
-        updateLocal(row.worker.id, { gps_status: "ON", gps_lat: lat, gps_lng: lng });
-        setSavingId(null);
-        toast({ title: `📍 GPS सेव (${lat}, ${lng})` });
-      },
-      () => {
-        updateLocal(row.worker.id, { gps_status: "OFF" });
-        setSavingId(null);
-        toast({ title: "GPS OFF — लोकेशन नहीं मिली", variant: "destructive" });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    try {
+      const pos = await getCurrentCoords();
+      const lat = +pos.latitude.toFixed(5);
+      const lng = +pos.longitude.toFixed(5);
+      updateLocal(row.worker.id, { gps_status: "ON", gps_lat: lat, gps_lng: lng });
+      toast({ title: `📍 GPS सेव (${lat}, ${lng})` });
+    } catch {
+      updateLocal(row.worker.id, { gps_status: "OFF" });
+      toast({ title: "GPS OFF — लोकेशन नहीं मिली", variant: "destructive" });
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const totals = rows.reduce(
