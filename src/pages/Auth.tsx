@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { nativeGoogleLogin } from "@/lib/native";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -30,33 +28,28 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      if (Capacitor.isNativePlatform()) {
-        await nativeGoogleLogin();
-        return;
-      }
-
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectTarget,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: Capacitor.isNativePlatform()
+            ? `${PUBLISHED_URL}/app`
+            : redirectTarget,
+        },
       });
-      if (result.error) {
+
+      if (error) {
         toast({
           title: "Google लॉगिन नहीं हो सका",
-          description: result.error instanceof Error ? result.error.message : "दोबारा कोशिश करें।",
+          description: error.message,
           variant: "destructive",
         });
-        return;
       }
-      if (result.redirected) return; // browser redirecting to Google
-      // Session is set — Index will pick it up via onAuthStateChange.
     } catch (error) {
-      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
-      if (code !== "USER_CANCELLED") {
-        toast({
-          title: "Google लॉगिन नहीं हो सका",
-          description: error instanceof Error ? error.message : "दोबारा कोशिश करें।",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Google लॉगिन नहीं हो सका",
+        description: "दोबारा कोशिश करें।",
+        variant: "destructive",
+      });
     } finally {
       setGoogleLoading(false);
     }
@@ -222,3 +215,4 @@ export default function Auth() {
     </div>
   );
 }
+
