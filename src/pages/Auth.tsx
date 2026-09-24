@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -26,22 +26,29 @@ export default function Auth() {
   const redirectTarget = window.location.origin + "/app";
   const PUBLISHED_URL = "https://ashapurapro.com";
 
-    const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        // Native Android Google Sheet / Account Picker खोलें (बिना Chrome Custom Tab के)
+        const res = await SocialLogin.login({
           provider: "google",
           options: {
-            redirectTo: "ashapurasamrat://google-auth",
-            skipBrowserRedirect: true,
+            scopes: ["email", "profile"],
           },
         });
 
-        if (error) throw error;
+        const idToken = res.result?.idToken;
+        if (idToken) {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: idToken,
+          });
 
-        if (data?.url) {
-          await Browser.open({ url: data.url });
+          if (error) throw error;
+          window.location.href = "/app";
+        } else {
+          throw new Error("गूगल टोकन प्राप्त नहीं हुआ।");
         }
       } else {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -223,6 +230,7 @@ export default function Auth() {
     </div>
   );
 }
+
 
 
 
