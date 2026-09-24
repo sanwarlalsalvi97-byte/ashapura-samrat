@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1006500502499:android:8746c56b7ec498c87d9ed6",
+        "mobilesdk_app_id": "1:1006500502499:android:cda52694300c45497d9ed6",
         "android_client_info": {
-          "package_name": "com.ashapura.samrat"
+          "package_name": "com.ashapurasamrat.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBS2NH2MT64UD_6rFbMQBNqDQuY1dUjsAg"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
