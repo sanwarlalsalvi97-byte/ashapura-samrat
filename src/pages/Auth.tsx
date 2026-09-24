@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -29,29 +28,14 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      if (Capacitor.isNativePlatform()) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: "ashapurasamrat://google-auth",
-            skipBrowserRedirect: true,
-          },
-        });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "https://ashapurapro.com/app",
+        },
+      });
 
-        if (error) throw error;
-
-        if (data?.url) {
-          await Browser.open({ url: data.url });
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: redirectTarget,
-          },
-        });
-        if (error) throw error;
-      }
+      if (error) throw error;
     } catch (error: any) {
       toast({
         title: "Google लॉगिन नहीं हो सका",
@@ -222,6 +206,7 @@ export default function Auth() {
       </Card>
     </div>
   );
-          }
+      }
+
 
 
