@@ -19,9 +19,12 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   plugins: {
-    SocialLogin: {
+        SocialLogin: {
       providers: {
-        google: true,
+        google: {
+          // यहाँ अपनी सही Web Client ID डालें
+          clientId: '1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com',
+        },
         facebook: false,
         apple: false,
         twitter: false,
