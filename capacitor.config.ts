@@ -19,11 +19,11 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   plugins: {
-        SocialLogin: {
+            SocialLogin: {
       providers: {
         google: {
-          // यहाँ अपनी सही Web Client ID डालें
-          clientId: '1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com',
+          clientId: '1006500502499-pf356eevpmli4orohgihafqn4fja25q9.apps.googleusercontent.com',
+          webClientId: '1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com',
         },
         facebook: false,
         apple: false,
@@ -31,6 +31,7 @@ const config: CapacitorConfig = {
       },
       logLevel: 1,
     },
+    
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,
