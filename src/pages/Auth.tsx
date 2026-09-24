@@ -28,14 +28,23 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: "https://ashapurapro.com/app",
-        },
-      });
-
-      if (error) throw error;
+      if (Capacitor.isNativePlatform()) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: "ashapurasamrat://google-auth",
+          },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: redirectTarget,
+          },
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
       toast({
         title: "Google लॉगिन नहीं हो सका",
@@ -206,7 +215,6 @@ export default function Auth() {
       </Card>
     </div>
   );
-      }
-
+               }
 
 
