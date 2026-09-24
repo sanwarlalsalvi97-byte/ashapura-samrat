@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
+import { Capacitor } from "@capacitor/core";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
@@ -24,18 +25,19 @@ import NotificationSettings from "./pages/NotificationSettings";
 const queryClient = new QueryClient();
 
 const App = () => {
+  const [showAppRedirect, setShowAppRedirect] = useState(false);
+  const [deepLinkUrl, setDeepLinkUrl] = useState("");
+
   useEffect(() => {
-    // इन-ऐप ब्राउज़र से ashapurasamrat://google-auth वापस आने पर ब्राउज़र बंद करके सेशन सेट करता है
+    // 1. Native App Deep Link Handler
     const listener = CapacitorApp.addListener("appUrlOpen", async (data) => {
       if (data.url.includes("ashapurasamrat") || data.url.includes("google-auth")) {
-        try {
-          await Browser.close();
-        } catch (e) {
-          // ब्राउज़र पहले से बंद हो तो एरर इग्नोर करें
-        }
+        try { await Browser.close(); } catch (e) {}
 
-        const url = new URL(data.url);
-        const hash = url.hash || url.search;
+        const rawUrl = data.url;
+        const hashIndex = rawUrl.indexOf("#");
+        const hash = hashIndex !== -1 ? rawUrl.substring(hashIndex) : window.location.hash;
+
         if (hash) {
           const params = new URLSearchParams(hash.replace("#", "?"));
           const accessToken = params.get("access_token");
@@ -52,6 +54,17 @@ const App = () => {
       }
     });
 
+    // 2. Web Browser Handler: If opened in mobile Chrome post-OAuth, force launch native app
+    const hash = window.location.hash;
+    if (!Capacitor.isNativePlatform() && hash && hash.includes("access_token")) {
+      const targetAppUri = `ashapurasamrat://google-auth${hash}`;
+      setDeepLinkUrl(targetAppUri);
+      setShowAppRedirect(true);
+
+      // Auto trigger app launch
+      window.location.href = targetAppUri;
+    }
+
     return () => {
       listener.then((l) => l.remove());
     };
@@ -62,6 +75,18 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        {showAppRedirect && (
+          <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background p-6 text-center">
+            <h2 className="text-xl font-bold mb-2">लॉगिन सफल रहा!</h2>
+            <p className="text-muted-foreground text-sm mb-6">ऐप में वापस जाने के लिए नीचे दिए गए बटन पर टैप करें।</p>
+            <a
+              href={deepLinkUrl}
+              className="w-full max-w-xs bg-primary text-primary-foreground font-bold py-3 px-6 rounded-xl shadow-lg block"
+            >
+              Ashapura Samrat ऐप खोलें
+            </a>
+          </div>
+        )}
         <BrowserRouter>
           <AuthRedirectHandler />
           <Routes>
@@ -75,7 +100,6 @@ const App = () => {
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/oauth/google-drive/return" element={<GoogleDriveOAuthReturn />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -85,5 +109,6 @@ const App = () => {
 };
 
 export default App;
+
 
 
