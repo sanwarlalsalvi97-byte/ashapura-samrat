@@ -26,7 +26,7 @@ export default function Auth() {
   const redirectTarget = window.location.origin + "/app";
   const PUBLISHED_URL = "https://ashapurapro.com";
 
-  const handleGoogleLogin = async () => {
+    const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
