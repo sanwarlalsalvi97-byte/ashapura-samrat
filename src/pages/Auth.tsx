@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { openNativeGoogleSignIn } from "@/lib/native-oauth";
+import { nativeGoogleLogin } from "@/lib/native";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -31,7 +31,7 @@ export default function Auth() {
     setGoogleLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        await openNativeGoogleSignIn();
+        await nativeGoogleLogin();
         return;
       }
 
