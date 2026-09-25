@@ -5,3 +5,4 @@
 - [x] Confirm Android camera and fine/coarse location declarations.
 - [x] Set Android versionCode 9 and versionName 1.0.8.
 - [x] Build and sync Android assets/plugins.
+- [x] Replace the native Google Sign-In placeholder with the configured web client ID.
