@@ -148,7 +148,7 @@ export default function Auth() {
     }
   };
 
-  const verifyOtp = async () => {
+    const verifyOtp = async () => {
     if (otp.length !== 6) {
       toast({ title: "गलत OTP", description: "कृपया 6 अंकों का सही OTP डालें।", variant: "destructive" });
       return;
@@ -156,9 +156,33 @@ export default function Auth() {
     setPhoneLoading(true);
     try {
       const result = await confirmationResult.confirm(otp);
-      toast({ title: "लॉगिन सफल!", description: "आपका नंबर वेरीफाई हो गया है।" });
+      const user = result.user;
       
-      // यहाँ Supabase के साथ सिंक करने का कोड जोड़ सकते हैं या सीधे रीडायरेक्ट कर सकते हैं
+      // Supabase के साथ सिंक करने के लिए फेक ईमेल बनाएं
+      const phoneNumber = user.phoneNumber || "+91";
+      const fakeEmail = `${phoneNumber.replace('+', '')}@ashapura.auth`;
+      const fakePassword = `Ashapura@${phoneNumber.replace('+', '')}`;
+
+      // Supabase में लॉगिन या साइन-अप करें
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: fakeEmail,
+        password: fakePassword,
+      });
+
+      if (signInError) {
+        // अगर अकाउंट नहीं है, तो नया बना दें
+        await supabase.auth.signUp({
+          email: fakeEmail,
+          password: fakePassword,
+        });
+        // फिर दोबारा लॉगिन करें
+        await supabase.auth.signInWithPassword({
+          email: fakeEmail,
+          password: fakePassword,
+        });
+      }
+
+      toast({ title: "लॉगिन सफल!", description: "आपका नंबर वेरीफाई हो गया है।" });
       window.location.href = "/app";
       
     } catch (error) {
@@ -167,7 +191,7 @@ export default function Auth() {
       setPhoneLoading(false);
     }
   };
-
+  
   // --- UI Titles ---
   const title =
     mode === "forgot" ? "पासवर्ड भूल गए?"
