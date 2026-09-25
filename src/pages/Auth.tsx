@@ -36,7 +36,9 @@ export default function Auth() {
           options: {},
         });
         
-        const idToken = res.result?.idToken;
+        const idToken = res.result?.responseType === "online"
+          ? res.result.idToken
+          : null;
         if (idToken) {
           const { error } = await supabase.auth.signInWithIdToken({
             provider: "google",
