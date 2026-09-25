@@ -37,8 +37,6 @@ android {
             if (keystoreProperties['storeFile']) {
                 signingConfig signingConfigs.release
             }
-            // Minification disabled: keeps CI memory usage low and avoids
-            // R8 stripping Capacitor plugins loaded by reflection.
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
