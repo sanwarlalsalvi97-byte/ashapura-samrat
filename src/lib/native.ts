@@ -11,6 +11,9 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { SocialLogin } from "@capgo/capacitor-social-login";
 
+const GOOGLE_WEB_CLIENT_ID =
+  "1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com";
+
 export const isNative = () => Capacitor.isNativePlatform();
 export const isAndroidNative = () =>
   isNative() && Capacitor.getPlatform() === "android";
@@ -81,7 +84,7 @@ export async function initSocialLogin() {
   try {
     await SocialLogin.initialize({
       google: {
-        webClientId: "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com", // यहाँ अपनी Google Web Client ID डालें
+        webClientId: GOOGLE_WEB_CLIENT_ID,
       },
     });
   } catch (err) {
