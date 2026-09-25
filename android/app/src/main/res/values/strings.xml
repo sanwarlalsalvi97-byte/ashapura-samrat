@@ -5,8 +5,9 @@
     <string name="package_name">com.ashapurasamrat.app</string>
     <string name="custom_url_scheme">com.ashapurasamrat.app</string>
     
-    <string name="google_client_id">1006500502499-4fvkqepcbn3skalk3nf28naiekqptn0i.apps.googleusercontent.com</string>
     <string name="default_web_client_id">1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com</string>
+    <string name="server_client_id">1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com</string>
 </resources>
+
 
 
