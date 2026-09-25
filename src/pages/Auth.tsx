@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"; // Firebase Auth जोड़ा गया
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"; // getauth हटा दिया गया है
+import { auth } from "../firebase"; // यह नया इम्पोर्ट जोड़ा गया है
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +28,6 @@ export default function Auth() {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
-
-  const auth = getAuth(); // Firebase auth init
 
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
