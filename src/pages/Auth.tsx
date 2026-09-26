@@ -12,6 +12,12 @@ import { SocialLogin } from "@capgo/capacitor-social-login";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier | null;
+  }
+}
+
 type Mode = "login" | "signup" | "forgot" | "phone"; // "phone" मोड जोड़ा गया
 
 export default function Auth() {
