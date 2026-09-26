@@ -147,14 +147,22 @@ export default function Auth() {
     }
   };
 
-    const verifyOtp = async () => {
+  const verifyOtp = async () => {
     if (otp.length !== 6) {
       toast({ title: "गलत OTP", description: "कृपया 6 अंकों का सही OTP डालें।", variant: "destructive" });
       return;
     }
+    if (!confirmationResult) {
+      toast({ title: "OTP दोबारा भेजें", description: "OTP सत्र समाप्त हो गया है। कृपया नया OTP मंगाएं।", variant: "destructive" });
+      setShowOtpInput(false);
+      return;
+    }
+
     setPhoneLoading(true);
+    let otpVerified = false;
     try {
       const result = await confirmationResult.confirm(otp);
+      otpVerified = true;
       const user = result.user;
       
       // Supabase के साथ सिंक करने के लिए फेक ईमेल बनाएं
@@ -163,29 +171,55 @@ export default function Auth() {
       const fakePassword = `Ashapura@${phoneNumber.replace('+', '')}`;
 
       // Supabase में लॉगिन या साइन-अप करें
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: initialSignIn, error: signInError } = await supabase.auth.signInWithPassword({
         email: fakeEmail,
         password: fakePassword,
       });
 
+      let session = initialSignIn.session;
       if (signInError) {
         // अगर अकाउंट नहीं है, तो नया बना दें
-        await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: fakeEmail,
           password: fakePassword,
         });
+        if (signUpError) throw new Error(`अकाउंट सिंक नहीं हुआ: ${signUpError.message}`);
+
+        session = signUpData.session;
+
         // फिर दोबारा लॉगिन करें
-        await supabase.auth.signInWithPassword({
-          email: fakeEmail,
-          password: fakePassword,
-        });
+        if (!session) {
+          const { data: retrySignIn, error: retrySignInError } = await supabase.auth.signInWithPassword({
+            email: fakeEmail,
+            password: fakePassword,
+          });
+          if (retrySignInError) throw new Error(`लॉगिन सत्र नहीं बना: ${retrySignInError.message}`);
+          session = retrySignIn.session;
+        }
+      }
+
+      if (!session) throw new Error("लॉगिन सत्र नहीं बना। कृपया दोबारा कोशिश करें।");
+
+      // Redirect से पहले stored session और server-validated user दोनों की पुष्टि करें।
+      const { data: storedSession, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !storedSession.session) {
+        throw new Error(sessionError?.message || "लॉगिन सत्र सेव नहीं हुआ।");
+      }
+
+      const { data: verifiedUser, error: userError } = await supabase.auth.getUser();
+      if (userError || !verifiedUser.user) {
+        throw new Error(userError?.message || "लॉगिन सत्यापित नहीं हो सका।");
       }
 
       toast({ title: "लॉगिन सफल!", description: "आपका नंबर वेरीफाई हो गया है।" });
       window.location.href = "/app";
-      
-    } catch (error) {
-      toast({ title: "गलत OTP", description: "आपने गलत OTP डाला है, फिर से कोशिश करें।", variant: "destructive" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "कृपया दोबारा कोशिश करें।";
+      toast({
+        title: otpVerified ? "लॉगिन पूरा नहीं हुआ" : "गलत OTP",
+        description: otpVerified ? message : "आपने गलत OTP डाला है, फिर से कोशिश करें।",
+        variant: "destructive",
+      });
     } finally {
       setPhoneLoading(false);
     }
