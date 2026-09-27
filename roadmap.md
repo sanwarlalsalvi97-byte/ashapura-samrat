@@ -6,3 +6,5 @@
 - [x] Set Android versionCode 9 and versionName 1.0.8.
 - [x] Build and sync Android assets/plugins.
 - [x] Replace the native Google Sign-In placeholder with the configured web client ID.
+- [ ] Add clear Hindi email-confirmation guidance and a throttled resend action.
+- [ ] Add OTP resend with a 30-second cooldown and clear status messages.
