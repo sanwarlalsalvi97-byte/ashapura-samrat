@@ -358,7 +358,7 @@ export default function Auth() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                   />
-                  <Button onClick={sendOtp} className="w-full" disabled={phoneLoading}>
+                  <Button onClick={() => sendOtp(false)} className="w-full" disabled={phoneLoading}>
                     {phoneLoading ? "OTP भेज रहे हैं..." : "OTP भेजें"}
                   </Button>
                 </>
