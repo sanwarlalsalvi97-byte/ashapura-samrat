@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"; // getauth हटा दिया गया है
 import { auth } from "../firebase"; // यह नया इम्पोर्ट जोड़ा गया है
@@ -27,6 +27,9 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [signupRole, setSignupRole] = useState<"admin" | "worker">("admin");
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
+  const [emailResending, setEmailResending] = useState(false);
 
   // Phone Auth State
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -34,12 +37,26 @@ export default function Auth() {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const [phoneStatus, setPhoneStatus] = useState("");
 
   const consentNext = (() => {
     try { return sessionStorage.getItem("mcp_oauth_consent_next") || ""; } catch { return ""; }
   })();
   const redirectTarget = window.location.origin + "/app";
   const PUBLISHED_URL = "https://ashapurapro.com";
+  const emailRedirectTo = Capacitor.isNativePlatform() ? `${PUBLISHED_URL}/app` : redirectTarget;
+
+  useEffect(() => {
+    if (emailResendCooldown <= 0 && otpResendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setEmailResendCooldown((seconds) => Math.max(0, seconds - 1));
+      setOtpResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [emailResendCooldown > 0, otpResendCooldown > 0]);
 
   // --- Google Login ---
   const handleGoogleLogin = async () => {
@@ -97,25 +114,88 @@ export default function Auth() {
         setMode("login");
       } else if (mode === "signup") {
         setPendingSignupRole(signupRole);
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: Capacitor.isNativePlatform() ? `${PUBLISHED_URL}/app` : redirectTarget },
+          options: { emailRedirectTo },
         });
         if (error) throw error;
-        toast({ title: "अकाउंट बन गया!", description: "ईमेल चेक करें।" });
+        if (!data.session) {
+          setEmailConfirmationPending(true);
+          setEmailResendCooldown(60);
+          setMode("login");
+          toast({
+            title: "ईमेल की पुष्टि बाकी है",
+            description: "लॉगिन से पहले ईमेल में भेजे गए पुष्टि लिंक पर क्लिक करें।",
+          });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setEmailConfirmationPending(false);
         if (consentNext && consentNext.startsWith("/")) {
           try { sessionStorage.removeItem("mcp_oauth_consent_next"); } catch {}
           window.location.href = consentNext;
         }
       }
-    } catch (err: any) {
-      toast({ title: "गलती हुई", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const authError = err as { code?: string; message?: string; status?: number };
+      const normalizedMessage = authError.message?.toLowerCase() ?? "";
+      const isUnconfirmed = authError.code === "email_not_confirmed" || normalizedMessage.includes("email not confirmed");
+      const isRateLimited = authError.status === 429 || authError.code === "over_email_send_rate_limit" || normalizedMessage.includes("after 50 seconds");
+      const isInvalidLogin = authError.code === "invalid_credentials" || normalizedMessage.includes("invalid login credentials");
+
+      if (isUnconfirmed) {
+        setEmailConfirmationPending(true);
+        toast({
+          title: "ईमेल की पुष्टि बाकी है",
+          description: "ईमेल में भेजे गए लिंक पर क्लिक करें, फिर लॉगिन करें।",
+          variant: "destructive",
+        });
+      } else if (isRateLimited) {
+        setEmailConfirmationPending(true);
+        setEmailResendCooldown((seconds) => Math.max(seconds, 60));
+        toast({
+          title: "थोड़ा इंतज़ार करें",
+          description: "पुष्टि ईमेल हाल ही में भेजा गया है। 60 सेकंड बाद दोबारा कोशिश करें।",
+        });
+      } else if (isInvalidLogin) {
+        toast({
+          title: "लॉगिन नहीं हुआ",
+          description: "ईमेल या पासवर्ड सही नहीं है। नया अकाउंट है तो पहले पुष्टि ईमेल का लिंक खोलें।",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "गलती हुई", description: "अभी अनुरोध पूरा नहीं हुआ। कृपया दोबारा कोशिश करें।", variant: "destructive" });
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendConfirmationEmail = async () => {
+    if (!email || emailResendCooldown > 0 || emailResending) return;
+
+    setEmailResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo },
+      });
+      if (error) throw error;
+      setEmailResendCooldown(60);
+      toast({ title: "पुष्टि ईमेल दोबारा भेजा गया", description: "इनबॉक्स और स्पैम फ़ोल्डर देखें।" });
+    } catch (err: unknown) {
+      const authError = err as { code?: string; status?: number };
+      if (authError.status === 429 || authError.code === "over_email_send_rate_limit") {
+        setEmailResendCooldown(60);
+        toast({ title: "थोड़ा इंतज़ार करें", description: "60 सेकंड बाद ईमेल दोबारा भेज सकेंगे।" });
+      } else {
+        toast({ title: "ईमेल नहीं भेजा जा सका", description: "कृपया कुछ देर बाद दोबारा कोशिश करें।", variant: "destructive" });
+      }
+    } finally {
+      setEmailResending(false);
     }
   };
 
@@ -128,22 +208,32 @@ export default function Auth() {
     }
   };
 
-  const sendOtp = async () => {
+  const sendOtp = async (isResend = false) => {
     if (phoneNumber.length !== 10) {
       toast({ title: "गलत नंबर", description: "कृपया 10 अंकों का सही मोबाइल नंबर डालें।", variant: "destructive" });
       return;
     }
     setPhoneLoading(true);
+    setPhoneStatus(isResend ? "नया OTP भेजा जा रहा है…" : "OTP भेजा जा रहा है…");
     try {
+      if (isResend && window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
       setupRecaptcha();
       const appVerifier = window.recaptchaVerifier;
+      if (!appVerifier) throw new Error("reCAPTCHA शुरू नहीं हुआ।");
       const numberFormat = "+91" + phoneNumber;
       const result = await signInWithPhoneNumber(auth, numberFormat, appVerifier);
       setConfirmationResult(result);
       setShowOtpInput(true);
-      toast({ title: "OTP भेजा गया!", description: "कृपया अपने मोबाइल पर आया 6-अंकों का कोड डालें।" });
-    } catch (error: any) {
-      toast({ title: "समस्या आई", description: error.message || "OTP नहीं भेजा जा सका।", variant: "destructive" });
+      setOtp("");
+      setOtpResendCooldown(30);
+      setPhoneStatus(isResend ? "नया OTP भेज दिया गया है।" : "OTP भेज दिया गया है।");
+      toast({ title: isResend ? "OTP दोबारा भेजा गया!" : "OTP भेजा गया!", description: "कृपया मोबाइल पर आया 6-अंकों का कोड डालें।" });
+    } catch (error: unknown) {
+      setPhoneStatus("OTP नहीं भेजा जा सका। कृपया कुछ देर बाद दोबारा कोशिश करें।");
+      toast({ title: "OTP नहीं भेजा जा सका", description: "कृपया कुछ देर बाद दोबारा कोशिश करें।", variant: "destructive" });
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = null;
@@ -160,7 +250,7 @@ export default function Auth() {
     }
     if (!confirmationResult) {
       toast({ title: "OTP दोबारा भेजें", description: "OTP सत्र समाप्त हो गया है। कृपया नया OTP मंगाएं।", variant: "destructive" });
-      setShowOtpInput(false);
+      setPhoneStatus("OTP सत्र समाप्त हो गया है। नीचे से नया OTP मंगाएं।");
       return;
     }
 
@@ -226,6 +316,7 @@ export default function Auth() {
         description: otpVerified ? message : "आपने गलत OTP डाला है, फिर से कोशिश करें।",
         variant: "destructive",
       });
+      setPhoneStatus(otpVerified ? "OTP सही था, लेकिन लॉगिन पूरा नहीं हुआ। दोबारा कोशिश करें।" : "OTP गलत है। दोबारा डालें या नया OTP मंगाएं।");
     } finally {
       setPhoneLoading(false);
     }
@@ -274,7 +365,8 @@ export default function Auth() {
               ) : (
                 <>
                   <Input
-                    type="number"
+                    type="tel"
+                    inputMode="numeric"
                     placeholder="6-अंकों का OTP डालें"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
@@ -283,7 +375,21 @@ export default function Auth() {
                   <Button onClick={verifyOtp} className="w-full" disabled={phoneLoading}>
                     {phoneLoading ? "वेरीफाई कर रहे हैं..." : "लॉगिन करें"}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => sendOtp(true)}
+                    disabled={phoneLoading || otpResendCooldown > 0}
+                  >
+                    {otpResendCooldown > 0 ? `OTP दोबारा भेजें (${otpResendCooldown} सेकंड)` : "OTP दोबारा भेजें"}
+                  </Button>
                 </>
+              )}
+              {phoneStatus && (
+                <p className="text-center text-sm text-muted-foreground" role="status" aria-live="polite">
+                  {phoneStatus}
+                </p>
               )}
               
               <button 
@@ -382,6 +488,27 @@ export default function Auth() {
                     ? "अकाउंट बनाएं"
                     : "ईमेल से लॉगिन करें"}
                 </Button>
+
+                {mode === "login" && emailConfirmationPending && (
+                  <div className="space-y-2 text-center" role="status" aria-live="polite">
+                    <p className="text-sm text-muted-foreground">
+                      लॉगिन से पहले ईमेल में भेजे पुष्टि लिंक पर क्लिक करें।
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={resendConfirmationEmail}
+                      disabled={!email || emailResending || emailResendCooldown > 0}
+                    >
+                      {emailResending
+                        ? "पुष्टि ईमेल भेज रहे हैं..."
+                        : emailResendCooldown > 0
+                        ? `ईमेल दोबारा भेजें (${emailResendCooldown} सेकंड)`
+                        : "पुष्टि ईमेल दोबारा भेजें"}
+                    </Button>
+                  </div>
+                )}
 
                 {mode === "login" && (
                   <div className="space-y-2">
