@@ -227,6 +227,10 @@ export default function SitesPage() {
                 placeholder="जैसे: समरत हाइट्स"
                 className="mt-1"
                 autoFocus
+                inputMode="text"
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck={true}
               />
             </div>
             <div>
@@ -236,6 +240,10 @@ export default function SitesPage() {
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="जैसे: अंबालाल गुर्जर"
                 className="mt-1"
+                inputMode="text"
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck={true}
               />
             </div>
           </div>
