@@ -1,11 +1,10 @@
-# OTP दोबारा भेजने की सुविधा
+# तीन लक्षित सुधार
 
 ## बदलाव
-- गलत या विफल OTP पुष्टि के बाद उपयोगकर्ता को स्पष्ट हिंदी स्थिति संदेश दिखाना।
-- OTP स्क्रीन पर “OTP दोबारा भेजें” विकल्प जोड़ना।
-- हर OTP भेजने के बाद 30 सेकंड का countdown cooldown रखना, ताकि बार-बार अनुरोध न हों।
-- resend करते समय reCAPTCHA को सुरक्षित रूप से रीसेट करके नया OTP confirmation session सहेजना।
-- OTP सत्यापन और resend के दौरान buttons की loading/disabled स्थिति सही रखना।
+- मुख्य ऐप header को status bar/notch के नीचे रखने के लिए safe-area top padding जोड़ना।
+- सार्वजनिक `/` page पर session जाँच और auth-state listener जोड़कर logged-in users को मौजूदा app dashboard `/app` पर भेजना।
+- shared input में text input mode, autocomplete/autocorrect off और spellcheck off को base defaults बनाना।
 
-## जाँच
-- TypeScript जाँच और live preview build सत्यापित करना।
+## सीमा और जाँच
+- केवल `src/pages/Index.tsx`, `src/pages/LandingPage.tsx`, और `src/components/ui/input.tsx` बदलेंगे।
+- TypeScript और preview build status से बदलाव सत्यापित करेंगे।
