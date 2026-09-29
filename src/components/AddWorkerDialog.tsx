@@ -112,6 +112,38 @@ export default function AddWorkerDialog({ onAdded }: Props) {
           <DialogTitle>नया मजदूर जोड़ें</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="flex flex-col items-center gap-3 border-b border-border pb-4">
+            <p className="text-sm font-medium">पहचान फोटो (वैकल्पिक)</p>
+            <div className="relative">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-border bg-muted">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="चुनी गई मजदूर फोटो" className="h-full w-full object-cover" />
+                ) : (
+                  <ImagePlus className="h-9 w-9 text-muted-foreground" />
+                )}
+              </div>
+              <Button asChild type="button" size="icon" className="absolute bottom-0 right-0 h-8 w-8 rounded-full" title="कैमरा खोलें">
+                <label aria-label="कैमरा खोलें">
+                  <Camera className="h-4 w-4" />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { choosePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              </Button>
+            </div>
+            {photoPreview && <p className="max-w-full truncate text-xs text-muted-foreground">{photo?.name}</p>}
+            <div className="flex items-center justify-center gap-2">
+              <Button asChild type="button" variant="outline" size="sm" className="gap-2">
+                <label>
+                  <ImagePlus className="h-4 w-4" /> {photoPreview ? "फोटो बदलें" : "फोटो चुनें"}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { choosePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              </Button>
+              {photoPreview && (
+                <Button type="button" variant="ghost" size="sm" className="gap-1 text-destructive" onClick={clearPhoto}>
+                  <Trash2 className="h-4 w-4" /> हटाएं
+                </Button>
+              )}
+            </div>
+          </div>
           <Input placeholder="नाम *" value={name} onChange={(e) => setName(e.target.value)} required />
           <Select value={role} onValueChange={(v) => setRole(v as WorkerRole)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -126,35 +158,6 @@ export default function AddWorkerDialog({ onAdded }: Props) {
           <SiteNameInput value={siteName} onChange={setSiteName} />
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-          <div className="space-y-2 rounded-lg border border-border p-3">
-            <p className="text-sm font-medium">पहचान फोटो (वैकल्पिक)</p>
-            {photoPreview ? (
-              <div className="flex items-center gap-3">
-                <img src={photoPreview} alt="चुनी गई मजदूर फोटो" className="h-16 w-16 rounded-full border border-border object-cover" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs text-muted-foreground">{photo?.name}</p>
-                  <Button type="button" variant="ghost" size="sm" className="mt-1 gap-1 text-destructive" onClick={clearPhoto}>
-                    <Trash2 className="h-4 w-4" /> हटाएं
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Button asChild type="button" variant="outline" size="sm" className="gap-2">
-                  <label>
-                    <Camera className="h-4 w-4" /> कैमरा
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { choosePhoto(e.target.files?.[0]); e.target.value = ""; }} />
-                  </label>
-                </Button>
-                <Button asChild type="button" variant="outline" size="sm" className="gap-2">
-                  <label>
-                    <ImagePlus className="h-4 w-4" /> गैलरी
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { choosePhoto(e.target.files?.[0]); e.target.value = ""; }} />
-                  </label>
-                </Button>
-              </div>
-            )}
-          </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "जोड़ रहे हैं..." : "जोड़ें"}
           </Button>
