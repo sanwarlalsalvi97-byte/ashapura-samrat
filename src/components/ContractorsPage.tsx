@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle, Smartphone } from "lucide-react";
+import { Plus, Phone, Trash2, Pencil, HardHat, Wallet, CheckCircle2, PauseCircle, PlayCircle, Smartphone, Calculator } from "lucide-react";
 import { motion } from "framer-motion";
 import UpiPayDialog from "./UpiPayDialog";
 import { toast } from "@/hooks/use-toast";
@@ -51,6 +51,7 @@ export default function ContractorsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Contractor | null>(null);
   const [form, setForm] = useState<FormState>(empty);
+  const [areaCalculator, setAreaCalculator] = useState({ length: "", width: "", rate: "" });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<"all" | "चालू" | "पूरा" | "रुका">("all");
 
@@ -93,9 +94,15 @@ export default function ContractorsPage() {
     return list.filter((c: any) => c.status === filter);
   }, [list, filter]);
 
-  const openAdd = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm(empty);
+    setAreaCalculator({ length: "", width: "", rate: "" });
+    setOpen(true);
+  };
   const openEdit = (c: any) => {
     setEditing(c);
+    setAreaCalculator({ length: "", width: "", rate: "" });
     setForm({
       name: c.name,
       phone: c.phone ?? "",
@@ -114,6 +121,16 @@ export default function ContractorsPage() {
       upi_id: c.upi_id ?? "",
     });
     setOpen(true);
+  };
+
+  const area = Math.max(0, Number(areaCalculator.length) || 0)
+    * Math.max(0, Number(areaCalculator.width) || 0);
+  const calculatedAmount = area * Math.max(0, Number(areaCalculator.rate) || 0);
+
+  const updateAreaCalculator = (field: keyof typeof areaCalculator, value: string) => {
+    if (value === "" || (/^\d*\.?\d*$/.test(value) && Number(value) >= 0)) {
+      setAreaCalculator((current) => ({ ...current, [field]: value }));
+    }
   };
 
   const save = async () => {
@@ -435,6 +452,67 @@ export default function ContractorsPage() {
             {/* राशि विवरण */}
             <div className="space-y-2 pt-2 border-t border-border">
               <div className="text-xs font-bold text-primary uppercase tracking-wide">राशि विवरण</div>
+              <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3">
+                <div className="flex items-center gap-2 text-sm font-bold">
+                  <Calculator className="h-4 w-4 text-primary" />
+                  <span>छत माप कैलकुलेटर</span>
+                  <span className="text-xs font-medium text-muted-foreground">Area Calculator</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">लंबाई (फीट)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={areaCalculator.length}
+                      onChange={(e) => updateAreaCalculator("length", e.target.value)}
+                      placeholder="40"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">चौड़ाई (फीट)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={areaCalculator.width}
+                      onChange={(e) => updateAreaCalculator("width", e.target.value)}
+                      placeholder="30"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">दर (₹/Sq.Ft)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={areaCalculator.rate}
+                      onChange={(e) => updateAreaCalculator("rate", e.target.value)}
+                      placeholder="250"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md bg-background px-2.5 py-2">
+                    <span className="block text-muted-foreground">कुल क्षेत्रफल</span>
+                    <span className="font-bold tabular-nums">{area.toLocaleString("hi-IN", { maximumFractionDigits: 2 })} Sq.Ft</span>
+                  </div>
+                  <div className="rounded-md bg-background px-2.5 py-2">
+                    <span className="block text-muted-foreground">अनुमानित राशि</span>
+                    <span className="font-bold tabular-nums text-primary">₹{calculatedAmount.toLocaleString("hi-IN", { maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={calculatedAmount <= 0}
+                  onClick={() => setForm({ ...form, contract_amount: String(Math.round(calculatedAmount)) })}
+                >
+                  राशि फ़ॉर्म में भरें
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>कुल अनुबंध राशि (₹) *</Label>
