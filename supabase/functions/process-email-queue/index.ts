@@ -7,22 +7,6 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
-type EmailQueuePayload = Record<string, unknown> & {
-  message_id?: string
-  label?: string
-  to?: string
-  queued_at?: string
-}
-
-type EmailQueueMessage = {
-  msg_id: number
-  message: EmailQueuePayload
-  read_ct?: number
-  enqueued_at?: string
-}
-
-type UntypedSupabaseClient = ReturnType<typeof createClient<any>>
-
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
 // falls back to parsing the error message for older versions.
@@ -70,9 +54,9 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
 
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: UntypedSupabaseClient,
+  supabase: ReturnType<typeof createClient>,
   queue: string,
-  msg: EmailQueueMessage,
+  msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
 ): Promise<void> {
   const payload = msg.message
@@ -90,7 +74,7 @@ async function moveToDlq(
     payload,
   })
   if (error) {
-    console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, error })
+    console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, code: error.code, message: error.message })
   }
 }
 
@@ -127,7 +111,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  const supabase: UntypedSupabaseClient = createClient<any>(supabaseUrl, supabaseServiceKey)
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
@@ -160,25 +144,24 @@ Deno.serve(async (req) => {
     })
 
     if (readError) {
-      console.error('Failed to read email batch', { queue, error: readError })
+      console.error('Failed to read email batch', { queue, code: readError.code, message: readError.message })
       continue
     }
 
     if (!messages?.length) continue
-    const queueMessages = messages as EmailQueueMessage[]
 
     // Retry budget is based on real send failures, not pgmq read_ct.
     // read_ct increments for every message in a claimed batch, including
     // messages not attempted when a 429 stops processing early.
     const messageIds = Array.from(
       new Set(
-        queueMessages
-          .map((msg: EmailQueueMessage) =>
+        messages
+          .map((msg) =>
             msg?.message?.message_id && typeof msg.message.message_id === 'string'
               ? msg.message.message_id
               : null
           )
-          .filter((id: string | null): id is string => Boolean(id))
+          .filter((id): id is string => Boolean(id))
       )
     )
     const failedAttemptsByMessageId = new Map<string, number>()
@@ -192,7 +175,8 @@ Deno.serve(async (req) => {
       if (failedRowsError) {
         console.error('Failed to load failed-attempt counters', {
           queue,
-          error: failedRowsError,
+          code: failedRowsError.code,
+          message: failedRowsError.message,
         })
       } else {
         for (const row of failedRows ?? []) {
@@ -206,8 +190,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    for (let i = 0; i < queueMessages.length; i++) {
-      const msg = queueMessages[i]
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
       const payload = msg.message
       const failedAttempts =
         payload?.message_id && typeof payload.message_id === 'string'
@@ -259,7 +243,7 @@ Deno.serve(async (req) => {
             message_id: msg.msg_id,
           })
           if (dupDelError) {
-            console.error('Failed to delete duplicate message from queue', { queue, msg_id: msg.msg_id, error: dupDelError })
+            console.error('Failed to delete duplicate message from queue', { queue, msg_id: msg.msg_id, code: dupDelError.code, message: dupDelError.message })
           }
           continue
         }
@@ -301,7 +285,7 @@ Deno.serve(async (req) => {
           message_id: msg.msg_id,
         })
         if (delError) {
-          console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, error: delError })
+          console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, code: delError.code, message: delError.message })
         }
         totalProcessed++
       } catch (error) {
@@ -367,7 +351,7 @@ Deno.serve(async (req) => {
       }
 
       // Small delay between sends to smooth bursts
-      if (i < queueMessages.length - 1) {
+      if (i < messages.length - 1) {
         await new Promise((r) => setTimeout(r, sendDelayMs))
       }
     }
