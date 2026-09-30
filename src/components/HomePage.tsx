@@ -9,8 +9,6 @@ import {
   Wallet,
   ArrowRight,
   Building2,
-  FileBarChart,
-  UserPlus,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -286,11 +284,7 @@ export default function HomePage({ onNavigate }: Props) {
       <section>
         <h2 className="text-base font-extrabold mb-2 px-1">त्वरित कार्य</h2>
         <div className="grid grid-cols-2 gap-3">
-          <QuickAction icon={Wallet} label="एडवांस" onClick={() => onNavigate("advance")} tone="orange" />
-          <QuickAction icon={CalendarCheck} label="हाजिरी" onClick={() => onNavigate("attendance")} tone="green" />
-          <QuickAction icon={UserPlus} label="मजदूर जोड़ें" onClick={() => onNavigate("workers")} tone="violet" />
           <QuickAction icon={Plus} label="खर्च जोड़ें" onClick={() => onNavigate("cashbook")} tone="red" />
-          <QuickAction icon={FileBarChart} label="रिपोर्ट" onClick={() => onNavigate("report")} tone="blue" />
           <QuickAction icon={ClipboardList} label="भुगतान इतिहास" onClick={() => onNavigate("payment_history")} tone="green" />
           <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
           <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
