@@ -451,6 +451,51 @@ export type Database = {
         }
         Relationships: []
       }
+      material_entries: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          material_type: string
+          payment_status: string
+          quantity: number
+          site_name: string
+          supplier_vehicle: string | null
+          total_amount: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          material_type: string
+          payment_status?: string
+          quantity: number
+          site_name: string
+          supplier_vehicle?: string | null
+          total_amount?: number
+          unit: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          material_type?: string
+          payment_status?: string
+          quantity?: number
+          site_name?: string
+          supplier_vehicle?: string | null
+          total_amount?: number
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       office_locations: {
         Row: {
           created_at: string
