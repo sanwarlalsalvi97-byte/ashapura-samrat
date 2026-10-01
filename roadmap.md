@@ -8,3 +8,6 @@
 - [x] Replace the native Google Sign-In placeholder with the configured web client ID.
 - [x] Add clear Hindi email-confirmation guidance and a throttled resend action.
 - [x] Add OTP resend with a 30-second cooldown and clear status messages.
+- [ ] Add database-backed Material Entry / Stock Management with summaries and filters.
+- [ ] Add Material Entry access from Dashboard navigation.
+- [ ] Verify Material Entry save, readback, filters, and responsive layout.
