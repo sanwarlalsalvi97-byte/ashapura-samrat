@@ -18,6 +18,7 @@ import ManageSubscriptionPage from "@/components/ManageSubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
+import MaterialEntryPage from "./MaterialEntryPage";
 import PaymentHistoryPage from "@/components/PaymentHistoryPage";
 import PunchAttendancePage from "@/components/PunchAttendancePage";
 import GeoAdminPage from "@/components/GeoAdminPage";
@@ -209,6 +210,7 @@ function IndexInner() {
         {tab === "sites" && <SitesPage />}
         {tab === "pending" && <PendingPaymentsPage />}
         {tab === "worker_expense" && <WorkerExpensesPage />}
+        {tab === "material_entry" && <MaterialEntryPage />}
         {tab === "payment_history" && <PaymentHistoryPage />}
         {tab === "punch" && <PunchAttendancePage />}
         {tab === "geo_admin" && <GeoAdminPage />}

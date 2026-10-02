@@ -17,6 +17,7 @@ import {
   Clock,
   HardHat,
   RefreshCw,
+  Package,
 } from "lucide-react";
 import type { TabId } from "./BottomNav";
 import { listSites, subscribeSites, getSitesVersion, type Site } from "@/lib/sites";
@@ -289,6 +290,7 @@ export default function HomePage({ onNavigate }: Props) {
           <QuickAction icon={Building2} label="साइट प्रबंधन" onClick={() => onNavigate("sites")} tone="orange" />
           <QuickAction icon={HardHat} label="छत / RCC" onClick={() => onNavigate("roof")} tone="blue" />
           <QuickAction icon={Briefcase} label="ठेका" onClick={() => onNavigate("contractors")} tone="purple" />
+          <QuickAction icon={Package} label="मटीरियल आवक" onClick={() => onNavigate("material_entry")} tone="green" />
         </div>
       </section>
 
