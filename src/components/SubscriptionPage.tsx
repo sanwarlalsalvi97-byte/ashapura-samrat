@@ -16,6 +16,10 @@ import {
 import { toast } from "@/hooks/use-toast";
 import type { TabId } from "./BottomNav";
 
+// --- REQUIRED NATIVE PAYMENT IMPORTS ---
+import { Capacitor } from "@capacitor/core";
+import { Purchases } from "@revenuecat/purchases-capacitor";
+
 interface Props {
   onNavigate?: (tab: TabId) => void;
 }
@@ -28,6 +32,8 @@ type Plan = {
   name: string;
   tag: string;
   monthly: number;
+  monthlyProductId: string; // मासिक बेस प्लान ID
+  yearlyProductId: string;  // वार्षिक बेस प्लान ID
   Icon: typeof Leaf;
   iconWrap: string;
   accent: string; // text color
@@ -45,6 +51,8 @@ const PLANS: Plan[] = [
     name: "Basic",
     tag: "छोटे ठेकेदार के लिए",
     monthly: 49,
+    monthlyProductId: "basic_plan:basic-plan",
+    yearlyProductId: "basic_plan:basic-yearly",
     Icon: Leaf,
     iconWrap: "bg-gradient-to-br from-emerald-400 to-green-600",
     accent: "text-emerald-600",
@@ -67,6 +75,8 @@ const PLANS: Plan[] = [
     name: "Standard",
     tag: "ज़्यादातर के लिए बेस्ट",
     monthly: 99,
+    monthlyProductId: "standard_plan:standard-monthly",
+    yearlyProductId: "standard_plan:standard-yearly",
     Icon: Rocket,
     iconWrap: "bg-gradient-to-br from-sky-400 to-blue-600",
     accent: "text-blue-600",
@@ -92,6 +102,8 @@ const PLANS: Plan[] = [
     name: "Pro",
     tag: "बड़ी टीम और मल्टी-साइट",
     monthly: 199,
+    monthlyProductId: "pro_plan:pro-monthly",
+    yearlyProductId: "pro_plan:pro-yearly",
     Icon: Crown,
     iconWrap: "bg-gradient-to-br from-fuchsia-500 to-violet-600",
     accent: "text-violet-600",
@@ -122,7 +134,6 @@ const BENEFITS = [
 
 function formatPrice(monthly: number, cycle: Cycle) {
   if (cycle === "monthly") return { amount: monthly, unit: "/माह", sub: null as string | null };
-  // 20% off on yearly (2 months free vibe)
   const yearly = Math.round(monthly * 12 * 0.8);
   const perMonth = Math.round(yearly / 12);
   return { amount: perMonth, unit: "/माह", sub: `₹${yearly}/साल — 20% बचत` };
@@ -130,13 +141,57 @@ function formatPrice(monthly: number, cycle: Cycle) {
 
 export default function SubscriptionPage({ onNavigate }: Props) {
   const [cycle, setCycle] = useState<Cycle>("monthly");
+  const [purchasing, setPurchasing] = useState(false);
 
-  const choose = (p: Plan) => {
-    const price = formatPrice(p.monthly, cycle);
-    toast({
-      title: `${p.name} प्लान चुना`,
-      description: `₹${price.amount}${price.unit}${price.sub ? ` • ${price.sub}` : ""} — पेमेंट सेटअप जल्द ही।`,
-    });
+  // --- NATIVE GOOGLE PLAY BILLING PURCHASE LOGIC ---
+  const choose = async (p: Plan) => {
+    setPurchasing(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
+        
+        // Google Play Store का असली पेमेंट डायलॉग खोलेगा
+        const { customerInfo } = await Purchases.purchaseProduct(activeProductId);
+        
+        if (customerInfo) {
+          toast({
+            title: "भुगतान सफल!",
+            description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,
+          });
+          onNavigate?.("home");
+        }
+      } else {
+        const price = formatPrice(p.monthly, cycle);
+        toast({
+          title: `${p.name} प्लान चुना`,
+          description: `₹${price.amount}${price.unit}${price.sub ? ` • ${price.sub}` : ""} — मोबाइल ऐप से भुगतान करें।`,
+        });
+      }
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        toast({
+          title: "पेमेंट नहीं हो सका",
+          description: error?.message || "कृपया दोबारा कोशिश करें।",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  // --- RESTORE PURCHASE LOGIC ---
+  const handleRestore = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Purchases.restorePurchases();
+        toast({ title: "रीस्टोर सफल", description: "आपकी खरीदारी पुनः सक्रिय कर दी गई है।" });
+      } else {
+        toast({ title: "सूचना", description: "यह फ़ीचर मोबाइल ऐप में उपलब्ध है।" });
+      }
+    } catch (error: any) {
+      toast({ title: "गलती हुई", description: error?.message || "रीस्टोर नहीं हो सका।", variant: "destructive" });
+    }
   };
 
   return (
@@ -258,10 +313,15 @@ export default function SubscriptionPage({ onNavigate }: Props) {
               </ul>
 
               <Button
+                disabled={purchasing}
                 onClick={() => choose(p)}
                 className={`w-full mt-5 h-11 rounded-2xl font-bold text-[14px] ${p.btnClass}`}
               >
-                {p.popular ? "अभी शुरू करें" : `${p.name} चुनें`}
+                {purchasing
+                  ? "प्रोसेस हो रहा है..."
+                  : p.popular
+                  ? "अभी शुरू करें"
+                  : `${p.name} चुनें`}
               </Button>
             </div>
           );
@@ -297,13 +357,12 @@ export default function SubscriptionPage({ onNavigate }: Props) {
         <Shield className="w-3.5 h-3.5" /> 100% सुरक्षित भुगतान • कभी भी रद्द करें
       </div>
 
-      <button className="mt-3 w-full text-center text-sm text-primary font-semibold py-2">
+      <button
+        onClick={handleRestore}
+        className="mt-3 w-full text-center text-sm text-primary font-semibold py-2"
+      >
         ↻ Restore Purchase
       </button>
     </div>
   );
-      }
-
-
-
-        
+}
