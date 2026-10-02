@@ -18,6 +18,7 @@ import ManageSubscriptionPage from "@/components/ManageSubscriptionPage";
 import SitesPage from "@/components/SitesPage";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
+import MaterialEntryPage from "./MaterialEntryPage";
 import PaymentHistoryPage from "@/components/PaymentHistoryPage";
 import PunchAttendancePage from "@/components/PunchAttendancePage";
 import GeoAdminPage from "@/components/GeoAdminPage";
@@ -34,18 +35,22 @@ import { getLinkedWorker } from "@/lib/worker-link";
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
 
-export default function Index() {
+interface IndexProps {
+  initialTab?: TabId;
+}
+
+export default function Index({ initialTab = "home" }: IndexProps) {
   return (
     <RoleProvider>
-      <IndexInner />
+      <IndexInner initialTab={initialTab} />
     </RoleProvider>
   );
 }
 
-function IndexInner() {
+function IndexInner({ initialTab }: { initialTab: TabId }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabId>("home");
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
   const { isWorker, loading: roleLoading } = useRole();
   const [linkChecked, setLinkChecked] = useState(false);
@@ -209,6 +214,7 @@ function IndexInner() {
         {tab === "sites" && <SitesPage />}
         {tab === "pending" && <PendingPaymentsPage />}
         {tab === "worker_expense" && <WorkerExpensesPage />}
+        {tab === "material_entry" && <MaterialEntryPage />}
         {tab === "payment_history" && <PaymentHistoryPage />}
         {tab === "punch" && <PunchAttendancePage />}
         {tab === "geo_admin" && <GeoAdminPage />}

@@ -104,6 +104,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/app" element={<PinLockGate><Index /></PinLockGate>} />
+            <Route path="/material-entry" element={<PinLockGate><Index initialTab="material_entry" /></PinLockGate>} />
             <Route path="/notification-settings" element={<PinLockGate><NotificationSettings /></PinLockGate>} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
