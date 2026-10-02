@@ -35,18 +35,22 @@ import { getLinkedWorker } from "@/lib/worker-link";
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
 
-export default function Index() {
+interface IndexProps {
+  initialTab?: TabId;
+}
+
+export default function Index({ initialTab = "home" }: IndexProps) {
   return (
     <RoleProvider>
-      <IndexInner />
+      <IndexInner initialTab={initialTab} />
     </RoleProvider>
   );
 }
 
-function IndexInner() {
+function IndexInner({ initialTab }: { initialTab: TabId }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabId>("home");
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [gpsOn, setGpsOn] = useState<boolean | null>(null);
   const { isWorker, loading: roleLoading } = useRole();
   const [linkChecked, setLinkChecked] = useState(false);
