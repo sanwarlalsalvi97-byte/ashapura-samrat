@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1006500502499:android:cda52694300c45497d9ed6",
+        "mobilesdk_app_id": "1:1006500502499:android:63eb805a441c56167d9ed6",
         "android_client_info": {
-          "package_name": "com.ashapurasamrat.app"
+          "package_name": "com.ashapura.samrat"
         }
       },
       "oauth_client": [
