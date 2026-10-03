@@ -1,4 +1,4 @@
-package com.ashapurasamrat.app;
+package com.ashapura.samrat;
 
 import android.Manifest;
 import android.content.Intent;

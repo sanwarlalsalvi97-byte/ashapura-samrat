@@ -1,4 +1,4 @@
-package com.ashapurasamrat.app;
+package com.ashapura.samrat;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
