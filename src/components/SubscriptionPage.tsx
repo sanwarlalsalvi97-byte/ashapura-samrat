@@ -143,22 +143,29 @@ export default function SubscriptionPage({ onNavigate }: Props) {
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [purchasing, setPurchasing] = useState(false);
 
-  // --- NATIVE GOOGLE PLAY BILLING PURCHASE LOGIC ---
+  // --- UPDATED NATIVE GOOGLE PLAY BILLING PURCHASE LOGIC ---
   const choose = async (p: Plan) => {
     setPurchasing(true);
     try {
       if (Capacitor.isNativePlatform()) {
         const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
         
-        // Google Play Store का असली पेमेंट डायलॉग खोलेगा
-        const { customerInfo } = await Purchases.purchaseProduct(activeProductId);
+        // 1. पहले प्रोडक्ट की जानकारी (StoreProduct) लाएं
+        const { products } = await Purchases.getProducts([activeProductId]);
         
-        if (customerInfo) {
-          toast({
-            title: "भुगतान सफल!",
-            description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,
-          });
-          onNavigate?.("home");
+        if (products && products.length > 0) {
+          // 2. सही मेथड का उपयोग करके गूगल प्ले का पेमेंट विंडो खोलें
+          const { customerInfo } = await Purchases.purchaseStoreProduct({ product: products[0] });
+          
+          if (customerInfo) {
+            toast({
+              title: "भुगतान सफल!",
+              description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,
+            });
+            onNavigate?.("home");
+          }
+        } else {
+          throw new Error("प्लान की जानकारी नहीं मिल पाई।");
         }
       } else {
         const price = formatPrice(p.monthly, cycle);
@@ -365,4 +372,4 @@ export default function SubscriptionPage({ onNavigate }: Props) {
       </button>
     </div>
   );
-}
+        }
