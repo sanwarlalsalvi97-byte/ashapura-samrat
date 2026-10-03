@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addWorker, updateWorker, type WorkerRole } from "@/lib/supabase-helpers";
 import { toast } from "@/hooks/use-toast";
 import { Camera, ImagePlus, Trash2, UserPlus } from "lucide-react";
 import SiteNameInput from "./SiteNameInput";
 import { removeWorkerPhoto, uploadWorkerPhoto } from "@/lib/worker-photos";
-// sites are managed exclusively in the Sites page
 
 interface Props {
   onAdded: () => void;
@@ -21,10 +21,21 @@ export default function AddWorkerDialog({ onAdded }: Props) {
   const [dailyRate, setDailyRate] = useState("500");
   const [siteName, setSiteName] = useState("");
   const [phone, setPhone] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
   const [upiId, setUpiId] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [ifsc, setIfsc] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // आधार नंबर को केवल 12 अंकों तक सीमित करने के लिए
+  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ""); // केवल अंक स्वीकार करें
+    if (value.length <= 12) {
+      setAadhaar(value);
+    }
+  };
 
   const choosePhoto = (file?: File) => {
     if (!file) return;
@@ -52,15 +63,18 @@ export default function AddWorkerDialog({ onAdded }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      // Site must already exist in Sites page; we never auto-create.
       const worker = await addWorker({
         name: name.trim(),
         role,
         daily_rate: parseInt(dailyRate) || 500,
         site_name: siteName.trim() || null,
         phone: phone.trim() || null,
+        aadhaar: aadhaar ? "[Aadhaar Redacted]" : null,
         upi_id: upiId.trim() || null,
-      });
+        bank_account: bankAccount.trim() || null,
+        ifsc_code: ifsc.trim().toUpperCase() || null,
+      } as any);
+
       let uploadedPath: string | null = null;
       let photoWarning: string | null = null;
       try {
@@ -80,15 +94,20 @@ export default function AddWorkerDialog({ onAdded }: Props) {
         if (uploadedPath) await removeWorkerPhoto(uploadedPath).catch(() => undefined);
         photoWarning = photoError instanceof Error ? photoError.message : "फोटो सेव नहीं हुई";
       }
+
       toast({
         title: "✅ मजदूर जोड़ दिया गया!",
         description: photoWarning ? `फोटो सेव नहीं हुई, लेकिन मजदूर सुरक्षित है। ${photoWarning}` : undefined,
       });
+
       setName("");
       setDailyRate("500");
       setSiteName("");
       setPhone("");
+      setAadhaar("");
       setUpiId("");
+      setBankAccount("");
+      setIfsc("");
       clearPhoto();
       setOpen(false);
       onAdded();
@@ -107,7 +126,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
           मजदूर जोड़ें
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>नया मजदूर जोड़ें</DialogTitle>
         </DialogHeader>
@@ -144,7 +163,9 @@ export default function AddWorkerDialog({ onAdded }: Props) {
               )}
             </div>
           </div>
+
           <Input placeholder="नाम *" value={name} onChange={(e) => setName(e.target.value)} required />
+          
           <Select value={role} onValueChange={(v) => setRole(v as WorkerRole)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -154,11 +175,54 @@ export default function AddWorkerDialog({ onAdded }: Props) {
               <SelectItem value="ठेकेदार">ठेकेदार</SelectItem>
             </SelectContent>
           </Select>
+
           <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
-          <SiteNameInput value={siteName} onChange={setSiteName} />
+
+          {/* 1. Site Selection Label */}
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">साइट चुनें</Label>
+            <SiteNameInput value={siteName} onChange={setSiteName} />
+          </div>
+
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
+
+          {/* 2. Aadhaar Input Field Position (UPI ID के ठीक ऊपर) */}
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">आधार नंबर (वैकल्पिक)</Label>
+            <Input
+              placeholder="12 अंकों का आधार नंबर"
+              value={aadhaar}
+              onChange={handleAadhaarChange}
+              maxLength={12}
+              type="text"
+            />
+          </div>
+
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-          <Button type="submit" className="w-full" disabled={loading}>
+
+          {/* 3. Bank Account Details Position (UPI ID के ठीक नीचे) */}
+          <div className="space-y-3 pt-1 border-t border-border">
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">बैंक खाता संख्या</Label>
+              <Input
+                placeholder="बैंक खाता संख्या दर्ज करें"
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                type="text"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">IFSC कोड</Label>
+              <Input
+                placeholder="IFSC कोड दर्ज करें"
+                value={ifsc}
+                onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+                type="text"
+              />
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full mt-2" disabled={loading}>
             {loading ? "जोड़ रहे हैं..." : "जोड़ें"}
           </Button>
         </form>
