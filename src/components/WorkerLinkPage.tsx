@@ -41,9 +41,13 @@ export default function WorkerLinkPage({ onLinked }: { onLinked: () => void }) {
             <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-background">
               <IdCard className="w-4 h-4 text-muted-foreground" />
               <input
+                type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                inputMode="numeric"
+                inputMode="text"
+                autoComplete="on"
+                autoCorrect="on"
+                spellCheck={true}
                 placeholder="1001"
                 className="flex-1 bg-transparent outline-none tracking-[0.3em] font-bold"
                 required
@@ -56,9 +60,13 @@ export default function WorkerLinkPage({ onLinked }: { onLinked: () => void }) {
             <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-background">
               <Smartphone className="w-4 h-4 text-muted-foreground" />
               <input
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 12))}
-                inputMode="numeric"
+                inputMode="text"
+                autoComplete="on"
+                autoCorrect="on"
+                spellCheck={true}
                 placeholder="9876543210"
                 className="flex-1 bg-transparent outline-none font-semibold"
                 required

@@ -11,3 +11,4 @@
 - [x] Add database-backed Material Entry / Stock Management with summaries and filters.
 - [x] Add Material Entry access from Dashboard navigation.
 - [x] Verify Material Entry save, readback, filters, and responsive layout.
+- [x] Standardize editable fields on the full multilingual text keyboard while preserving secure and picker controls.
