@@ -15,6 +15,13 @@
       "when": 1790818361543,
       "tag": "0001_create_material_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791163856359,
+      "tag": "0002_pin_email_queue_function_search_paths",
+      "breakpoints": true
     }
   ]
 }
