@@ -490,7 +490,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input type="number" value={defaultRate} onChange={(e) => setDefaultRate(e.target.value)} placeholder="₹500" />
+          <Input type="text" value={defaultRate} onChange={(e) => setDefaultRate(e.target.value)} placeholder="₹500" />
           <Button onClick={saveDefaultRate} variant="secondary" className="w-full" size="sm">
             {t("सेट करें", "Set Rate")}
           </Button>
@@ -742,7 +742,7 @@ export default function SettingsPage({ onNavigate }: SettingsPageProps = {}) {
           </div>
           {pinEnabled && (
             <div className="flex gap-2">
-              <Input type="password" inputMode="numeric" pattern="\d*" maxLength={8} value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} placeholder={t("नया PIN बदलें", "Change PIN")} />
+              <Input type="password" inputMode="text" pattern="\d*" maxLength={8} value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))} placeholder={t("नया PIN बदलें", "Change PIN")} />
               <Button size="sm" variant="secondary" onClick={async () => {
                 try { await savePin(newPin); setNewPin(""); toast({ title: t("PIN बदल दिया गया", "PIN updated") }); }
                 catch (e: any) { toast({ title: t("गलती", "Error"), description: e.message, variant: "destructive" }); }

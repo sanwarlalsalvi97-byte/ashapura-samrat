@@ -483,7 +483,7 @@ function AdvanceFormDialog({
           <div>
             <label className="text-xs font-bold text-muted-foreground">राशि (₹)</label>
             <Input
-              type="number"
+              type="text"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"

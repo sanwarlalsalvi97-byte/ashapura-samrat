@@ -553,7 +553,7 @@ function PaySalaryDialog({
             <div>
               <label className="text-xs font-bold text-muted-foreground">राशि (₹)</label>
               <Input
-                type="number"
+                type="text"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="mt-1 h-11 text-lg font-extrabold"

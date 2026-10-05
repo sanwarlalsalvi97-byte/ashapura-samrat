@@ -39,7 +39,7 @@ export default function PinLockGate({ children }: { children: React.ReactNode })
         <Input
           autoFocus
           type="password"
-          inputMode="numeric"
+          inputMode="text"
           pattern="\d*"
           maxLength={8}
           value={pin}

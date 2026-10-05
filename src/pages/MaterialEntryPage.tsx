@@ -243,7 +243,7 @@ export default function MaterialEntryPage() {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <Label htmlFor="material-quantity">मात्रा *</Label>
-              <Input id="material-quantity" type="number" min="0" step="0.01" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} placeholder="0" />
+              <Input id="material-quantity" type="text" min="0" step="0.01" value={form.quantity} onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))} placeholder="0" />
             </div>
             <div className="space-y-1.5">
               <Label>इकाई *</Label>
@@ -263,7 +263,7 @@ export default function MaterialEntryPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="material-amount">कुल राशि (₹) *</Label>
-            <Input id="material-amount" type="number" min="0" step="0.01" value={form.total_amount} onChange={(event) => setForm((current) => ({ ...current, total_amount: event.target.value }))} placeholder="0" />
+            <Input id="material-amount" type="text" min="0" step="0.01" value={form.total_amount} onChange={(event) => setForm((current) => ({ ...current, total_amount: event.target.value }))} placeholder="0" />
           </div>
         </div>
 

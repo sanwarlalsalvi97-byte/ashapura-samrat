@@ -53,11 +53,11 @@ export default function RoofPage() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>लम्बाई ({unit})</Label>
-              <Input type="number" inputMode="decimal" value={length} onChange={(e) => setLength(e.target.value)} placeholder="30" />
+              <Input type="text" inputMode="text" value={length} onChange={(e) => setLength(e.target.value)} placeholder="30" />
             </div>
             <div>
               <Label>चौड़ाई ({unit})</Label>
-              <Input type="number" inputMode="decimal" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="20" />
+              <Input type="text" inputMode="text" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="20" />
             </div>
           </div>
 
@@ -87,15 +87,15 @@ export default function RoofPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-[10px]">सीमेंट</Label>
-                    <Input type="number" inputMode="decimal" value={customC} onChange={(e) => setCustomC(e.target.value)} placeholder="1" />
+                    <Input type="text" inputMode="text" value={customC} onChange={(e) => setCustomC(e.target.value)} placeholder="1" />
                   </div>
                   <div>
                     <Label className="text-[10px]">रेत</Label>
-                    <Input type="number" inputMode="decimal" value={customS} onChange={(e) => setCustomS(e.target.value)} placeholder="2" />
+                    <Input type="text" inputMode="text" value={customS} onChange={(e) => setCustomS(e.target.value)} placeholder="2" />
                   </div>
                   <div>
                     <Label className="text-[10px]">गिट्टी</Label>
-                    <Input type="number" inputMode="decimal" value={customA} onChange={(e) => setCustomA(e.target.value)} placeholder="4" />
+                    <Input type="text" inputMode="text" value={customA} onChange={(e) => setCustomA(e.target.value)} placeholder="4" />
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">अपना ratio: <b>{effectiveRatio}</b></p>
@@ -106,11 +106,11 @@ export default function RoofPage() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>wastage (%)</Label>
-              <Input type="number" inputMode="decimal" value={wastage} onChange={(e) => setWastage(e.target.value)} />
+              <Input type="text" inputMode="text" value={wastage} onChange={(e) => setWastage(e.target.value)} />
             </div>
             <div>
               <Label>सरिया (kg/cft)</Label>
-              <Input type="number" inputMode="decimal" value={steel} onChange={(e) => setSteel(e.target.value)} />
+              <Input type="text" inputMode="text" value={steel} onChange={(e) => setSteel(e.target.value)} />
             </div>
           </div>
         </CardContent>

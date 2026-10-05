@@ -70,7 +70,7 @@ export default function EditWorkerDialog({ worker, onUpdated }: Props) {
               <SelectItem value="ठेकेदार">ठेकेदार</SelectItem>
             </SelectContent>
           </Select>
-          <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
+          <Input type="text" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
           <SiteNameInput value={siteName} onChange={setSiteName} />
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />

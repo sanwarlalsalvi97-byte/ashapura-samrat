@@ -412,7 +412,7 @@ export default function ContractorsPage() {
               </div>
               <div>
                 <Label>मोबाइल नंबर</Label>
-                <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" />
+                <Input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="9876543210" />
               </div>
               <div>
                 <Label>पता</Label>
@@ -462,7 +462,7 @@ export default function ContractorsPage() {
                   <div>
                     <Label className="text-xs">लंबाई (फीट)</Label>
                     <Input
-                      type="number"
+                      type="text"
                       min="0"
                       step="any"
                       value={areaCalculator.length}
@@ -473,7 +473,7 @@ export default function ContractorsPage() {
                   <div>
                     <Label className="text-xs">चौड़ाई (फीट)</Label>
                     <Input
-                      type="number"
+                      type="text"
                       min="0"
                       step="any"
                       value={areaCalculator.width}
@@ -484,7 +484,7 @@ export default function ContractorsPage() {
                   <div>
                     <Label className="text-xs">दर (₹/Sq.Ft)</Label>
                     <Input
-                      type="number"
+                      type="text"
                       min="0"
                       step="any"
                       value={areaCalculator.rate}
@@ -516,11 +516,11 @@ export default function ContractorsPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>कुल अनुबंध राशि (₹) *</Label>
-                  <Input type="number" inputMode="numeric" value={form.contract_amount} onChange={(e) => setForm({ ...form, contract_amount: e.target.value })} placeholder="500000" />
+                  <Input type="text" inputMode="text" value={form.contract_amount} onChange={(e) => setForm({ ...form, contract_amount: e.target.value })} placeholder="500000" />
                 </div>
                 <div>
                   <Label>एडवांस भुगतान (₹)</Label>
-                  <Input type="number" inputMode="numeric" value={form.advance_paid} onChange={(e) => setForm({ ...form, advance_paid: e.target.value })} placeholder="100000" />
+                  <Input type="text" inputMode="text" value={form.advance_paid} onChange={(e) => setForm({ ...form, advance_paid: e.target.value })} placeholder="100000" />
                 </div>
               </div>
               <div className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2 flex justify-between">
@@ -626,7 +626,7 @@ export default function ContractorsPage() {
               </div>
               <div>
                 <Label>राशि (₹)</Label>
-                <Input type="number" inputMode="numeric" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="5000" autoFocus />
+                <Input type="text" inputMode="text" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="5000" autoFocus />
               </div>
             </div>
           )}

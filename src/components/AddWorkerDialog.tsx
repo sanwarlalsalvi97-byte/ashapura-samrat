@@ -176,7 +176,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
             </SelectContent>
           </Select>
 
-          <Input type="number" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
+          <Input type="text" placeholder="दिहाड़ी (₹)" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} />
 
           {/* 1. Site Selection Label */}
           <div className="space-y-1">

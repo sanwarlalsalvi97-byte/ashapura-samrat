@@ -119,7 +119,7 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
 
             <div>
               <Label>राशि (₹)</Label>
-              <Input type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="जैसे 5000" autoFocus />
+              <Input type="text" inputMode="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="जैसे 5000" autoFocus />
             </div>
 
             <div>
