@@ -151,7 +151,9 @@ export default function SubscriptionPage({ onNavigate }: Props) {
         const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
         
         // 1. पहले प्रोडक्ट की जानकारी (StoreProduct) लाएं
-        const { products } = await Purchases.getProducts([activeProductId]);
+        const { products } = await Purchases.getProducts({
+          productIdentifiers: [activeProductId],
+        });
         
         if (products && products.length > 0) {
           // 2. सही मेथड का उपयोग करके गूगल प्ले का पेमेंट विंडो खोलें
