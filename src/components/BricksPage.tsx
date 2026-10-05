@@ -291,12 +291,12 @@ export default function BricksPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>मात्रा *</Label>
-                <Input type="number" inputMode="numeric" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="1000" />
+                <Input type="text" inputMode="text" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="1000" />
               </div>
               {form.entry_type === "In" && (
                 <div>
                   <Label>rate (₹/ईंट)</Label>
-                  <Input type="number" inputMode="decimal" step="0.01" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} placeholder="8" />
+                  <Input type="text" inputMode="text" step="0.01" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} placeholder="8" />
                 </div>
               )}
             </div>
@@ -343,8 +343,8 @@ export default function BricksPage() {
               <div>
                 <Label>लम्बाई ({calc.unit})</Label>
                 <Input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="text"
                   value={calc.length}
                   onChange={(e) => setCalc({ ...calc, length: e.target.value })}
                   placeholder="50"
@@ -353,8 +353,8 @@ export default function BricksPage() {
               <div>
                 <Label>ऊंचाई ({calc.unit})</Label>
                 <Input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="text"
                   value={calc.height}
                   onChange={(e) => setCalc({ ...calc, height: e.target.value })}
                   placeholder="11"
@@ -385,8 +385,8 @@ export default function BricksPage() {
               <div>
                 <Label>ईंट wastage (%)</Label>
                 <Input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="text"
                   value={calc.wastage}
                   onChange={(e) => setCalc({ ...calc, wastage: e.target.value })}
                   placeholder="5"
@@ -395,8 +395,8 @@ export default function BricksPage() {
               <div>
                 <Label>mortar wastage (%)</Label>
                 <Input
-                  type="number"
-                  inputMode="decimal"
+                  type="text"
+                  inputMode="text"
                   value={calc.mortarWastage}
                   onChange={(e) => setCalc({ ...calc, mortarWastage: e.target.value })}
                   placeholder="10"
@@ -593,12 +593,12 @@ export default function BricksPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label>मात्रा * ({matForm.kind === "cement" ? "बैग" : "CFT"})</Label>
-                <Input type="number" inputMode="decimal" value={matForm.quantity} onChange={(e) => setMatForm({ ...matForm, quantity: e.target.value })} placeholder={matForm.kind === "cement" ? "10" : "100"} />
+                <Input type="text" inputMode="text" value={matForm.quantity} onChange={(e) => setMatForm({ ...matForm, quantity: e.target.value })} placeholder={matForm.kind === "cement" ? "10" : "100"} />
               </div>
               {matForm.entry_type === "In" && (
                 <div>
                   <Label>rate (₹/{matForm.kind === "cement" ? "बैग" : "CFT"})</Label>
-                  <Input type="number" inputMode="decimal" step="0.01" value={matForm.rate} onChange={(e) => setMatForm({ ...matForm, rate: e.target.value })} placeholder={matForm.kind === "cement" ? "400" : "50"} />
+                  <Input type="text" inputMode="text" step="0.01" value={matForm.rate} onChange={(e) => setMatForm({ ...matForm, rate: e.target.value })} placeholder={matForm.kind === "cement" ? "400" : "50"} />
                 </div>
               )}
             </div>

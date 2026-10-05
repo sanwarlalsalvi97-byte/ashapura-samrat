@@ -141,8 +141,8 @@ export default function WorkerExpensesPage() {
             <div>
               <label className="block text-xs font-semibold mb-1">राशि ₹</label>
               <Input
-                type="number"
-                inputMode="decimal"
+                type="text"
+                inputMode="text"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"

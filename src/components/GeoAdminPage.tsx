@@ -314,18 +314,18 @@ export default function GeoAdminPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Latitude</Label>
-              <Input inputMode="decimal" value={office.latitude}
+              <Input inputMode="text" value={office.latitude}
                 onChange={(e) => setOffice({ ...office, latitude: e.target.value })} placeholder="23.022505" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Longitude</Label>
-              <Input inputMode="decimal" value={office.longitude}
+              <Input inputMode="text" value={office.longitude}
                 onChange={(e) => setOffice({ ...office, longitude: e.target.value })} placeholder="72.571362" />
             </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">अनुमत परिधि (मीटर)</Label>
-            <Input inputMode="numeric" value={office.radius_meters}
+            <Input inputMode="text" value={office.radius_meters}
               onChange={(e) => setOffice({ ...office, radius_meters: e.target.value })} />
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">

@@ -236,7 +236,7 @@ export default function ResetPassword() {
 
               <form onSubmit={handleResend} className="space-y-3">
                 <Input
-                  type="email"
+                  type="text"
                   placeholder="ईमेल"
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}

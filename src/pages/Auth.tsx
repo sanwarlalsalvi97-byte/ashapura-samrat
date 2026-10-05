@@ -353,7 +353,7 @@ export default function Auth() {
               {!showOtpInput ? (
                 <>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="10 अंकों का मोबाइल नंबर"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
@@ -365,8 +365,8 @@ export default function Auth() {
               ) : (
                 <>
                   <Input
-                    type="tel"
-                    inputMode="numeric"
+                    type="text"
+                    inputMode="text"
                     placeholder="6-अंकों का OTP डालें"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
@@ -463,7 +463,7 @@ export default function Auth() {
                   </div>
                 )}
                 <Input
-                  type="email"
+                  type="text"
                   placeholder="ईमेल"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

@@ -202,7 +202,7 @@ export default function CashbookPage() {
               </div>
               <div>
                 <Label className="text-xs">राशि (₹)</Label>
-                <Input type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                <Input type="text" inputMode="text" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
               <div>
                 <Label className="text-xs">तारीख</Label>
@@ -290,7 +290,7 @@ export default function CashbookPage() {
               </div>
               <div>
                 <Label className="text-xs">राशि (₹)</Label>
-                <Input type="number" value={editing.amount} onChange={(e) => setEditing({ ...editing, amount: parseInt(e.target.value) || 0 })} />
+                <Input type="text" value={editing.amount} onChange={(e) => setEditing({ ...editing, amount: parseInt(e.target.value) || 0 })} />
               </div>
               <div>
                 <Label className="text-xs">तारीख</Label>

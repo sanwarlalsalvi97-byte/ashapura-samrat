@@ -379,11 +379,11 @@ export default function AttendanceCard({
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">{worker.name} — कितने घंटे ओवरटाइम?</p>
             <Input
-              type="number"
+              type="text"
               step="0.5"
               min={0.5}
               max={12}
-              inputMode="decimal"
+              inputMode="text"
               value={otHours}
               onChange={(e) => setOtHours(Math.max(0, Number(e.target.value) || 0))}
               className="h-12 text-lg font-bold text-center"
