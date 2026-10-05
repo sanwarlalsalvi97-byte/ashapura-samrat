@@ -10,5 +10,6 @@ public class MainActivity extends BridgeActivity {
 
         registerPlugin(AdPrivacyPlugin.class);
         registerPlugin(NativePermissionsPlugin.class);
+        registerPlugin(PlayBillingPlugin.class);
     }
 }

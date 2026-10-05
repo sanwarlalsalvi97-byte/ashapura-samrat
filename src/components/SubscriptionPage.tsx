@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { TabId } from "./BottomNav";
+import { PlayBilling } from "@/lib/play-billing";
+import { verifyAndActivatePurchase } from "@/lib/premium";
 
-// --- REQUIRED NATIVE PAYMENT IMPORTS ---
 import { Capacitor } from "@capacitor/core";
-import { Purchases } from "@revenuecat/purchases-capacitor";
 
 interface Props {
   onNavigate?: (tab: TabId) => void;
@@ -143,32 +143,25 @@ export default function SubscriptionPage({ onNavigate }: Props) {
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [purchasing, setPurchasing] = useState(false);
 
-  // --- UPDATED NATIVE GOOGLE PLAY BILLING PURCHASE LOGIC ---
   const choose = async (p: Plan) => {
     setPurchasing(true);
     try {
       if (Capacitor.isNativePlatform()) {
         const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
-        
-        // 1. पहले प्रोडक्ट की जानकारी (StoreProduct) लाएं
-        const { products } = await Purchases.getProducts({
-          productIdentifiers: [activeProductId],
+        const purchase = await PlayBilling.purchaseSubscription({ productId: activeProductId });
+        const verification = await verifyAndActivatePurchase({
+          productId: purchase.productId,
+          purchaseToken: purchase.purchaseToken,
+          type: "subs",
         });
-        
-        if (products && products.length > 0) {
-          // 2. सही मेथड का उपयोग करके गूगल प्ले का पेमेंट विंडो खोलें
-          const { customerInfo } = await Purchases.purchaseStoreProduct({ product: products[0] });
-          
-          if (customerInfo) {
-            toast({
-              title: "भुगतान सफल!",
-              description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,
-            });
-            onNavigate?.("home");
-          }
-        } else {
-          throw new Error("प्लान की जानकारी नहीं मिल पाई।");
+        if (!verification.ok || !verification.premium) {
+          throw new Error(verification.error || "भुगतान की पुष्टि नहीं हो पाई।");
         }
+        toast({
+          title: "भुगतान सफल!",
+          description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,
+        });
+        onNavigate?.("home");
       } else {
         const price = formatPrice(p.monthly, cycle);
         toast({
@@ -176,11 +169,12 @@ export default function SubscriptionPage({ onNavigate }: Props) {
           description: `₹${price.amount}${price.unit}${price.sub ? ` • ${price.sub}` : ""} — मोबाइल ऐप से भुगतान करें।`,
         });
       }
-    } catch (error: any) {
-      if (!error.userCancelled) {
+    } catch (error: unknown) {
+      const paymentError = error as { code?: string; message?: string };
+      if (paymentError.code !== "USER_CANCELLED") {
         toast({
           title: "पेमेंट नहीं हो सका",
-          description: error?.message || "कृपया दोबारा कोशिश करें।",
+          description: paymentError.message || "कृपया दोबारा कोशिश करें।",
           variant: "destructive",
         });
       }
@@ -193,13 +187,34 @@ export default function SubscriptionPage({ onNavigate }: Props) {
   const handleRestore = async () => {
     try {
       if (Capacitor.isNativePlatform()) {
-        await Purchases.restorePurchases();
-        toast({ title: "रीस्टोर सफल", description: "आपकी खरीदारी पुनः सक्रिय कर दी गई है।" });
+        const { purchases } = await PlayBilling.restoreSubscriptions();
+        let restored = false;
+        for (const purchase of purchases) {
+          const verification = await verifyAndActivatePurchase({
+            productId: purchase.productId,
+            purchaseToken: purchase.purchaseToken,
+            type: "subs",
+          });
+          if (verification.premium) {
+            restored = true;
+            break;
+          }
+        }
+        toast({
+          title: restored ? "रीस्टोर सफल" : "कोई सक्रिय सदस्यता नहीं मिली",
+          description: restored
+            ? "आपकी खरीदारी पुनः सक्रिय कर दी गई है।"
+            : "इस Google Play अकाउंट पर सक्रिय प्लान नहीं मिला।",
+        });
       } else {
         toast({ title: "सूचना", description: "यह फ़ीचर मोबाइल ऐप में उपलब्ध है।" });
       }
-    } catch (error: any) {
-      toast({ title: "गलती हुई", description: error?.message || "रीस्टोर नहीं हो सका।", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({
+        title: "गलती हुई",
+        description: error instanceof Error ? error.message : "रीस्टोर नहीं हो सका।",
+        variant: "destructive",
+      });
     }
   };
 
