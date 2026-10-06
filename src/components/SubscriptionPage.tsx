@@ -157,6 +157,9 @@ export default function SubscriptionPage({ onNavigate }: Props) {
         if (!verification.ok || !verification.premium) {
           throw new Error(verification.error || "भुगतान की पुष्टि नहीं हो पाई।");
         }
+        if (!purchase.acknowledged) {
+          await PlayBilling.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
+        }
         toast({
           title: "भुगतान सफल!",
           description: `${p.name} प्लान सफलतापूर्वक एक्टिवेट हो गया है।`,

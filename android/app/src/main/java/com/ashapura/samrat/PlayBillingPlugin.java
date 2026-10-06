@@ -2,6 +2,7 @@ package com.ashapura.samrat;
 
 import androidx.annotation.NonNull;
 
+import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
@@ -9,7 +10,6 @@ import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
-import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -17,9 +17,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import com.google.common.collect.ImmutableList;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** Native Google Play Billing bridge for subscription products and base plans. */
@@ -90,7 +89,7 @@ public class PlayBillingPlugin extends Plugin {
             .setProductType(BillingClient.ProductType.SUBS)
             .build();
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
-            .setProductList(ImmutableList.of(product))
+            .setProductList(Collections.singletonList(product))
             .build();
 
         billingClient.queryProductDetailsAsync(params, (result, detailsResult) -> {
@@ -126,7 +125,7 @@ public class PlayBillingPlugin extends Plugin {
                     .setOfferToken(selectedOffer.getOfferToken())
                     .build();
             BillingFlowParams flowParams = BillingFlowParams.newBuilder()
-                .setProductDetailsParamsList(ImmutableList.of(productParams))
+                .setProductDetailsParamsList(Collections.singletonList(productParams))
                 .build();
 
             pendingPurchaseCall = call;
@@ -177,6 +176,27 @@ public class PlayBillingPlugin extends Plugin {
         response.put("acknowledged", purchase.isAcknowledged());
         clearPendingPurchase();
         call.resolve(response);
+    }
+
+    @PluginMethod
+    public void acknowledgePurchase(PluginCall call) {
+        String purchaseToken = call.getString("purchaseToken");
+        if (purchaseToken == null || purchaseToken.trim().isEmpty()) {
+            call.reject("खरीद टोकन नहीं मिला।");
+            return;
+        }
+        withConnectedClient(call, () -> {
+            AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
+                .setPurchaseToken(purchaseToken)
+                .build();
+            billingClient.acknowledgePurchase(params, result -> {
+                if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                    call.resolve();
+                } else {
+                    call.reject(playMessage(result), String.valueOf(result.getResponseCode()));
+                }
+            });
+        });
     }
 
     @PluginMethod

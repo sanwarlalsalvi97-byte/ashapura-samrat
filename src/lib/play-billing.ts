@@ -13,6 +13,7 @@ type RestoredPurchases = {
 
 interface PlayBillingPlugin {
   purchaseSubscription(options: { productId: string }): Promise<PlayPurchase>;
+  acknowledgePurchase(options: { purchaseToken: string }): Promise<void>;
   restoreSubscriptions(): Promise<RestoredPurchases>;
 }
 
