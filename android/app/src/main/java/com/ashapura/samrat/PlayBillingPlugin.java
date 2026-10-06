@@ -2,7 +2,6 @@ package com.ashapura.samrat;
 
 import androidx.annotation.NonNull;
 
-import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
@@ -167,20 +166,6 @@ public class PlayBillingPlugin extends Plugin {
             return;
         }
 
-        if (!purchase.isAcknowledged()) {
-            AcknowledgePurchaseParams acknowledgeParams = AcknowledgePurchaseParams.newBuilder()
-                .setPurchaseToken(purchase.getPurchaseToken())
-                .build();
-            billingClient.acknowledgePurchase(acknowledgeParams, acknowledgeResult -> {
-                if (acknowledgeResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    resolvePurchase(call, purchase);
-                } else {
-                    clearPendingPurchase();
-                    call.reject(playMessage(acknowledgeResult), String.valueOf(acknowledgeResult.getResponseCode()));
-                }
-            });
-            return;
-        }
         resolvePurchase(call, purchase);
     }
 
@@ -189,7 +174,7 @@ public class PlayBillingPlugin extends Plugin {
         response.put("productId", pendingProductId);
         response.put("purchaseToken", purchase.getPurchaseToken());
         response.put("orderId", purchase.getOrderId());
-        response.put("acknowledged", true);
+        response.put("acknowledged", purchase.isAcknowledged());
         clearPendingPurchase();
         call.resolve(response);
     }
