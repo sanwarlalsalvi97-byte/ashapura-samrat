@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Correct Google initialization and reconcile configuration with the existing Android application ID.
+- [ ] Unify verified Play Billing purchase processing, acknowledgement, manual restore and launch/resume recovery.
+- [ ] Use one exact paise-based amount for UPI QR and payment intents.
+- [ ] Validate targeted tests, preview and Android configuration; report device/Play Console verification blockers.
+
 - [x] Replace native browser Google OAuth with the Android account picker and ID-token sign-in.
 - [x] Request camera and location permissions when attendance, face scan, and GPS features are opened.
 - [x] Confirm Android camera and fine/coarse location declarations.
