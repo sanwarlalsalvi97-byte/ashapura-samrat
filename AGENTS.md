@@ -6,3 +6,4 @@
 - Share purchase verification and acknowledgement through subscription-billing for purchase buttons, both restore screens and authenticated launch/resume recovery, so retries use one entitlement path.
 - Parse UPI dialog amounts into integer paise and pass one parameter object to QR and payment launch, so both preserve exact decimal currency.
 - Await the shared retryable native Google initialization promise before opening the account picker, so startup and sign-in cannot race.
+- Keep Google Play subscription expiry validation in a shared pure server helper tested alongside billing recovery, so missing expiry cannot grant lifetime subscription access.
