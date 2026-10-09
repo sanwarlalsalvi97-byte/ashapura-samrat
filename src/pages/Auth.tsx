@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, HardHat, UserRound, Phone } from "lucide-react"; // Phone आइकन जोड़ा गया
 import { Capacitor } from "@capacitor/core";
-import { SocialLogin } from "@capgo/capacitor-social-login";
+import { nativeGoogleLogin } from "@/lib/native";
 import { setPendingSignupRole } from "@/lib/roles";
 import logoUrl from "@/assets/logo.png";
 
@@ -60,15 +60,13 @@ export default function Auth() {
 
   // --- Google Login ---
   const handleGoogleLogin = async () => {
+    if (googleLoading) return;
     setGoogleLoading(true);
     try {
       if (Capacitor.isNativePlatform()) {
-        const res = await SocialLogin.login({
-          provider: "google",
-          options: {},
-        });
+        const res = await nativeGoogleLogin();
         
-        const idToken = res.result?.responseType === "online" ? res.result.idToken : null;
+        const idToken = res?.result?.responseType === "online" ? res.result.idToken : null;
         if (idToken) {
           const { error } = await supabase.auth.signInWithIdToken({
             provider: "google",
@@ -76,6 +74,8 @@ export default function Auth() {
           });
 
           if (error) throw error;
+          const { data: confirmed, error: sessionError } = await supabase.auth.getUser();
+          if (sessionError || !confirmed.user) throw new Error("लॉगिन सत्र तैयार नहीं हुआ। दोबारा कोशिश करें।");
           window.location.href = "/app";
         } else {
           throw new Error("गूगल टोकन प्राप्त नहीं हुआ।");
@@ -90,7 +90,9 @@ export default function Auth() {
     } catch (error: any) {
       toast({
         title: "Google लॉगिन नहीं हो सका",
-        description: error?.message || "दोबारा कोशिश करें।",
+        description: /28444|developer console|DEVELOPER_ERROR/i.test(error?.message || "")
+          ? "Google में इस इंस्टॉल ऐप की पहचान या signing SHA-1 का मिलान नहीं है ([28444])। GoogleProvider वाले Logcat विवरण से जाँच करें।"
+          : error?.message || "दोबारा कोशिश करें।",
         variant: "destructive",
       });
     } finally {

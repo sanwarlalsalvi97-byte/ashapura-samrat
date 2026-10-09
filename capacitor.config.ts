@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ashapurasamrat.app',
+  appId: 'com.ashapura.samrat',
   appName: 'Ashapura Samrat',
   webDir: 'dist',
   backgroundColor: '#0E7A3A',

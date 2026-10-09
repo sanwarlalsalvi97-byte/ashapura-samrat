@@ -4,6 +4,8 @@ import { ArrowLeft, Crown, Leaf, RefreshCw, CheckCircle2, XCircle, Sparkles, Shi
 import { toast } from "@/hooks/use-toast";
 import { isPremium, setPremium, loadTrial, getTrial, trialDaysLeft, FREE_WORKER_LIMIT, TRIAL_MONTHS } from "@/lib/premium";
 import type { TabId } from "./BottomNav";
+import { Capacitor } from "@capacitor/core";
+import { billingErrorMessage, restorePlaySubscriptions } from "@/lib/subscription-billing";
 
 interface Props {
   onNavigate?: (tab: TabId) => void;
@@ -68,14 +70,8 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
   const restorePurchases = async () => {
     setRestoring(true);
     try {
-      // Native Play Billing bridge hook — if present, ask it to re-query
-      // purchases and call setPremium()/persist meta. Otherwise this is a
-      // no-op in web/PWA.
-      const bridge = (window as unknown as {
-        AshapuraBilling?: { restorePurchases?: () => Promise<boolean> };
-      }).AshapuraBilling;
-      if (bridge?.restorePurchases) {
-        const ok = await bridge.restorePurchases();
+      if (Capacitor.getPlatform() === "android") {
+        const ok = await restorePlaySubscriptions();
         toast({
           title: ok ? "Purchases restored" : "कोई सक्रिय सदस्यता नहीं मिली",
           description: ok
@@ -84,13 +80,12 @@ export default function ManageSubscriptionPage({ onNavigate }: Props) {
         });
       } else {
         toast({
-          title: "Restore requested",
-          description:
-            "Play Billing bridge इस build में उपलब्ध नहीं है। Play Store से खरीदी गई सदस्यता native app में automatically restore होगी।",
+          title: "सूचना",
+          description: "Google Play खरीद रीस्टोर करने के लिए Android ऐप इस्तेमाल करें।",
         });
       }
     } catch (e) {
-      toast({ title: "Restore failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+      toast({ title: "रीस्टोर नहीं हो सका", description: billingErrorMessage(e), variant: "destructive" });
     } finally {
       setRestoring(false);
     }

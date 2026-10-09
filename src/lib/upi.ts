@@ -4,11 +4,13 @@
 
 import { AppLauncher } from "@capacitor/app-launcher";
 import { isAndroidNative } from "./native";
+import { formatPaise, parseRupeesToPaise } from "./currency";
 
 export interface UpiPayParams {
   payeeVpa: string;   // e.g. 9876543210@upi
   payeeName: string;  // shown in the UPI app
   amount?: number;    // INR
+  amountPaise?: number; // Exact amount, preferred over legacy rupee callers.
   note?: string;      // remark
   txnRef?: string;    // transaction ref id
 }
@@ -27,6 +29,7 @@ export function isValidUpiId(vpa: string): boolean {
 export function validateUpiParams(p: UpiPayParams): string | null {
   if (!p.payeeVpa || !isValidUpiId(p.payeeVpa)) return "Invalid UPI ID";
   if (!p.payeeName || !p.payeeName.trim()) return "Payee name is required";
+  if (p.amountPaise !== undefined && (!Number.isSafeInteger(p.amountPaise) || p.amountPaise <= 0)) return "Amount must be valid paise greater than 0";
   if (p.amount !== undefined && !(p.amount > 0)) return "Amount must be greater than 0";
   return null;
 }
@@ -36,7 +39,8 @@ function buildQuery(p: UpiPayParams): string {
   const params = new URLSearchParams();
   params.set("pa", p.payeeVpa.trim());
   params.set("pn", p.payeeName.trim());
-  if (p.amount && p.amount > 0) params.set("am", p.amount.toFixed(2));
+  const paise = p.amountPaise ?? (p.amount === undefined ? null : parseRupeesToPaise(p.amount.toFixed(2)));
+  if (paise !== null && paise > 0) params.set("am", formatPaise(paise));
   if (p.note) params.set("tn", p.note.slice(0, 80));
   if (p.txnRef) params.set("tr", p.txnRef);
   params.set("cu", "INR");

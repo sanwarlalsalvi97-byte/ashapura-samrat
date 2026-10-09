@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Ashapura Samrat</string>
     <string name="title_activity_main">Ashapura Samrat</string>
-    <string name="package_name">com.ashapurasamrat.app</string>
+    <string name="package_name">com.ashapura.samrat</string>
     <string name="custom_url_scheme">com.ashapurasamrat.app</string>
     
     <string name="default_web_client_id">1006500502499-rd8ma3ki17eb9lgbt3srqvmthftlq4id.apps.googleusercontent.com</string>
