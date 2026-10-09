@@ -16,7 +16,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import type { TabId } from "./BottomNav";
 import { PlayBilling } from "@/lib/play-billing";
-import { verifyAndActivatePurchase } from "@/lib/premium";
+import { billingErrorMessage, processPlayPurchase, restorePlaySubscriptions } from "@/lib/subscription-billing";
 
 import { Capacitor } from "@capacitor/core";
 
@@ -149,16 +149,9 @@ export default function SubscriptionPage({ onNavigate }: Props) {
       if (Capacitor.isNativePlatform()) {
         const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
         const purchase = await PlayBilling.purchaseSubscription({ productId: activeProductId });
-        const verification = await verifyAndActivatePurchase({
-          productId: purchase.productId,
-          purchaseToken: purchase.purchaseToken,
-          type: "subs",
-        });
-        if (!verification.ok || !verification.premium) {
-          throw new Error(verification.error || "भुगतान की पुष्टि नहीं हो पाई।");
-        }
-        if (!purchase.acknowledged) {
-          await PlayBilling.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
+        const activated = await processPlayPurchase(purchase);
+        if (!activated) {
+          throw new Error("भुगतान अभी सक्रिय नहीं है। लंबित भुगतान की पुष्टि के बाद ऐप फिर जाँच करेगा।");
         }
         toast({
           title: "भुगतान सफल!",
@@ -177,7 +170,7 @@ export default function SubscriptionPage({ onNavigate }: Props) {
       if (paymentError.code !== "USER_CANCELLED") {
         toast({
           title: "पेमेंट नहीं हो सका",
-          description: paymentError.message || "कृपया दोबारा कोशिश करें।",
+          description: billingErrorMessage(error),
           variant: "destructive",
         });
       }
@@ -190,19 +183,7 @@ export default function SubscriptionPage({ onNavigate }: Props) {
   const handleRestore = async () => {
     try {
       if (Capacitor.isNativePlatform()) {
-        const { purchases } = await PlayBilling.restoreSubscriptions();
-        let restored = false;
-        for (const purchase of purchases) {
-          const verification = await verifyAndActivatePurchase({
-            productId: purchase.productId,
-            purchaseToken: purchase.purchaseToken,
-            type: "subs",
-          });
-          if (verification.premium) {
-            restored = true;
-            break;
-          }
-        }
+        const restored = await restorePlaySubscriptions();
         toast({
           title: restored ? "रीस्टोर सफल" : "कोई सक्रिय सदस्यता नहीं मिली",
           description: restored
@@ -215,7 +196,7 @@ export default function SubscriptionPage({ onNavigate }: Props) {
     } catch (error: unknown) {
       toast({
         title: "गलती हुई",
-        description: error instanceof Error ? error.message : "रीस्टोर नहीं हो सका।",
+        description: billingErrorMessage(error),
         variant: "destructive",
       });
     }

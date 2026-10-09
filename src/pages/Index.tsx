@@ -31,6 +31,7 @@ import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { RoleProvider, useRole } from "@/lib/roles";
 import WorkerLinkPage from "@/components/WorkerLinkPage";
 import { getLinkedWorker } from "@/lib/worker-link";
+import { usePlayBillingRecovery } from "@/hooks/use-play-billing-recovery";
 
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
@@ -59,6 +60,7 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
   useAttendanceAlarm();
   useOfflineSync();
   useAutoBackup(!!session);
+  usePlayBillingRecovery(session?.user.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {

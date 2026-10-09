@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Smartphone, Copy, Check, ExternalLink, AlertTriangle } from "lucide-react";
 import { buildUpiLink, isValidUpiId, launchUpi, isAndroid, isStandalonePWA } from "@/lib/upi";
 import { toast } from "@/hooks/use-toast";
+import { parseRupeesToPaise } from "@/lib/currency";
 
 interface Props {
   open: boolean;
@@ -38,14 +39,15 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
   const pwa = isStandalonePWA();
   const android = isAndroid();
 
+  const amountPaise = useMemo(() => parseRupeesToPaise(amount), [amount]);
   const params = useMemo(() => (
-    validVpa ? {
-      payeeVpa: payeeVpa!,
+    validVpa && payeeVpa && amountPaise !== null && amountPaise > 0 ? {
+      payeeVpa,
       payeeName,
-      amount: parseInt(amount) || undefined,
+      amountPaise,
       note,
     } : null
-  ), [validVpa, payeeVpa, payeeName, amount, note]);
+  ), [validVpa, payeeVpa, payeeName, amountPaise, note]);
 
   const link = useMemo(() => params ? buildUpiLink(params) : "", [params]);
 
@@ -55,10 +57,8 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
   }, [link]);
 
   const handlePay = async () => {
-    if (!params) return;
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) {
-      toast({ title: "राशि डालें", description: "कृपया 0 से बड़ी राशि डालें।", variant: "destructive" });
+    if (!params) {
+      toast({ title: "राशि डालें", description: "कृपया 0 से बड़ी राशि डालें; पैसे के लिए अधिकतम दो दशमलव अंक रखें।", variant: "destructive" });
       return;
     }
     if (!payeeName?.trim()) {
@@ -67,7 +67,7 @@ export default function UpiPayDialog({ open, onOpenChange, payeeName, payeeVpa, 
     }
     setLaunching(true);
     setShowFallback(false);
-    const result = await launchUpi({ ...params, amount: amt });
+    const result = await launchUpi(params);
     setLaunching(false);
     console.log("[UpiPayDialog] launch result:", result);
     if (!result.opened) {

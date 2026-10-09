@@ -79,17 +79,20 @@ async function handleNativeAppUrl(url: string) {
 }
 
 /** Initialize Social Login for Native Android */
+let socialLoginReady: Promise<void> | null = null;
 export async function initSocialLogin() {
   if (!isNative()) return;
-  try {
-    await SocialLogin.initialize({
+  if (!socialLoginReady) {
+    socialLoginReady = SocialLogin.initialize({
       google: {
         webClientId: GOOGLE_WEB_CLIENT_ID,
       },
+    }).catch((error: unknown) => {
+      socialLoginReady = null;
+      throw error;
     });
-  } catch (err) {
-    console.error("Social login initialization failed", err);
   }
+  await socialLoginReady;
 }
 
 /** Native Google Sign In helper using @capgo/capacitor-social-login */
@@ -116,7 +119,7 @@ export async function initNative(onBack?: () => boolean) {
   initialised = true;
 
   // Social login plugin initialization
-  void initSocialLogin();
+  void initSocialLogin().catch(() => console.warn("Google initialization deferred until login."));
 
   // Register first so an OAuth callback cannot arrive during awaited startup work.
   CapApp.addListener("appUrlOpen", ({ url }) => {

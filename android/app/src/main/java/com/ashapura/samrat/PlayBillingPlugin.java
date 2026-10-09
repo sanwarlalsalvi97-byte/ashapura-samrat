@@ -19,6 +19,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 /** Native Google Play Billing bridge for subscription products and base plans. */
@@ -27,11 +28,15 @@ public class PlayBillingPlugin extends Plugin {
     private BillingClient billingClient;
     private PluginCall pendingPurchaseCall;
     private String pendingProductId;
+    private boolean connecting;
+    private final List<Runnable> connectionActions = new ArrayList<>();
+    private final List<PluginCall> connectionCalls = new ArrayList<>();
 
     @Override
     public void load() {
         billingClient = BillingClient.newBuilder(getContext())
             .setListener(this::onPurchasesUpdated)
+            .enableAutoServiceReconnection()
             .enablePendingPurchases(
                 PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
             )
@@ -47,13 +52,24 @@ public class PlayBillingPlugin extends Plugin {
             action.run();
             return;
         }
+        connectionActions.add(action);
+        connectionCalls.add(call);
+        if (connecting) return;
+        connecting = true;
         billingClient.startConnection(new BillingClientStateListener() {
             @Override
             public void onBillingSetupFinished(@NonNull BillingResult result) {
+                connecting = false;
+                List<Runnable> actions = new ArrayList<>(connectionActions);
+                List<PluginCall> calls = new ArrayList<>(connectionCalls);
+                connectionActions.clear();
+                connectionCalls.clear();
                 if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    action.run();
+                    for (Runnable queuedAction : actions) queuedAction.run();
                 } else {
-                    call.reject(playMessage(result), String.valueOf(result.getResponseCode()));
+                    for (PluginCall queuedCall : calls) {
+                        queuedCall.reject(playMessage(result), String.valueOf(result.getResponseCode()));
+                    }
                 }
             }
 
@@ -108,7 +124,8 @@ public class PlayBillingPlugin extends Plugin {
             ProductDetails.SubscriptionOfferDetails selectedOffer = null;
             if (offers != null) {
                 for (ProductDetails.SubscriptionOfferDetails offer : offers) {
-                    if (basePlanId == null || basePlanId.equals(offer.getBasePlanId())) {
+                    if ((basePlanId == null || basePlanId.equals(offer.getBasePlanId()))
+                        && offer.getOfferId() == null) {
                         selectedOffer = offer;
                         break;
                     }
@@ -139,6 +156,9 @@ public class PlayBillingPlugin extends Plugin {
     }
 
     private void onPurchasesUpdated(BillingResult result, List<com.android.billingclient.api.Purchase> purchases) {
+        if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+            notifyListeners("purchasesUpdated", new JSObject());
+        }
         PluginCall call = pendingPurchaseCall;
         if (call == null) return;
 
@@ -153,7 +173,15 @@ public class PlayBillingPlugin extends Plugin {
             return;
         }
 
-        com.android.billingclient.api.Purchase purchase = purchases.get(0);
+        com.android.billingclient.api.Purchase purchase = null;
+        for (com.android.billingclient.api.Purchase item : purchases) {
+            if (item.getProducts().contains(pendingProductId)) { purchase = item; break; }
+        }
+        if (purchase == null) {
+            clearPendingPurchase();
+            call.reject("चुनी हुई खरीद का जवाब नहीं मिला। रीस्टोर से दोबारा जाँच करें।");
+            return;
+        }
         if (purchase.getPurchaseState() == com.android.billingclient.api.Purchase.PurchaseState.PENDING) {
             clearPendingPurchase();
             call.reject("भुगतान लंबित है। Google Play पुष्टि के बाद सदस्यता सक्रिय होगी।", "PURCHASE_PENDING");
@@ -174,6 +202,7 @@ public class PlayBillingPlugin extends Plugin {
         response.put("purchaseToken", purchase.getPurchaseToken());
         response.put("orderId", purchase.getOrderId());
         response.put("acknowledged", purchase.isAcknowledged());
+        response.put("purchaseState", "PURCHASED");
         clearPendingPurchase();
         call.resolve(response);
     }
@@ -186,15 +215,29 @@ public class PlayBillingPlugin extends Plugin {
             return;
         }
         withConnectedClient(call, () -> {
-            AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
-                .setPurchaseToken(purchaseToken)
-                .build();
-            billingClient.acknowledgePurchase(params, result -> {
-                if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    call.resolve();
-                } else {
-                    call.reject(playMessage(result), String.valueOf(result.getResponseCode()));
+            QueryPurchasesParams query = QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.SUBS).build();
+            billingClient.queryPurchasesAsync(query, (queryResult, purchases) -> {
+                if (queryResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+                    call.reject(playMessage(queryResult));
+                    return;
                 }
+                for (com.android.billingclient.api.Purchase purchase : purchases) {
+                    if (!purchaseToken.equals(purchase.getPurchaseToken())) continue;
+                    if (purchase.getPurchaseState() != com.android.billingclient.api.Purchase.PurchaseState.PURCHASED) {
+                        call.reject("लंबित खरीद की पुष्टि नहीं की जा सकती।", "PURCHASE_PENDING");
+                        return;
+                    }
+                    if (purchase.isAcknowledged()) { call.resolve(); return; }
+                    AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
+                        .setPurchaseToken(purchaseToken).build();
+                    billingClient.acknowledgePurchase(params, result -> {
+                        if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) call.resolve();
+                        else call.reject(playMessage(result), String.valueOf(result.getResponseCode()));
+                    });
+                    return;
+                }
+                call.reject("Google Play पर यह खरीद नहीं मिली। रीस्टोर से दोबारा जाँच करें।");
             });
         });
     }
@@ -217,6 +260,8 @@ public class PlayBillingPlugin extends Plugin {
                         JSObject item = new JSObject();
                         item.put("productId", productId);
                         item.put("purchaseToken", purchase.getPurchaseToken());
+                        item.put("acknowledged", purchase.isAcknowledged());
+                        item.put("purchaseState", "PURCHASED");
                         restored.put(item);
                     }
                 }
