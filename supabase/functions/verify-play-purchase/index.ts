@@ -2,7 +2,7 @@
 // Requires two secrets:
 //   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON  – full JSON of a service account with
 //                                       "androidpublisher" access for the app.
-//   PLAY_PACKAGE_NAME                 – e.g. app.lovable.ashapurasamrat
+//   PLAY_PACKAGE_NAME                 – must match the installed Android applicationId
 //
 // Client calls:
 //   supabase.functions.invoke("verify-play-purchase", {
@@ -14,6 +14,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { subscriptionEntitlement } from "../_shared/play-entitlement.ts";
 
 type Body = {
   productId?: string;
@@ -168,11 +169,10 @@ Deno.serve(async (req) => {
 
     if (type === "subs") {
       // paymentState: 0=pending, 1=received, 2=free trial, 3=pending deferred upgrade
-      const paid = data.paymentState === 1 || data.paymentState === 2;
-      expiryTimeMillis = data.expiryTimeMillis ? Number(data.expiryTimeMillis) : undefined;
+      const entitlement = subscriptionEntitlement(data, Date.now());
+      expiryTimeMillis = entitlement.expiryTimeMillis;
       autoRenewing = Boolean(data.autoRenewing);
-      const notExpired = !expiryTimeMillis || expiryTimeMillis > Date.now();
-      premium = paid && notExpired;
+      premium = entitlement.premium;
     } else {
       // one-time purchase: purchaseState 0=purchased, 1=cancelled, 2=pending
       premium = data.purchaseState === 0;
