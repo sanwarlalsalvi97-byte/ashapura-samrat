@@ -8,6 +8,7 @@ import { listSites } from "@/lib/sites";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatPaise, parseRupeesToPaise } from "@/lib/currency";
 import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building2, Users, Wallet, TrendingDown, BadgeIndianRupee, ArrowLeftRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
@@ -37,8 +38,7 @@ import {
 const monthNames = ["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 
 function inr(n: number) {
-  const rounded = Math.round(n);
-  return `${rounded < 0 ? "-" : ""}₹${Math.abs(rounded).toLocaleString("hi-IN")}`;
+  return `${n < 0 ? "-" : ""}₹${Math.abs(n).toLocaleString("hi-IN", { maximumFractionDigits: 2 })}`;
 }
 
 export default function ReportPage() {
@@ -145,13 +145,13 @@ export default function ReportPage() {
         s.presentDays, s.halfDays, s.absentDays,
         Math.round(s.currentEarnings), Math.round(s.currentAdvance),
         Math.round(s.totalAdvanceLifetime), Math.round(s.currentPaid),
-        Math.round(s.netPayable), Math.round(s.remainingBalance),
+        Math.round(s.netPayable), s.remainingBalance,
       ];
     });
     rows.push([activeSite || "सभी साइट", "", "कुल", Math.round(ledgerTotals.previousBalance), "", "", "",
       Math.round(ledgerTotals.currentEarnings), Math.round(ledgerTotals.currentAdvance),
       Math.round(ledgerTotals.totalAdvanceLifetime), Math.round(ledgerTotals.currentPaid),
-      Math.round(ledgerTotals.netPayable), Math.round(ledgerTotals.remainingBalance)]);
+      Math.round(ledgerTotals.netPayable), ledgerTotals.remainingBalance]);
     const siteLabel = activeSite ? ` — साइट: ${activeSite}` : " — सभी साइट";
     const title = `मासिक रिपोर्ट — ${monthNames[month - 1]} ${year}${siteLabel}`;
     if (format === "csv") {
@@ -455,7 +455,7 @@ function PaySalaryDialog({
 
   useEffect(() => {
     if (target) {
-      const suggested = Math.max(0, Math.round(target.remainingBalance));
+      const suggested = Math.max(0, target.remainingBalance);
       setAmount(String(suggested));
       setNote(`सैलरी सेटलमेंट`);
       setMode("cash");
@@ -486,13 +486,17 @@ function PaySalaryDialog({
 
     // UPI mode: launch UPI app first, DO NOT save until user confirms.
     if (mode === "upi") {
+      const amountPaise = parseRupeesToPaise(amount);
+      if (amountPaise === null || amountPaise <= 0) {
+        return toast({ title: "सही राशि दर्ज करें", description: "पैसे के लिए अधिकतम दो दशमलव अंक रखें।", variant: "destructive" });
+      }
       const vpa = (target.worker as any).upi_id as string | undefined;
       if (!vpa) {
         return toast({ title: "इस मजदूर की UPI ID नहीं है", description: "पहले मजदूर की जानकारी में UPI ID जोड़ें", variant: "destructive" });
       }
       try {
         const { launchUpi } = await import("@/lib/upi");
-        const res = await launchUpi({ payeeVpa: vpa, payeeName: target.worker.name, amount: amt, note: note || `सैलरी` });
+        const res = await launchUpi({ payeeVpa: vpa, payeeName: target.worker.name, amountPaise, note: note || `सैलरी` });
         if (!res.opened) {
           return toast({ title: "UPI ऐप नहीं खुला", description: res.error || "GPay / PhonePe / Paytm / BHIM इंस्टॉल करें", variant: "destructive" });
         }
@@ -522,7 +526,9 @@ function PaySalaryDialog({
       toast({ title: "पेमेंट रद्द", description: "कोई एंट्री नहीं जोड़ी गई" });
       return;
     }
-    const amt = parseFloat(amount);
+    const amountPaise = parseRupeesToPaise(amount);
+    if (amountPaise === null || amountPaise <= 0) return;
+    const amt = Number(formatPaise(amountPaise));
     setSaving(true);
     try {
       await savePayment(amt);

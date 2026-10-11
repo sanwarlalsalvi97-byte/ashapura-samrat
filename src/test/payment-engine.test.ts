@@ -142,6 +142,17 @@ describe("computeWorkerLedger — carry-forward", () => {
 });
 
 describe("sumPendingOutstanding — shared source of truth", () => {
+  it.each([250.75, 100.50, 100.00, 250.00, 0.75])("preserves positive ₹%s and excludes zero/negative balances", async (amount) => {
+    tables.workers = [
+      { id: "w1", name: "Due", daily_rate: amount, is_active: true },
+      { id: "w2", name: "Overpaid", daily_rate: 0, is_active: true },
+      { id: "w3", name: "Settled", daily_rate: 0, is_active: true },
+    ];
+    tables.attendance = [{ worker_id: "w1", status: "Present", advance: 0, overtime_hours: 0, site_name: null, date: "2025-10-01" }];
+    tables.payment_history = [{ worker_id: "w2", amount: 100, site_name: null, payment_date: "2025-10-02" }];
+    const result = await computeWorkerPayments({ startISO: "2025-10-01", endISO: "2025-10-31" });
+    expect(sumPendingOutstanding(result.rows)).toBe(amount);
+  });
   it("ignores overpaid workers (negative outstanding) so dashboard matches pending page", async () => {
     tables.workers = [
       { id: "w1", name: "A", daily_rate: 500, is_active: true, upi_id: null, phone: null, site_name: null },

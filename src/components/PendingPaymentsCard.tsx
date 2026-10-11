@@ -28,7 +28,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
     const load = async () => {
       const res = await computeWorkerPayments({ startISO, endISO, siteFilter });
       if (!alive) return;
-      setRows(res.rows.filter((r) => Math.round(r.outstanding) > 0));
+      setRows(res.rows.filter((r) => r.outstanding > 0));
       setLoading(false);
     };
     setLoading(true);
@@ -81,7 +81,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
           {rows.length} मजदूरों का बकाया
         </span>
         <span className="text-xl font-extrabold tabular-nums text-rose-600 dark:text-rose-400">
-          ₹{total.toLocaleString("hi-IN")}
+          ₹{total.toLocaleString("hi-IN", { maximumFractionDigits: 2 })}
         </span>
       </div>
 
@@ -94,7 +94,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
       ) : (
         <ul className="space-y-2">
           {rows.slice(0, 8).map((r) => {
-            const pending = Math.round(r.outstanding);
+            const pending = r.outstanding;
             const earned = Math.round(r.earned);
             const exp = Math.round(r.workerExpenses);
             const adv = Math.round(r.advance);
@@ -114,7 +114,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span className="text-sm font-extrabold tabular-nums text-rose-600 dark:text-rose-400">
-                    ₹{pending.toLocaleString("hi-IN")}
+                    ₹{pending.toLocaleString("hi-IN", { maximumFractionDigits: 2 })}
                   </span>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     <button
@@ -161,7 +161,7 @@ export default function PendingPaymentsCard({ startISO, endISO, monthLabel, site
         onOpenChange={(v) => !v && setPayTarget(null)}
         payeeName={payTarget?.worker.name || ""}
         payeeVpa={payTarget?.worker.upi_id}
-        defaultAmount={payTarget ? Math.round(payTarget.outstanding) : undefined}
+        defaultAmount={payTarget ? payTarget.outstanding : undefined}
         defaultNote={`${payTarget?.worker.name || ""} - ${monthLabel} की मजदूरी`}
       />
     </section>

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Remove whole-rupee rounding from the two audited UPI entry paths, match displayed balances, and run exact-paise regression tests.
+
 - [x] Correct Google initialization and reconcile configuration with the existing Android application ID.
 - [x] Unify verified Play Billing purchase processing, acknowledgement, manual restore and launch/resume recovery.
 - [x] Use one exact paise-based amount for UPI QR and payment intents.

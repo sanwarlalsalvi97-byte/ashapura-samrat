@@ -24,8 +24,7 @@ type Totals = {
 };
 
 function inr(n: number) {
-  const r = Math.round(n);
-  return `${r < 0 ? "-" : ""}₹${Math.abs(r).toLocaleString("hi-IN")}`;
+  return `${n < 0 ? "-" : ""}₹${Math.abs(n).toLocaleString("hi-IN", { maximumFractionDigits: 2 })}`;
 }
 
 export default function WorkerReconciliationTable({
@@ -81,7 +80,7 @@ export default function WorkerReconciliationTable({
             </thead>
             <tbody>
               {sorted.map((r) => {
-                const rem = Math.round(r.remainingBalance);
+                const rem = r.remainingBalance;
                 const tone =
                   rem > 0
                     ? "text-rose-600 dark:text-rose-400"

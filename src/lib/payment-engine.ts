@@ -247,13 +247,13 @@ export function monthBoundsISO(year: number, monthIndex0: number) {
 
 /**
  * SHARED total pending outstanding.
- * Sums only workers whose rounded outstanding is > 0, so overpaid workers
+ * Sums only workers whose outstanding is > 0, so overpaid workers
  * (negative outstanding) never reduce the visible "बकाया" figure.
  * Dashboard "Payment Due" card and Pending Payments page BOTH use this.
  */
 export function sumPendingOutstanding(rows: WorkerPayment[]): number {
   return rows.reduce((s, r) => {
-    const n = Math.round(r.outstanding);
+    const n = r.outstanding;
     return n > 0 ? s + n : s;
   }, 0);
 }
