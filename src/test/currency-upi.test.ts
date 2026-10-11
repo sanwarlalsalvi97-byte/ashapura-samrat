@@ -4,6 +4,13 @@ import { parseRupeesToPaise, formatPaise } from "@/lib/currency";
 import { buildUpiLink, buildUpiIntentLink } from "@/lib/upi";
 
 describe("UPI exact currency", () => {
+  it.each(["250.75", "100.50", "100.00", "250.00", "0.75"])("preserves ₹%s in QR and payment intent", (amount) => {
+    const amountPaise = parseRupeesToPaise(amount);
+    if (amountPaise === null) throw new Error("Invalid amount");
+    const params = { payeeVpa: "worker@upi", payeeName: "Worker", amountPaise };
+    expect(new URL(buildUpiLink(params)).searchParams.get("am")).toBe(amount);
+    expect(buildUpiIntentLink(params)).toContain(`am=${amount}`);
+  });
   it("preserves ₹250.75 in QR and payment intent from the same parameters", () => {
     const amountPaise = parseRupeesToPaise("250.75");
     expect(amountPaise).toBe(25075);
