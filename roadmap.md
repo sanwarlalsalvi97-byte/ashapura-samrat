@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Remove whole-rupee rounding from the two audited UPI entry paths, match displayed balances, and run exact-paise regression tests.
+- [x] Remove whole-rupee rounding from the two audited UPI entry paths, match displayed balances, and run exact-paise regression tests (37 targeted / 62 total pass; automatic preview build OK).
+- [ ] Verify the fractional-balance UPI flow with real account records on a phone — blocked by no ledger records in the requesting account and no connected UPI device; mocked component flows passed.
 
 - [x] Correct Google initialization and reconcile configuration with the existing Android application ID.
 - [x] Unify verified Play Billing purchase processing, acknowledgement, manual restore and launch/resume recovery.
