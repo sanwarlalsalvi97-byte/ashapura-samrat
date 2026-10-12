@@ -15,6 +15,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { subscriptionEntitlement } from "../_shared/play-entitlement.ts";
+import { ownsPlayPurchase } from "../_shared/play-account.ts";
 
 type Body = {
   productId?: string;
@@ -86,7 +87,7 @@ async function getAccessToken(sa: {
   );
   const j = await res.json();
   if (!res.ok || !j.access_token) {
-    throw new Error(`token exchange failed: ${JSON.stringify(j)}`);
+    throw new Error("Google authentication failed");
   }
   return j.access_token as string;
 }
@@ -103,8 +104,9 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceKey) throw new Error("Backend configuration missing");
     const admin = createClient(supabaseUrl, serviceKey);
     const { data: { user }, error: userErr } = await admin.auth.getUser(
       authHeader.replace("Bearer ", ""),
@@ -117,11 +119,16 @@ Deno.serve(async (req) => {
     }
 
     const { productId, purchaseToken, type = "subs" } = (await req.json()) as Body;
-    if (!productId || !purchaseToken) {
+    if (typeof productId !== "string" || typeof purchaseToken !== "string" || !productId || !purchaseToken || !["subs", "inapp"].includes(type)) {
       return new Response(
         JSON.stringify({ ok: false, error: "productId and purchaseToken are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    if (type === "subs" && !["basic_plan", "standard_plan", "pro_plan"].includes(productId)) {
+      return new Response(JSON.stringify({ ok: false, error: "Unsupported subscription product" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const pkg = Deno.env.get("PLAY_PACKAGE_NAME");
@@ -150,7 +157,7 @@ Deno.serve(async (req) => {
     const endpoint =
       type === "inapp"
         ? `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(pkg)}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}`
-        : `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(pkg)}/purchases/subscriptions/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}`;
+        : `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${encodeURIComponent(pkg)}/purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`;
 
     const gRes = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${token}` },
@@ -158,9 +165,18 @@ Deno.serve(async (req) => {
     const data = await gRes.json();
     if (!gRes.ok) {
       return new Response(
-        JSON.stringify({ ok: false, error: "Google verification failed", raw: data }),
+        JSON.stringify({ ok: false, error: "Google verification failed" }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    const googleAccountId = type === "subs"
+      ? data.externalAccountIdentifiers?.obfuscatedExternalAccountId
+      : data.obfuscatedExternalAccountId;
+    // Reject missing legacy binding as well as another account BEFORE any entitlement write.
+    if (!await ownsPlayPurchase(user.id, googleAccountId)) {
+      return new Response(JSON.stringify({ ok: false, error: "Purchase account ownership could not be verified" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let premium = false;
@@ -168,10 +184,9 @@ Deno.serve(async (req) => {
     let autoRenewing: boolean | undefined;
 
     if (type === "subs") {
-      // paymentState: 0=pending, 1=received, 2=free trial, 3=pending deferred upgrade
-      const entitlement = subscriptionEntitlement(data, Date.now());
+      const entitlement = subscriptionEntitlement(data, Date.now(), productId);
       expiryTimeMillis = entitlement.expiryTimeMillis;
-      autoRenewing = Boolean(data.autoRenewing);
+      autoRenewing = entitlement.autoRenewing;
       premium = entitlement.premium;
     } else {
       // one-time purchase: purchaseState 0=purchased, 1=cancelled, 2=pending
@@ -190,18 +205,20 @@ Deno.serve(async (req) => {
           { onConflict: "user_id" },
         );
       if (upErr) {
-        console.error("subscriptions upsert failed:", upErr.message);
+        console.error("Could not record verified subscription");
         return new Response(
           JSON.stringify({ ok: false, error: "Could not record subscription" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-    } else if (type === "subs") {
-      // Google says it's no longer active — clear any stale premium record.
-      await admin
+    } else if (type === "subs" && expiryTimeMillis && expiryTimeMillis <= Date.now()) {
+      // An old expired token must not erase a newer verified subscription.
+      const { error: clearErr } = await admin
         .from("subscriptions")
         .update({ premium_until: null, plan: "trial" })
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .lte("premium_until", new Date(expiryTimeMillis).toISOString());
+      if (clearErr) throw new Error("Could not update expired subscription");
     }
 
     return new Response(
@@ -209,7 +226,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    console.error("verify-play-purchase error:", (e as Error).message);
+    console.error("Play purchase verification failed");
     return new Response(
       JSON.stringify({ ok: false, error: "Verification failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

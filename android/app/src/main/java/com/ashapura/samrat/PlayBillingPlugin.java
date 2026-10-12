@@ -95,11 +95,16 @@ public class PlayBillingPlugin extends Plugin {
         String[] parts = productWithBasePlan.split(":", 2);
         String productId = parts[0];
         String basePlanId = parts.length > 1 ? parts[1] : null;
+        String accountId = call.getString("obfuscatedAccountId");
+        if (accountId == null || !accountId.matches("[a-f0-9]{64}")) {
+            call.reject("खरीद के लिए ऐप अकाउंट की पहचान आवश्यक है।");
+            return;
+        }
 
-        withConnectedClient(call, () -> queryAndLaunchSubscription(call, productId, basePlanId));
+        withConnectedClient(call, () -> queryAndLaunchSubscription(call, productId, basePlanId, accountId));
     }
 
-    private void queryAndLaunchSubscription(PluginCall call, String productId, String basePlanId) {
+    private void queryAndLaunchSubscription(PluginCall call, String productId, String basePlanId, String accountId) {
         QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
             .setProductId(productId)
             .setProductType(BillingClient.ProductType.SUBS)
@@ -142,6 +147,7 @@ public class PlayBillingPlugin extends Plugin {
                     .setOfferToken(selectedOffer.getOfferToken())
                     .build();
             BillingFlowParams flowParams = BillingFlowParams.newBuilder()
+                .setObfuscatedAccountId(accountId)
                 .setProductDetailsParamsList(Collections.singletonList(productParams))
                 .build();
 

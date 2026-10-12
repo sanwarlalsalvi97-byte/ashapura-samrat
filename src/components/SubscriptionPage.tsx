@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { TabId } from "./BottomNav";
-import { PlayBilling } from "@/lib/play-billing";
-import { billingErrorMessage, processPlayPurchase, restorePlaySubscriptions } from "@/lib/subscription-billing";
+import { billingErrorMessage, purchasePlaySubscription, restorePlaySubscriptions } from "@/lib/subscription-billing";
 
 import { Capacitor } from "@capacitor/core";
 
@@ -148,8 +147,7 @@ export default function SubscriptionPage({ onNavigate }: Props) {
     try {
       if (Capacitor.isNativePlatform()) {
         const activeProductId = cycle === "monthly" ? p.monthlyProductId : p.yearlyProductId;
-        const purchase = await PlayBilling.purchaseSubscription({ productId: activeProductId });
-        const activated = await processPlayPurchase(purchase);
+        const activated = await purchasePlaySubscription(activeProductId);
         if (!activated) {
           throw new Error("भुगतान अभी सक्रिय नहीं है। लंबित भुगतान की पुष्टि के बाद ऐप फिर जाँच करेगा।");
         }

@@ -1,9 +1,24 @@
 import { Capacitor } from "@capacitor/core";
 import { PlayBilling, type PlayPurchase } from "./play-billing";
 import { loadTrial, verifyAndActivatePurchase } from "./premium";
+import { supabase } from "@/integrations/supabase/client";
+import { playAccountIdentifier } from "../../supabase/functions/_shared/play-account";
 
 const processing = new Map<string, Promise<boolean>>();
-let restoring: Promise<boolean> | null = null;
+const restoring = new Map<string, Promise<boolean>>();
+
+async function accountId(): Promise<string> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) throw new Error("खरीद की जाँच के लिए पहले लॉग इन करें।");
+  return user.id;
+}
+
+export async function purchasePlaySubscription(productId: string): Promise<boolean> {
+  const userId = await accountId();
+  const purchase = await PlayBilling.purchaseSubscription({ productId, obfuscatedAccountId: await playAccountIdentifier(userId) });
+  if (await accountId() !== userId) throw new Error("ऐप अकाउंट बदल गया है। सही अकाउंट से रीस्टोर करें।");
+  return processPlayPurchase(purchase);
+}
 
 export function billingErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
@@ -14,9 +29,11 @@ export function billingErrorMessage(error: unknown): string {
 }
 
 /** Only server-verified PURCHASED subscriptions may be acknowledged. */
-export function processPlayPurchase(purchase: PlayPurchase): Promise<boolean> {
-  if (purchase.purchaseState !== "PURCHASED") return Promise.resolve(false);
-  const existing = processing.get(purchase.purchaseToken);
+export async function processPlayPurchase(purchase: PlayPurchase): Promise<boolean> {
+  if (purchase.purchaseState !== "PURCHASED") return false;
+  const userId = await accountId();
+  const key = `${userId}:${purchase.purchaseToken}`;
+  const existing = processing.get(key);
   if (existing) return existing;
   const task = (async () => {
     const verification = await verifyAndActivatePurchase({
@@ -28,24 +45,28 @@ export function processPlayPurchase(purchase: PlayPurchase): Promise<boolean> {
       throw new Error("खरीद की पुष्टि अभी नहीं हो पाई। अगली बार ऐप खोलने या रीस्टोर करने पर फिर जाँच होगी।");
     }
     if (!verification.premium) return false;
+    if (await accountId() !== userId) throw new Error("ऐप अकाउंट बदल गया है। सही अकाउंट से रीस्टोर करें।");
     if (!purchase.acknowledged) {
       await PlayBilling.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
     }
     return true;
-  })().finally(() => processing.delete(purchase.purchaseToken));
-  processing.set(purchase.purchaseToken, task);
+  })().finally(() => processing.delete(key));
+  processing.set(key, task);
   return task;
 }
 
 /** The same query/verify/acknowledge flow is used by both buttons and lifecycle recovery. */
-export function restorePlaySubscriptions(): Promise<boolean> {
-  if (Capacitor.getPlatform() !== "android") return Promise.resolve(false);
-  if (restoring) return restoring;
-  restoring = (async () => {
+export async function restorePlaySubscriptions(): Promise<boolean> {
+  if (Capacitor.getPlatform() !== "android") return false;
+  const userId = await accountId();
+  const existing = restoring.get(userId);
+  if (existing) return existing;
+  const task = (async () => {
     const { purchases } = await PlayBilling.restoreSubscriptions();
     let active = false;
     let failure: unknown;
     for (const purchase of purchases) {
+      if (await accountId() !== userId) throw new Error("ऐप अकाउंट बदल गया है। रीस्टोर दोबारा करें।");
       try {
         active = (await processPlayPurchase(purchase)) || active;
       } catch (error) {
@@ -56,6 +77,7 @@ export function restorePlaySubscriptions(): Promise<boolean> {
     if (failure) throw failure;
     await loadTrial();
     return active;
-  })().finally(() => { restoring = null; });
-  return restoring;
+  })().finally(() => { restoring.delete(userId); });
+  restoring.set(userId, task);
+  return task;
 }
