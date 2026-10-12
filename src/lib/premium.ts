@@ -175,11 +175,15 @@ export async function verifyAndActivatePurchase(params: {
     return { ok: false, premium: false, error: "productId and purchaseToken are required" };
   }
   try {
+    const { data: before } = await supabase.auth.getUser();
+    if (!before.user) return { ok: false, premium: false, error: "Sign in required" };
     const { data, error } = await supabase.functions.invoke("verify-play-purchase", {
       body: { productId, purchaseToken, type },
     });
     if (error) return { ok: false, premium: false, error: error.message };
     if (!data?.ok) return { ok: false, premium: false, error: data?.error ?? "verification failed" };
+    const { data: after } = await supabase.auth.getUser();
+    if (after.user?.id !== before.user.id) return { ok: false, premium: false, error: "App account changed during verification" };
 
     const receipt: PremiumReceipt = {
       productId,

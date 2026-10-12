@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ verify: vi.fn(), ack: vi.fn(), query: vi.fn(), trial: vi.fn() }));
+const mocks = vi.hoisted(() => ({ verify: vi.fn(), ack: vi.fn(), query: vi.fn(), trial: vi.fn(), user: vi.fn(), purchase: vi.fn() }));
 vi.mock("@capacitor/core", () => ({ Capacitor: { getPlatform: () => "android" } }));
-vi.mock("@/lib/play-billing", () => ({ PlayBilling: { acknowledgePurchase: mocks.ack, restoreSubscriptions: mocks.query } }));
+vi.mock("@/lib/play-billing", () => ({ PlayBilling: { acknowledgePurchase: mocks.ack, restoreSubscriptions: mocks.query, purchaseSubscription: mocks.purchase } }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { auth: { getUser: mocks.user } } }));
 vi.mock("@/lib/premium", () => ({ verifyAndActivatePurchase: mocks.verify, loadTrial: mocks.trial }));
-import { processPlayPurchase, restorePlaySubscriptions } from "@/lib/subscription-billing";
+import { processPlayPurchase, purchasePlaySubscription, restorePlaySubscriptions } from "@/lib/subscription-billing";
+import { playAccountIdentifier } from "../../supabase/functions/_shared/play-account";
 import type { PlayPurchase } from "@/lib/play-billing";
 import { subscriptionEntitlement } from "../../supabase/functions/_shared/play-entitlement";
 
@@ -13,6 +15,8 @@ beforeEach(() => {
   mocks.verify.mockResolvedValue({ ok: true, premium: true });
   mocks.ack.mockResolvedValue(undefined);
   mocks.query.mockResolvedValue({ purchases: [purchase] });
+  mocks.user.mockResolvedValue({ data: { user: { id: "account-a" } }, error: null });
+  mocks.purchase.mockResolvedValue(purchase);
 });
 describe("verified Play Billing", () => {
   it("does not verify or acknowledge PENDING purchases", async () => {
@@ -48,10 +52,48 @@ describe("verified Play Billing", () => {
     expect(mocks.ack).toHaveBeenCalledOnce();
   });
   it("Google pending payment cannot grant premium", () => {
-    expect(subscriptionEntitlement({ paymentState: 0, expiryTimeMillis: "2000" }, 1000).premium).toBe(false);
+    expect(subscriptionEntitlement({ subscriptionState: "SUBSCRIPTION_STATE_PENDING", lineItems: [{ productId: "basic_plan", expiryTime: new Date(2000).toISOString() }] }, 1000, "basic_plan").premium).toBe(false);
   });
   it("a subscription without a valid future expiry cannot grant lifetime premium", () => {
-    expect(subscriptionEntitlement({ paymentState: 1 }, 1000).premium).toBe(false);
-    expect(subscriptionEntitlement({ paymentState: 1, expiryTimeMillis: "2000" }, 1000).premium).toBe(true);
+    expect(subscriptionEntitlement({ subscriptionState: "SUBSCRIPTION_STATE_ACTIVE" }, 1000, "basic_plan").premium).toBe(false);
+    expect(subscriptionEntitlement({ subscriptionState: "SUBSCRIPTION_STATE_ACTIVE", lineItems: [{ productId: "basic_plan", expiryTime: new Date(2000).toISOString() }] }, 1000, "basic_plan").premium).toBe(true);
+  });
+  it("passes the authenticated account binding to the native purchase", async () => {
+    expect(await purchasePlaySubscription("basic_plan:basic-plan")).toBe(true);
+    expect(mocks.purchase).toHaveBeenCalledWith({ productId: "basic_plan:basic-plan", obfuscatedAccountId: await playAccountIdentifier("account-a") });
+  });
+  it("does not acknowledge an ownership verification rejection", async () => {
+    mocks.verify.mockResolvedValue({ ok: false, premium: false });
+    await expect(restorePlaySubscriptions()).rejects.toThrow();
+    expect(mocks.ack).not.toHaveBeenCalled();
+  });
+  it("keeps duplicate restore requests in one account-scoped query", async () => {
+    await Promise.all([restorePlaySubscriptions(), restorePlaySubscriptions()]);
+    expect(mocks.query).toHaveBeenCalledOnce();
+    expect(mocks.verify).toHaveBeenCalledOnce();
+    expect(mocks.ack).toHaveBeenCalledOnce();
+  });
+  it("stops verification when the account changes in the native purchase dialog", async () => {
+    mocks.purchase.mockImplementation(async () => {
+      mocks.user.mockResolvedValue({ data: { user: { id: "account-b" } }, error: null });
+      return purchase;
+    });
+    await expect(purchasePlaySubscription("basic_plan:basic-plan")).rejects.toThrow(/अकाउंट बदल/);
+    expect(mocks.verify).not.toHaveBeenCalled();
+    expect(mocks.ack).not.toHaveBeenCalled();
+  });
+  it("stops acknowledgement when the account changes during verification", async () => {
+    mocks.verify.mockImplementation(async () => {
+      mocks.user.mockResolvedValue({ data: { user: { id: "account-b" } }, error: null });
+      return { ok: true, premium: true };
+    });
+    await expect(processPlayPurchase(purchase)).rejects.toThrow(/अकाउंट बदल/);
+    expect(mocks.ack).not.toHaveBeenCalled();
+  });
+  it("a failed acknowledgement is retried through restore", async () => {
+    mocks.ack.mockRejectedValueOnce(new Error("ack unavailable"));
+    await expect(processPlayPurchase(purchase)).rejects.toThrow("ack unavailable");
+    expect(await restorePlaySubscriptions()).toBe(true);
+    expect(mocks.ack).toHaveBeenCalledTimes(2);
   });
 });
