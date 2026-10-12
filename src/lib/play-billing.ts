@@ -14,7 +14,7 @@ type RestoredPurchases = {
 
 interface PlayBillingPlugin {
   addListener(eventName: "purchasesUpdated", listener: () => void): Promise<PluginListenerHandle>;
-  purchaseSubscription(options: { productId: string }): Promise<PlayPurchase>;
+  purchaseSubscription(options: { productId: string; obfuscatedAccountId: string }): Promise<PlayPurchase>;
   acknowledgePurchase(options: { purchaseToken: string }): Promise<void>;
   restoreSubscriptions(): Promise<RestoredPurchases>;
 }
