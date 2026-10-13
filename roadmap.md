@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Audit and secure Play purchase account ownership without database changes; test verification, restore and acknowledgement; inspect only Play secret names and report release blockers without deploying.
+- [x] Audit and secure Play purchase account ownership without database changes; test verification, restore and acknowledgement; inspect only Play secret names and report release blockers without deploying.
+- [ ] Release the account-binding billing fix — blocked by missing Play secrets, unverified external permissions, explicit deployment approval, native Android build and real two-account Play purchase/restore tests; unbound legacy purchases require safe manual review.
 
 - [x] Remove whole-rupee rounding from the two audited UPI entry paths, match displayed balances, and run exact-paise regression tests (37 targeted / 62 total pass; automatic preview build OK).
 - [ ] Verify the fractional-balance UPI flow with real account records on a phone — blocked by no ledger records in the requesting account and no connected UPI device; mocked component flows passed.
