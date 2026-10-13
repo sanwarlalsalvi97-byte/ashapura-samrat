@@ -211,8 +211,8 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-    } else if (type === "subs" && expiryTimeMillis && expiryTimeMillis <= Date.now()) {
-      // An old expired token must not erase a newer verified subscription.
+    } else if (type === "subs" && expiryTimeMillis) {
+      // Revoke non-entitled states, but an old token must not erase newer paid access.
       const { error: clearErr } = await admin
         .from("subscriptions")
         .update({ premium_until: null, plan: "trial" })

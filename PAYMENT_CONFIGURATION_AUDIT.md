@@ -9,6 +9,14 @@
 - Trace `[28444]` on the real installed build with Logcat filters `GoogleProvider` / `CapgoSocialLogin`. Compare logged package, signingSha1 and Web client against existing Google configuration. Do not log identity tokens.
 
 ## Play subscriptions
+### Account ownership security (source changes only; not deployed)
+- Purchase launch now sets a SHA-256 obfuscated app-account identifier through native `setObfuscatedAccountId`; both client and verifier use the same shared derivation.
+- Server reads `purchases.subscriptionsv2.get` and compares only Google's `externalAccountIdentifiers.obfuscatedExternalAccountId` with the authenticated app user before any entitlement write. Missing identifiers and another account are rejected with 403. Client-supplied owner claims are not accepted.
+- Legacy purchases made before binding cannot safely prove app-account ownership; restore fails closed for those tokens. No token-claim fallback, account reassignment or database schema/RLS change was added.
+- ACTIVE, IN_GRACE_PERIOD and CANCELED retain access only for the matching product until Google's expiry; PENDING, PENDING_PURCHASE_CANCELED, PAUSED, ON_HOLD and EXPIRED cannot grant access. Cancellation of auto-renewal is not immediate loss of paid access.
+- Purchase/restore deduplication is account scoped, and account switches during purchase or verification cannot activate local Premium or proceed to acknowledgement.
+- Old non-entitled tokens cannot erase a subscription with a later recorded expiry. No real Google response, native build or production purchase was verified in this audit.
+
 Existing product / base-plan pairs are retained:
 
 | Product | Monthly base plan | Yearly base plan |
@@ -21,14 +29,16 @@ Existing product / base-plan pairs are retained:
 - Purchase and both restore screens share server verification, then acknowledgement. Native acknowledgement re-queries the purchase and skips already acknowledged purchases. Only PURCHASED purchases are returned for restoration.
 - After authenticated app launch, foreground return or a purchase update, the app queries existing subscriptions. Google Play retains purchases if a callback is lost or verification fails; the next query retries them. No payment-success assumption is made for PENDING purchases.
 - Verification endpoint rejects subscription entitlement without a finite future Google expiry.
-- Secret-name inspection did **not** list `PLAY_PACKAGE_NAME` or `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`. The verification function requires both. Their values/permissions cannot be validated here; provider credentials must be configured securely before end-to-end purchase verification can succeed.
+- Current secret-name inspection did **not** list `PLAY_PACKAGE_NAME` or `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`: both MISSING. No secret values were read. Add the verified Play package name and provider-issued service-account JSON through Lovable Project Settings → Secrets; never put credentials in source or chat.
+- MANUAL VERIFICATION REQUIRED: Google Cloud Android Publisher API enabled, correct service account, and Play Console Users and permissions granting the service account access to this app and subscription/order management. No accessible Google Cloud/Play Console connector was found; Search Console access is not Play Console access.
 - No schema, RLS, auth-provider setting, worker limit, attendance, payroll or backup changes.
 
 ## Verification limitations
-- Targeted automated tests cover initialization ordering/retry, PURCHASED/PENDING, acknowledgement ordering/skipping, recovery and exact 25075-paise QR/payment parameters.
+- Automated billing tests cover owner match/mismatch/missing binding, Google V2 states/product/expiry, account switches, PURCHASED/PENDING, acknowledgement ordering/skipping/retry and restore deduplication. These use fixtures/mocks, not live Google Play verification.
 - Preview build/type validation is managed by the preview harness.
 - Android Gradle invocation cannot start here: Java/JAVA_HOME and Android SDK are absent. No compiled APK/AAB or signing certificate is available to validate locally.
 - Real account picker, `[28444]` reproduction, active products/base plans, test purchase, pending-to-purchased recovery, reinstall recovery, Play signing certificate and UPI bank settlement require Android/Google Play testing.
 
 ## Android follow-up
 Pull the updated project, install dependencies, build web assets, run `npx cap sync android`, then build/install the full native APK or use the existing release CI. Native Java changes do not reach an old installed APK through website updates.
+- Release remains blocked until secrets and external permissions are configured, the source-only server changes are explicitly approved for deployment, a matching native build is installed, and real two-account purchase/restore/replay tests pass. No publish/deploy was performed.
