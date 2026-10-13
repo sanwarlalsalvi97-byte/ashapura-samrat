@@ -35,6 +35,7 @@ Existing product / base-plan pairs are retained:
 
 ## Verification limitations
 - Automated billing tests cover owner match/mismatch/missing binding, Google V2 states/product/expiry, account switches, PURCHASED/PENDING, acknowledgement ordering/skipping/retry and restore deduplication. These use fixtures/mocks, not live Google Play verification.
+- Automatic preview validation passed. The full test suite passed before the additional cross-account concurrent-token regression (90 tests); final counts are reported in chat. No manual app build, Android compilation, live token verification or deployed-function check was performed.
 - Preview build/type validation is managed by the preview harness.
 - Android Gradle invocation cannot start here: Java/JAVA_HOME and Android SDK are absent. No compiled APK/AAB or signing certificate is available to validate locally.
 - Real account picker, `[28444]` reproduction, active products/base plans, test purchase, pending-to-purchased recovery, reinstall recovery, Play signing certificate and UPI bank settlement require Android/Google Play testing.

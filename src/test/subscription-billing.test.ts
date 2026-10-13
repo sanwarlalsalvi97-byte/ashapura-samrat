@@ -96,4 +96,19 @@ describe("verified Play Billing", () => {
     expect(await restorePlaySubscriptions()).toBe(true);
     expect(mocks.ack).toHaveBeenCalledTimes(2);
   });
+  it("does not share a token verification result between two signed-in accounts", async () => {
+    let completeFirst: ((value: { ok: boolean; premium: boolean }) => void) | undefined;
+    mocks.verify.mockImplementationOnce(() => new Promise((resolve) => { completeFirst = resolve; }));
+    const first = processPlayPurchase(purchase);
+    const rejectedFirst = expect(first).rejects.toThrow(/अकाउंट बदल/);
+    await vi.waitFor(() => expect(mocks.verify).toHaveBeenCalledTimes(1));
+    mocks.user.mockResolvedValue({ data: { user: { id: "account-b" } }, error: null });
+    mocks.verify.mockResolvedValueOnce({ ok: false, premium: false });
+    await expect(processPlayPurchase(purchase)).rejects.toThrow();
+    expect(mocks.verify).toHaveBeenCalledTimes(2);
+    if (!completeFirst) throw new Error("Missing first verification callback");
+    completeFirst({ ok: true, premium: true });
+    await rejectedFirst;
+    expect(mocks.ack).not.toHaveBeenCalled();
+  });
 });
