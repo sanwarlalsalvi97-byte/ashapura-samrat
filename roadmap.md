@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Disable Android input capture, verify Hindi text/composition regressions without altering numeric validation, sync native configuration and attempt a release build.
+- [ ] Confirm Hindi Gboard and voice typing on a physical Android device — blocked by no connected Android device.
+
 - [x] Audit and secure Play purchase account ownership without database changes; test verification, restore and acknowledgement; inspect only Play secret names and report release blockers without deploying.
 - [ ] Release the account-binding billing fix — blocked by missing Play secrets, unverified external permissions, explicit deployment approval, native Android build and real two-account Play purchase/restore tests; unbound legacy purchases require safe manual review.
 

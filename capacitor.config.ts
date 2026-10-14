@@ -7,7 +7,8 @@ const config: CapacitorConfig = {
   backgroundColor: '#0E7A3A',
   android: {
     allowMixedContent: false,
-    captureInput: true,
+    // Keep WebView's native InputConnection for Hindi IME and voice commits.
+    captureInput: false,
     webContentsDebuggingEnabled: false,
     // Android 15+ enforces edge-to-edge: let Capacitor apply window insets
     // as margins so content never sits under the status/navigation bars.
