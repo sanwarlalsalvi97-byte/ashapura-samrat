@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
   appId: 'com.ashapura.samrat',
@@ -12,7 +13,7 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
     // Android 15+ enforces edge-to-edge: let Capacitor apply window insets
     // as margins so content never sits under the status/navigation bars.
-    adjustMarginsForEdgeToEdge: 'auto',
+    ...{ adjustMarginsForEdgeToEdge: 'auto' as const },
   },
   // Custom URL scheme used for OAuth / password-recovery callbacks.
   // Must match `custom_url_scheme` in android/app/src/main/res/values/strings.xml
@@ -50,7 +51,7 @@ const config: CapacitorConfig = {
       iconColor: '#0E7A3A',
     },
     Keyboard: {
-      resize: 'body',
+      resize: KeyboardResize.Body,
       resizeOnFullScreen: true,
     },
   },
