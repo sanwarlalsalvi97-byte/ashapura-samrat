@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Disable Android input capture without altering numeric validation; 8 Hindi/composition regression tests and 99 total tests pass; automatic TypeScript/preview validation succeeds; release APK/AAB tasks attempted after providing JDK 21.
-- [ ] Complete Android asset sync and release APK/AAB — blocked by absent production web assets (`dist`), which prevents Capacitor from generating required Cordova Gradle files; Android SDK packages and release signing also remain unavailable. Generated native configuration has captureInput=false, but no APK/AAB was produced.
+- [ ] Complete Android asset sync and release APK/AAB — blocked by absent production web assets (`dist`), which prevents Capacitor from generating required Cordova Gradle files; Android SDK packages and release signing also remain unavailable. Temporary native configuration generation confirmed captureInput=false, but the generated asset did not persist and no APK/AAB was produced.
 - [ ] Confirm Hindi Gboard and voice typing on a physical Android device — blocked by no connected Android device.
 
 - [x] Audit and secure Play purchase account ownership without database changes; test verification, restore and acknowledgement; inspect only Play secret names and report release blockers without deploying.
