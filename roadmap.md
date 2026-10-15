@@ -1,7 +1,8 @@
 # Roadmap
 
 - [x] Disable Android input capture without altering numeric validation; 8 Hindi/composition regression tests and 99 total tests pass; automatic TypeScript/preview validation succeeds; release APK/AAB tasks attempted after providing JDK 21.
-- [ ] Complete Android asset sync and release APK/AAB — blocked by absent production web assets (`dist`), which prevents Capacitor from generating required Cordova Gradle files; Android SDK packages and release signing also remain unavailable. Temporary native configuration generation confirmed captureInput=false, but the generated asset did not persist and no APK/AAB was produced.
+- [x] Inspect current branch and preserve prior changes; run official Capacitor sync/update and actual Gradle debug build; install and confirm JDK 21, Android platform 36, build-tools 36.0.0 and platform-tools; rerun all 8 Hindi/composition tests successfully.
+- [ ] Complete genuine production assets and Android APK/AAB — blocked by missing local dist and the platform prohibition on manually running website builds; automatic preview build is successful but does not supply local dist. Official update cannot finish Cordova generation without web assets. Debug failed on missing cordova.variables.gradle; release APK/AAB not run because debug failed. Release signing file is absent.
 - [ ] Confirm Hindi Gboard and voice typing on a physical Android device — blocked by no connected Android device.
 
 - [x] Audit and secure Play purchase account ownership without database changes; test verification, restore and acknowledgement; inspect only Play secret names and report release blockers without deploying.
@@ -16,7 +17,7 @@
 - [x] Validate targeted tests, preview and Android configuration; report device/Play Console verification blockers.
 - [ ] Confirm actual Play Console package, app-signing SHA-1 and active product/base plans — blocked by unavailable Play Console/Google configuration access.
 - [ ] Configure and verify required Play purchase-verification credentials — required secret names were not present in the accessible list.
-- [ ] Compile/sync and test latest APK on Android/Play — blocked by absent Java, Android SDK and connected device.
+- [ ] Compile/sync and test latest APK on Android/Play — blocked by missing local production web assets, incomplete official Capacitor sync, absent release signing and no connected device; JDK 21 and required SDK packages are now installed in this sandbox.
 
 - [x] Replace native browser Google OAuth with the Android account picker and ID-token sign-in.
 - [x] Request camera and location permissions when attendance, face scan, and GPS features are opened.
