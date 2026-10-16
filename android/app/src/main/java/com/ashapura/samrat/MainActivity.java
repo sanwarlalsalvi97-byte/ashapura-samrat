@@ -2,6 +2,7 @@ package com.ashapura.samrat;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
+import com.btrautmann.capacitor.sociallogin.SocialLoginPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -10,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AdPrivacyPlugin.class);
         registerPlugin(NativePermissionsPlugin.class);
         registerPlugin(PlayBillingPlugin.class);
+        registerPlugin(SocialLoginPlugin.class);
 
         super.onCreate(savedInstanceState);
     }
