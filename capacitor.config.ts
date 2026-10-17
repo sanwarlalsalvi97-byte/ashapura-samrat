@@ -43,7 +43,8 @@ const config: CapacitorConfig = {
       splashImmersive: true,
     },
     StatusBar: {
-      backgroundColor: '#0E7A3A',
+      // Android 15+ enforces edge-to-edge; the status-bar background colour
+      // API is deprecated there, so only the icon style is configured.
       style: 'LIGHT',
     },
     LocalNotifications: {
