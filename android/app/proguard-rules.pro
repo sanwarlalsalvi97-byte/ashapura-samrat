@@ -14,8 +14,6 @@
     @com.getcapacitor.PluginMethod public <methods>;
 }
 
-# App's own Capacitor plugins
--keep class com.ashapurasamrat.app.** { *; }
 
 # Cordova plugins bridged through Capacitor
 -keep class org.apache.cordova.** { *; }
