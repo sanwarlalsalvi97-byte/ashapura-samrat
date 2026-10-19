@@ -10,7 +10,10 @@ import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.UnfetchedProduct;
+import android.util.Log;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -104,6 +107,46 @@ public class PlayBillingPlugin extends Plugin {
         withConnectedClient(call, () -> queryAndLaunchSubscription(call, productId, basePlanId, accountId));
     }
 
+    /**
+     * Diagnostic-only logging for Standard Monthly and Pro Monthly. Logs only
+     * public catalogue identifiers and Google status codes — never tokens,
+     * account identifiers, emails or other personal data.
+     */
+    private void logMonthlyDiagnostics(String productId, String basePlanId, QueryProductDetailsResult detailsResult) {
+        boolean target = ("standard_plan".equals(productId) && "standard-monthly".equals(basePlanId))
+            || ("pro_plan".equals(productId) && "pro-monthly".equals(basePlanId));
+        if (!target || detailsResult == null) return;
+        try {
+            List<UnfetchedProduct> unfetched = detailsResult.getUnfetchedProductList();
+            if (unfetched != null) {
+                for (UnfetchedProduct item : unfetched) {
+                    Log.w(DIAG_TAG, "Unfetched product=" + item.getProductId()
+                        + " statusCode=" + item.getStatusCode()
+                        + " requestedBasePlan=" + basePlanId);
+                }
+            }
+            List<ProductDetails> products = detailsResult.getProductDetailsList();
+            if (products == null || products.isEmpty()) {
+                Log.w(DIAG_TAG, "No ProductDetails for product=" + productId);
+                return;
+            }
+            for (ProductDetails details : products) {
+                List<String> basePlans = new ArrayList<>();
+                List<ProductDetails.SubscriptionOfferDetails> offers = details.getSubscriptionOfferDetails();
+                if (offers != null) {
+                    for (ProductDetails.SubscriptionOfferDetails offer : offers) {
+                        basePlans.add(offer.getBasePlanId() + (offer.getOfferId() == null ? "" : "/offer:" + offer.getOfferId()));
+                    }
+                }
+                Log.i(DIAG_TAG, "ProductDetails product=" + details.getProductId()
+                    + " requestedBasePlan=" + basePlanId
+                    + " returnedBasePlans=" + basePlans);
+            }
+        } catch (RuntimeException e) {
+            Log.w(DIAG_TAG, "Diagnostics unavailable: " + e.getClass().getSimpleName());
+        }
+    }
+
     private void queryAndLaunchSubscription(PluginCall call, String productId, String basePlanId, String accountId) {
         QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
             .setProductId(productId)
@@ -118,6 +161,7 @@ public class PlayBillingPlugin extends Plugin {
                 call.reject(playMessage(result), String.valueOf(result.getResponseCode()));
                 return;
             }
+            logMonthlyDiagnostics(productId, basePlanId, detailsResult);
             List<ProductDetails> products = detailsResult.getProductDetailsList();
             if (products == null || products.isEmpty()) {
                 call.reject("यह प्लान Google Play पर उपलब्ध नहीं है।");
