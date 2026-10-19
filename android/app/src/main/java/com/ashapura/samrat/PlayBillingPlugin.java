@@ -28,6 +28,7 @@ import java.util.List;
 /** Native Google Play Billing bridge for subscription products and base plans. */
 @CapacitorPlugin(name = "PlayBilling")
 public class PlayBillingPlugin extends Plugin {
+    private static final String DIAG_TAG = "PlayBillingDiag";
     private BillingClient billingClient;
     private PluginCall pendingPurchaseCall;
     private String pendingProductId;
