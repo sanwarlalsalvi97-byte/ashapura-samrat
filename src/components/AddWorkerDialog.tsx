@@ -69,11 +69,8 @@ export default function AddWorkerDialog({ onAdded }: Props) {
         daily_rate: parseInt(dailyRate) || 500,
         site_name: siteName.trim() || null,
         phone: phone.trim() || null,
-        aadhaar: aadhaar ? "[Aadhaar Redacted]" : null,
         upi_id: upiId.trim() || null,
-        bank_account: bankAccount.trim() || null,
-        ifsc_code: ifsc.trim().toUpperCase() || null,
-      } as any);
+      });
 
       let uploadedPath: string | null = null;
       let photoWarning: string | null = null;
