@@ -42,10 +42,7 @@ async function openDialogAndFillFields() {
 
   fireEvent.change(screen.getByPlaceholderText("नाम *"), { target: { value: "रामलाल शर्मा" } });
   fireEvent.change(screen.getByPlaceholderText("फोन नंबर"), { target: { value: "9876543210" } });
-  fireEvent.change(screen.getByPlaceholderText("12 अंकों का आधार नंबर"), { target: { value: "123456789012" } });
   fireEvent.change(screen.getByPlaceholderText("UPI ID (जैसे 9876543210@upi)"), { target: { value: "9876543210@upi" } });
-  fireEvent.change(screen.getByPlaceholderText("बैंक खाता संख्या दर्ज करें"), { target: { value: "1234567890123" } });
-  fireEvent.change(screen.getByPlaceholderText("IFSC कोड दर्ज करें"), { target: { value: "abcd0001234" } });
 }
 
 describe("Add Worker insert payload", () => {
@@ -72,19 +69,21 @@ describe("Add Worker insert payload", () => {
     });
   });
 
-  it("keeps Aadhaar input restricted to 12 digits", () => {
+  it("no longer asks for Aadhaar, bank account or IFSC", () => {
     render(<AddWorkerDialog onAdded={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "मजदूर जोड़ें" }));
-    const aadhaar = screen.getByPlaceholderText("12 अंकों का आधार नंबर");
 
-    fireEvent.change(aadhaar, { target: { value: "98765abc4321" } });
-    expect(aadhaar).toHaveValue("987654321");
+    // Those boxes were never saved (the columns don't exist), so they are gone.
+    expect(screen.queryByPlaceholderText("12 अंकों का आधार नंबर")).toBeNull();
+    expect(screen.queryByPlaceholderText("बैंक खाता संख्या दर्ज करें")).toBeNull();
+    expect(screen.queryByPlaceholderText("IFSC कोड दर्ज करें")).toBeNull();
+    expect(screen.queryByText("आधार नंबर (वैकल्पिक)")).toBeNull();
 
-    fireEvent.change(aadhaar, { target: { value: "987654321098765" } });
-    expect(aadhaar).toHaveValue("987654321");
-
-    // Devanagari digits are still rejected by the existing ASCII-digit filter.
-    fireEvent.change(aadhaar, { target: { value: "१२३४५६७८९०१२" } });
-    expect(aadhaar).toHaveValue("");
+    // The fields that really save must stay untouched.
+    expect(screen.getByPlaceholderText("नाम *")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("दिहाड़ी (₹)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("फोन नंबर")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("UPI ID (जैसे 9876543210@upi)")).toBeInTheDocument();
+    expect(screen.getByText("साइट चुनें")).toBeInTheDocument();
   });
 });

@@ -21,21 +21,10 @@ export default function AddWorkerDialog({ onAdded }: Props) {
   const [dailyRate, setDailyRate] = useState("500");
   const [siteName, setSiteName] = useState("");
   const [phone, setPhone] = useState("");
-  const [aadhaar, setAadhaar] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [bankAccount, setBankAccount] = useState("");
-  const [ifsc, setIfsc] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // आधार नंबर को केवल 12 अंकों तक सीमित करने के लिए
-  const handleAadhaarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ""); // केवल अंक स्वीकार करें
-    if (value.length <= 12) {
-      setAadhaar(value);
-    }
-  };
 
   const choosePhoto = (file?: File) => {
     if (!file) return;
@@ -101,10 +90,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
       setDailyRate("500");
       setSiteName("");
       setPhone("");
-      setAadhaar("");
       setUpiId("");
-      setBankAccount("");
-      setIfsc("");
       clearPhoto();
       setOpen(false);
       onAdded();
@@ -183,41 +169,7 @@ export default function AddWorkerDialog({ onAdded }: Props) {
 
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
 
-          {/* 2. Aadhaar Input Field Position (UPI ID के ठीक ऊपर) */}
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">आधार नंबर (वैकल्पिक)</Label>
-            <Input
-              placeholder="12 अंकों का आधार नंबर"
-              value={aadhaar}
-              onChange={handleAadhaarChange}
-              maxLength={12}
-              type="text"
-            />
-          </div>
-
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-
-          {/* 3. Bank Account Details Position (UPI ID के ठीक नीचे) */}
-          <div className="space-y-3 pt-1 border-t border-border">
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">बैंक खाता संख्या</Label>
-              <Input
-                placeholder="बैंक खाता संख्या दर्ज करें"
-                value={bankAccount}
-                onChange={(e) => setBankAccount(e.target.value)}
-                type="text"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">IFSC कोड</Label>
-              <Input
-                placeholder="IFSC कोड दर्ज करें"
-                value={ifsc}
-                onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                type="text"
-              />
-            </div>
-          </div>
 
           <Button type="submit" className="w-full mt-2" disabled={loading}>
             {loading ? "जोड़ रहे हैं..." : "जोड़ें"}
