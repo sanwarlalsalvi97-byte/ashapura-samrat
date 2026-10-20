@@ -51,7 +51,7 @@ async function openDialogAndFillFields() {
 describe("Add Worker insert payload", () => {
   it("sends only columns that exist in the workers table", async () => {
     await openDialogAndFillFields();
-    fireEvent.click(screen.getByRole("button", { name: "जोड़ें", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "जोड़ें" }));
 
     await waitFor(() => expect(mocks.addWorker).toHaveBeenCalledTimes(1));
     const payload = mocks.addWorker.mock.calls[0][0] as Record<string, unknown>;
