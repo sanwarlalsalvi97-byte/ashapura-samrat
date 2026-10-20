@@ -26,7 +26,6 @@ export default function AddWorkerDialog({ onAdded }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-
   const choosePhoto = (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -169,7 +168,6 @@ export default function AddWorkerDialog({ onAdded }: Props) {
           </div>
 
           <Input placeholder="फोन नंबर" value={phone} onChange={(e) => setPhone(e.target.value)} />
-
 
           <Input placeholder="UPI ID (जैसे 9876543210@upi)" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
 
