@@ -83,7 +83,8 @@ describe("Add Worker insert payload", () => {
     fireEvent.change(aadhaar, { target: { value: "987654321098765" } });
     expect(aadhaar).toHaveValue("987654321");
 
+    // Devanagari digits are still rejected by the existing ASCII-digit filter.
     fireEvent.change(aadhaar, { target: { value: "१२३४५६७८९०१२" } });
-    expect(aadhaar).toHaveValue("987654321");
+    expect(aadhaar).toHaveValue("");
   });
 });
