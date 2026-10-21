@@ -17,7 +17,7 @@ vi.mock("@/lib/worker-photos", () => ({
   uploadWorkerPhoto: mocks.uploadPhoto,
   removeWorkerPhoto: mocks.removePhoto,
 }));
-vi.mock("@/lib/sites", () => ({ listSites: () => [] }));
+vi.mock("@/lib/sites", () => ({ listSites: () => [], getSitesStatus: () => "ready" }));
 vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }));
 
 import AddWorkerDialog from "@/components/AddWorkerDialog";
