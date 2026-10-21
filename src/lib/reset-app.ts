@@ -27,7 +27,8 @@ export async function clearAllCaches(opts: { keepAuth?: boolean } = { keepAuth: 
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith("sb-") || k.includes("supabase.auth.token")) {
+      // Keep auth + not-yet-synced offline sites (cloud copies reload automatically)
+      if (k.startsWith("sb-") || k.includes("supabase.auth.token") || k.startsWith("sites-pending.")) {
         preserved[k] = localStorage.getItem(k) || "";
       }
     }
