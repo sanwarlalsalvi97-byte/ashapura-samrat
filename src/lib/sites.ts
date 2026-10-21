@@ -87,7 +87,7 @@ export function readLegacySites(): LegacySite[] {
         });
       }
     }
-  } catch {}
+  } catch { /* ignore */ }
   return [];
 }
 
@@ -108,8 +108,8 @@ export function getSitesUserId() { return currentUserId; }
 
 function emit() {
   version++;
-  listeners.forEach((cb) => { try { cb(); } catch {} });
-  try { window.dispatchEvent(new Event("sites-updated")); } catch {}
+  listeners.forEach((cb) => { try { cb(); } catch { /* ignore */ } });
+  try { window.dispatchEvent(new Event("sites-updated")); } catch { /* ignore */ }
 }
 
 type Row = {
@@ -130,7 +130,7 @@ function writePending(uid: string, items: PendingInsert[]) {
   try {
     if (items.length) localStorage.setItem(pendingKey(uid), JSON.stringify(items));
     else localStorage.removeItem(pendingKey(uid));
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 function pendingAsSites(uid: string): Site[] {
@@ -144,7 +144,7 @@ function setSites(uid: string, cloud: Site[]) {
   if (uid !== currentUserId) return; // account switched meanwhile — drop
   const pend = pendingAsSites(uid).filter((p) => !cloud.some((c) => c.id === p.id));
   sites = [...cloud, ...pend];
-  try { localStorage.setItem(cacheKey(uid), JSON.stringify(cloud)); } catch {}
+  try { localStorage.setItem(cacheKey(uid), JSON.stringify(cloud)); } catch { /* ignore */ }
   emit();
 }
 
@@ -178,7 +178,7 @@ function switchUser(uid: string | null) {
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey(uid)) || "[]");
       if (Array.isArray(cached)) sites = [...cached, ...pendingAsSites(uid)];
-    } catch {}
+    } catch { /* ignore */ }
   }
   emit();
   if (uid) void refreshSites();
@@ -270,7 +270,7 @@ export async function createSiteAsync(input: { name: string; location?: string }
     return { ok: false, reason: "error", message: error.message };
   }
   const site = fromRow(data as Row);
-  if (uid === currentUserId) { sites = [...sites, site]; try { localStorage.setItem(cacheKey(uid), JSON.stringify(sites.filter((s) => !s.pending))); } catch {} emit(); }
+  if (uid === currentUserId) { sites = [...sites, site]; try { localStorage.setItem(cacheKey(uid), JSON.stringify(sites.filter((s) => !s.pending))); } catch { /* ignore */ } emit(); }
   return { ok: true, site, synced: true };
 }
 
@@ -353,7 +353,7 @@ export function getLegacyImportState(uid: string): LegacyImportState {
   try { const v = localStorage.getItem(importKey(uid)); return v === "done" || v === "declined" ? v : null; } catch { return null; }
 }
 export function setLegacyImportDeclined(uid: string) {
-  try { localStorage.setItem(importKey(uid), "declined"); } catch {}
+  try { localStorage.setItem(importKey(uid), "declined"); } catch { /* ignore */ }
 }
 
 /** Returns an import plan if this device has sites not yet in this account's cloud list. */
@@ -376,7 +376,7 @@ export async function importLegacySites(plan: LegacyImportPlan): Promise<{ ok: b
   try {
     const original = localStorage.getItem(LEGACY_KEY_V2) ?? localStorage.getItem(LEGACY_KEY_V1);
     if (original) localStorage.setItem(`${LEGACY_KEY_V2}.premigration.${uid}.${Date.now()}`, original);
-  } catch {}
+  } catch { /* ignore */ }
   const hasActive = sites.some((s) => s.isActive);
   let imported = 0, existing = 0;
   for (const s of plan.toImport) {
@@ -393,7 +393,7 @@ export async function importLegacySites(plan: LegacyImportPlan): Promise<{ ok: b
   if (uid !== currentUserId) return { ok: false, imported, existing, missing: 0, message: "account_changed" };
   const cloudSet = new Set(sites.filter((x) => !x.pending).map((x) => normalizeSiteName(x.name)));
   const missing = plan.toImport.filter((s) => !cloudSet.has(normalizeSiteName(s.name))).length;
-  if (missing === 0) { try { localStorage.setItem(importKey(uid), "done"); } catch {} }
+  if (missing === 0) { try { localStorage.setItem(importKey(uid), "done"); } catch { /* ignore */ } }
   console.info("[sites] legacy import", { imported, existing, missing, total: plan.total });
   return { ok: missing === 0, imported, existing, missing };
 }
