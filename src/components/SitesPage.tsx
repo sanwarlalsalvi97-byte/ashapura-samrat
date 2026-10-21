@@ -84,7 +84,7 @@ export default function SitesPage() {
       const r = editing
         ? await updateSiteAsync(editing.id, { name: n, location })
         : await createSiteAsync({ name: n, location });
-      if (!r.ok) {
+      if (r.ok === false) {
         toast({ title: failMsg(r), variant: "destructive" });
         return;
       }
