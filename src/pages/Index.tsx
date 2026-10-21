@@ -16,6 +16,7 @@ import SettingsPage from "@/components/SettingsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import ManageSubscriptionPage from "@/components/ManageSubscriptionPage";
 import SitesPage from "@/components/SitesPage";
+import SitesLegacyImportDialog from "@/components/SitesLegacyImportDialog";
 import PendingPaymentsPage from "@/components/PendingPaymentsPage";
 import WorkerExpensesPage from "@/components/WorkerExpensesPage";
 import MaterialEntryPage from "./MaterialEntryPage";
@@ -147,6 +148,7 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      <SitesLegacyImportDialog />
       <header className="sticky top-0 z-40 bg-background/85 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-md border-b border-border">
         <div className="max-w-lg mx-auto flex items-center justify-between px-4 py-3 gap-2">
           <div className="flex items-center gap-2 min-w-0">
