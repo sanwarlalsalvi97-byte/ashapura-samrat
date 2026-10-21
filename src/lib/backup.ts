@@ -27,8 +27,8 @@ const PREF_KEYS = [
   "hajiri-work-time",
   "hajiri-grouping",
   "hajiri-material-stock",
-  "ashapura-samrat-sites-v2",
 ];
+const LEGACY_SITES_PREF = "ashapura-samrat-sites-v2";
 
 export function backupFilename(now = new Date()) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -44,6 +44,10 @@ export async function buildBackup(): Promise<BackupPayload> {
     if (error) throw new Error(`${t}: ${error.message}`);
     data[t] = rows || [];
   }
+  // Sites live in cloud (public.sites); stored separately, merged (never replaced) on restore.
+  const { data: siteRows, error: siteErr } = await supabase.from("sites").select("name,owner_name,is_active,created_at").eq("user_id", user.id);
+  if (siteErr) throw new Error(`sites: ${siteErr.message}`);
+  data.sites = siteRows || [];
   const preferences: Record<string, string | null> = {};
   PREF_KEYS.forEach((k) => (preferences[k] = localStorage.getItem(k)));
   return {
@@ -197,11 +201,29 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
     }
   }
 
-  // Restore preferences
+  // Restore preferences (site list is never overwritten here — merged below)
   if (payload.preferences) {
     for (const [k, v] of Object.entries(payload.preferences)) {
+      if (k === LEGACY_SITES_PREF) continue;
       if (v != null) localStorage.setItem(k, v);
     }
+  }
+
+  // Merge sites: new backups carry data.sites, old backups carry the legacy preference.
+  const backupSites: { name: string; location?: string }[] = [];
+  for (const r of payload.data?.sites || []) {
+    if (r && typeof r.name === "string") backupSites.push({ name: r.name, location: r.owner_name || "" });
+  }
+  const legacyPref = payload.preferences?.[LEGACY_SITES_PREF];
+  if (legacyPref) {
+    try {
+      const arr = JSON.parse(legacyPref);
+      if (Array.isArray(arr)) for (const s of arr) if (s && typeof s.name === "string") backupSites.push({ name: s.name, location: s.location || "" });
+    } catch { /* ignore malformed legacy value */ }
+  }
+  if (backupSites.length) {
+    const { mergeSitesIntoCloud } = await import("./sites");
+    await mergeSitesIntoCloud(backupSites);
   }
 }
 

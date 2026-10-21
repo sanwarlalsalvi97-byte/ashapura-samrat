@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Plus, Pencil, Trash2, MapPin, CheckCircle2 } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, MapPin, CheckCircle2, CloudOff, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,11 +18,14 @@ import {
 import { toast } from "@/hooks/use-toast";
 import {
   listSites,
-  createSite,
-  updateSite,
-  deleteSite,
-  setActiveSite,
+  createSiteAsync,
+  updateSiteAsync,
+  deleteSiteAsync,
+  setActiveSiteAsync,
+  getSitesStatus,
+  refreshSites,
   type Site,
+  type SaveResult,
 } from "@/lib/sites";
 
 export default function SitesPage() {
@@ -33,7 +36,16 @@ export default function SitesPage() {
   const [location, setLocation] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Site | null>(null);
 
-  const refresh = () => setSites(listSites());
+  const [status, setStatus] = useState(getSitesStatus());
+  const [saving, setSaving] = useState(false);
+  const refresh = () => { setSites(listSites()); setStatus(getSitesStatus()); };
+
+  const failMsg = (r: Extract<SaveResult, { ok: false }>) =>
+    r.reason === "duplicate" ? "यह साइट पहले से मौजूद है"
+    : r.reason === "blank" ? "साइट का नाम ज़रूरी है"
+    : r.reason === "offline" ? "इंटरनेट नहीं है — बाद में कोशिश करें"
+    : r.reason === "not_signed_in" ? "पहले लॉगिन करें"
+    : "सेव नहीं हुआ — फिर से कोशिश करें";
 
   useEffect(() => {
     refresh();
@@ -60,43 +72,55 @@ export default function SitesPage() {
     setOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) return;
     const n = name.trim();
     if (!n) {
       toast({ title: "साइट का नाम ज़रूरी है", variant: "destructive" });
       return;
     }
-    if (editing) {
-      const ok = updateSite(editing.id, { name: n, location });
-      if (!ok) {
-        toast({ title: "यह नाम पहले से मौजूद है", variant: "destructive" });
+    setSaving(true);
+    try {
+      const r = editing
+        ? await updateSiteAsync(editing.id, { name: n, location })
+        : await createSiteAsync({ name: n, location });
+      if (!r.ok) {
+        toast({ title: failMsg(r), variant: "destructive" });
         return;
       }
-      toast({ title: "✅ साइट अपडेट हो गई" });
-    } else {
-      const created = createSite({ name: n, location });
-      if (!created) {
-        toast({ title: "यह साइट पहले से मौजूद है", variant: "destructive" });
-        return;
-      }
-      toast({ title: "✅ नई साइट जोड़ी गई" });
+      toast({
+        title: editing ? "✅ साइट अपडेट हो गई"
+          : r.synced ? "✅ नई साइट Cloud में सेव हुई"
+          : "📴 फ़ोन पर सेव हुई — इंटरनेट आने पर Cloud में जाएगी",
+      });
+      setOpen(false);
+      refresh();
+    } finally {
+      setSaving(false);
     }
-    setOpen(false);
-    refresh();
   };
 
-  const handleSelect = (s: Site) => {
-    if (s.isActive) return;
-    setActiveSite(s.id);
+  const handleSelect = async (s: Site) => {
+    if (s.isActive || s.pending) return;
+    const r = await setActiveSiteAsync(s.id);
+    if (!r.ok) {
+      toast({ title: r.reason === "offline" ? "इंटरनेट नहीं है" : "बदल नहीं सका", variant: "destructive" });
+      return;
+    }
     toast({ title: `✅ ${s.name} अब चालू है` });
     refresh();
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    deleteSite(deleteTarget.id);
-    toast({ title: `🗑 ${deleteTarget.name} हटा दी गई` });
+    const t = deleteTarget;
     setDeleteTarget(null);
+    const r = await deleteSiteAsync(t.id);
+    if (!r.ok) {
+      toast({ title: r.reason === "offline" ? "इंटरनेट नहीं है — हटाया नहीं गया" : "हटाया नहीं जा सका", variant: "destructive" });
+      return;
+    }
+    toast({ title: `🗑 ${t.name} हटा दी गई` });
     refresh();
   };
 
@@ -117,7 +141,23 @@ export default function SitesPage() {
         </Button>
       </div>
 
-      {sites.length === 0 ? (
+      {(status === "offline" || status === "error") && (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 p-3 text-xs">
+          <CloudOff className="w-4 h-4 shrink-0 text-destructive" />
+          <span className="flex-1">
+            {status === "offline" ? "ऑफ़लाइन — सूची पुरानी हो सकती है" : "साइटें लोड नहीं हुईं"}
+          </span>
+          <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => void refreshSites()}>
+            <RefreshCw className="w-3 h-3" /> फिर से
+          </Button>
+        </div>
+      )}
+
+      {sites.length === 0 && status === "loading" ? (
+        <div className="flex justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+      ) : sites.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p className="text-base font-medium">अभी कोई साइट नहीं</p>
@@ -168,6 +208,11 @@ export default function SitesPage() {
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground/70 mt-0.5">कोई पता नहीं</p>
+                    )}
+                    {s.pending && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <CloudOff className="w-3 h-3" /> सिंक बाकी
+                      </p>
                     )}
                   </div>
 
@@ -254,9 +299,10 @@ export default function SitesPage() {
             <Button
               className="flex-1 text-white border-0"
               style={{ background: "linear-gradient(135deg, hsl(25 95% 55%), hsl(15 90% 50%))" }}
-              onClick={handleSave}
+              onClick={() => void handleSave()}
+              disabled={saving}
             >
-              {editing ? "अपडेट" : "जोड़ें"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : editing ? "अपडेट" : "जोड़ें"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -274,7 +320,7 @@ export default function SitesPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>रहने दें</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
+              onClick={() => void confirmDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               हटाएं

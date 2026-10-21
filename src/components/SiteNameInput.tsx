@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listSites, type Site } from "@/lib/sites";
+import { listSites, getSitesStatus, type Site } from "@/lib/sites";
 
 interface Props {
   value: string;
@@ -16,9 +16,11 @@ interface Props {
  */
 export default function SiteNameInput({ value, onChange, placeholder = "साइट चुनें", className }: Props) {
   const [sites, setSites] = useState<Site[]>(() => listSites());
+  const [status, setStatus] = useState(getSitesStatus());
 
   useEffect(() => {
-    const refresh = () => setSites(listSites());
+    const refresh = () => { setSites(listSites()); setStatus(getSitesStatus()); };
+    refresh();
     window.addEventListener("sites-updated", refresh);
     window.addEventListener("storage", refresh);
     return () => {
@@ -42,7 +44,10 @@ export default function SiteNameInput({ value, onChange, placeholder = "सा�
             {s.name}{s.location ? ` — ${s.location}` : ""}
           </SelectItem>
         ))}
-        {sites.length === 0 && (
+        {sites.length === 0 && status === "loading" && (
+          <div className="px-2 py-3 text-xs text-muted-foreground">लोड हो रहा है…</div>
+        )}
+        {sites.length === 0 && status !== "loading" && (
           <div className="px-2 py-3 text-xs text-muted-foreground">
             पहले "साइट" पेज में नई साइट जोड़ें
           </div>
