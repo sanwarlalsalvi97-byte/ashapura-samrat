@@ -8,6 +8,8 @@ const TABLES = [
   "brick_stock",
   "contractors",
   "payment_history",
+  "material_entries",
+  "attendance_logs",
 ] as const;
 
 export type BackupPayload = {
@@ -38,18 +40,22 @@ export function backupFilename(now = new Date()) {
 export async function buildBackup(): Promise<BackupPayload> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
+  
   const data: Record<string, any[]> = {};
   for (const t of TABLES) {
     const { data: rows, error } = await supabase.from(t as any).select("*").eq("user_id", user.id);
     if (error) throw new Error(`${t}: ${error.message}`);
     data[t] = rows || [];
   }
+
   // Sites live in cloud (public.sites); stored separately, merged (never replaced) on restore.
   const { data: siteRows, error: siteErr } = await supabase.from("sites").select("name,owner_name,is_active,created_at").eq("user_id", user.id);
   if (siteErr) throw new Error(`sites: ${siteErr.message}`);
   data.sites = siteRows || [];
+
   const preferences: Record<string, string | null> = {};
   PREF_KEYS.forEach((k) => (preferences[k] = localStorage.getItem(k)));
+
   return {
     version: 1,
     app: "AshapuraSamrat",
@@ -80,11 +86,6 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   );
 }
 
-function toB64(bytes: Uint8Array): string {
-  let s = "";
-  bytes.forEach((b) => (s += String.fromCharCode(b)));
-  return btoa(s);
-}
 function fromB64(b64: string): Uint8Array {
   const s = atob(b64);
   const a = new Uint8Array(s.length);
@@ -92,11 +93,6 @@ function fromB64(b64: string): Uint8Array {
   return a;
 }
 
-/**
- * Passwordless backup: writes plain JSON with a stable envelope so future
- * versions can add encryption without breaking existing files. Legacy
- * encrypted files are still readable via `decryptBackup`.
- */
 export async function encryptBackup(payload: BackupPayload, _password?: string): Promise<string> {
   const envelope = {
     format: "AshapuraSamrat-Backup-v1",
@@ -112,17 +108,14 @@ export async function decryptBackup(fileText: string, password: string = ""): Pr
   const env = JSON.parse(fileText);
   if (!env) throw new Error("Invalid backup file");
 
-  // New passwordless envelope
   if (env.format === "AshapuraSamrat-Backup-v1" && env.payload?.app === "AshapuraSamrat") {
     return env.payload as BackupPayload;
   }
 
-  // Plain legacy dump
   if (env.app === "AshapuraSamrat" && env.version === 1) {
     return env as BackupPayload;
   }
 
-  // Legacy AES-GCM encrypted backup
   if (env.format === "AshapuraSamrat-EncryptedBackup-v1") {
     if (!password) throw new Error("यह पुराना एन्क्रिप्टेड बैकअप है — पासवर्ड ज़रूरी है / Legacy encrypted backup — password required");
     const salt = fromB64(env.salt);
@@ -160,48 +153,21 @@ export function previewEnvelope(fileText: string): { createdAt?: string; counts?
   return { encrypted: false };
 }
 
-/** Deletes the user's rows across all tables, then inserts backup rows. */
+/** Restores user data securely using the database function. */
 export async function restoreBackup(payload: BackupPayload): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
-  // Delete existing user data (child tables first)
-  const order = [
-    "payment_history",
-    "attendance",
-    "worker_expenses",
-    "cashbook",
-    "brick_stock",
-    "contractors",
-    "workers",
-  ];
-  for (const t of order) {
-    const { error } = await supabase.from(t as any).delete().eq("user_id", user.id);
-    if (error) throw new Error(`${t} delete: ${error.message}`);
+  // Call the secure database restore function we created in Supabase
+  const { error } = await supabase.rpc("restore_user_data", {
+    backup_json: payload,
+  });
+
+  if (error) {
+    throw new Error(`Restore failed: ${error.message}`);
   }
 
-  // Insert in dependency-safe order (parents first)
-  const insertOrder = [
-    "workers",
-    "contractors",
-    "brick_stock",
-    "cashbook",
-    "worker_expenses",
-    "attendance",
-    "payment_history",
-  ];
-  for (const t of insertOrder) {
-    const rows = (payload.data?.[t] || []).map((r: any) => ({ ...r, user_id: user.id }));
-    if (rows.length === 0) continue;
-    // Insert in batches
-    for (let i = 0; i < rows.length; i += 200) {
-      const batch = rows.slice(i, i + 200);
-      const { error } = await supabase.from(t as any).insert(batch);
-      if (error) throw new Error(`${t} insert: ${error.message}`);
-    }
-  }
-
-  // Restore preferences (site list is never overwritten here — merged below)
+  // Restore preferences
   if (payload.preferences) {
     for (const [k, v] of Object.entries(payload.preferences)) {
       if (k === LEGACY_SITES_PREF) continue;
@@ -209,18 +175,24 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
     }
   }
 
-  // Merge sites: new backups carry data.sites, old backups carry the legacy preference.
+  // Merge sites
   const backupSites: { name: string; location?: string }[] = [];
   for (const r of payload.data?.sites || []) {
     if (r && typeof r.name === "string") backupSites.push({ name: r.name, location: r.owner_name || "" });
   }
+  
   const legacyPref = payload.preferences?.[LEGACY_SITES_PREF];
   if (legacyPref) {
     try {
       const arr = JSON.parse(legacyPref);
-      if (Array.isArray(arr)) for (const s of arr) if (s && typeof s.name === "string") backupSites.push({ name: s.name, location: s.location || "" });
-    } catch { /* ignore malformed legacy value */ }
+      if (Array.isArray(arr)) {
+        for (const s of arr) {
+          if (s && typeof s.name === "string") backupSites.push({ name: s.name, location: s.location || "" });
+        }
+      }
+    } catch { /* ignore */ }
   }
+
   if (backupSites.length) {
     const { mergeSitesIntoCloud } = await import("./sites");
     await mergeSitesIntoCloud(backupSites);
@@ -228,8 +200,6 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
 }
 
 export function downloadText(filename: string, text: string) {
-  // On native (Android app), route through Filesystem + share sheet.
-  // Import lazily so web bundle isn't affected.
   import("./native").then(({ isNative, saveTextFile }) => {
     if (isNative()) {
       void saveTextFile(filename, text, "application/json");
@@ -246,8 +216,6 @@ export function downloadText(filename: string, text: string) {
     URL.revokeObjectURL(url);
   });
 }
-
-/* ---------------- Local backup queue (offline → auto-upload) ---------------- */
 
 const PENDING_KEY = "pending-backup-v1";
 export function savePendingBackup(text: string, name: string) {
