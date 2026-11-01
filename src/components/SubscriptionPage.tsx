@@ -102,7 +102,7 @@ const PLANS: Plan[] = [
     tag: "बड़ी टीम और मल्टी-साइट",
     monthly: 199,
     monthlyProductId: "pro_plan:pro-monthly",
-    yearlyProductId: "pro_plan:pro-yearly",
+    yearlyProductId: "pro_plan:pro-annual",
     Icon: Crown,
     iconWrap: "bg-gradient-to-br from-fuchsia-500 to-violet-600",
     accent: "text-violet-600",
