@@ -1,4 +1,3 @@
-
 import { CalendarCheck, Users, BarChart3, Settings, Wallet, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -45,9 +44,9 @@ export default function BottomNav({ active, onNavigate, allowed }: Props) {
   return (
     <nav
       aria-label="मुख्य नेविगेशन"
-      className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 px-1"
+      className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 px-0.5"
       style={{
-        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 24px)",
+        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)",
       }}
     >
       <div className="flex items-center h-16 max-w-lg mx-auto w-full">
@@ -57,18 +56,18 @@ export default function BottomNav({ active, onNavigate, allowed }: Props) {
             variant="ghost"
             aria-current={active === id ? "page" : undefined}
             onClick={() => onNavigate(id)}
-            className={`h-14 basis-0 min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2 rounded-md transition-colors ${
+            className={`h-14 basis-0 min-w-0 flex-1 flex-col items-center gap-0.5 px-0 py-1.5 rounded-md transition-colors ${
               active === id
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Icon
-              className={`!w-5 !h-5 shrink-0 ${
+              className={`!w-4 !h-4 shrink-0 ${
                 active === id ? "stroke-[2.5]" : ""
               }`}
             />
-            <span className="text-[10px] leading-4 whitespace-nowrap font-medium">
+            <span className="text-[10px] leading-3 whitespace-nowrap font-medium overflow-hidden text-ellipsis w-full text-center">
               {label}
             </span>
           </Button>
