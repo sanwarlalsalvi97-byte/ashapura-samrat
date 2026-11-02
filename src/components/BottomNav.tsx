@@ -1,7 +1,27 @@
+
 import { CalendarCheck, Users, BarChart3, Settings, Wallet, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" | "contractors" | "bricks" | "material_entry" | "roof" | "report" | "settings" | "subscription" | "manage_subscription" | "sites" | "pending" | "worker_expense" | "payment_history" | "punch" | "geo_admin";
+export type TabId =
+  | "home"
+  | "attendance"
+  | "advance"
+  | "cashbook"
+  | "workers"
+  | "contractors"
+  | "bricks"
+  | "material_entry"
+  | "roof"
+  | "report"
+  | "settings"
+  | "subscription"
+  | "manage_subscription"
+  | "sites"
+  | "pending"
+  | "worker_expense"
+  | "payment_history"
+  | "punch"
+  | "geo_admin";
 
 interface Props {
   active: TabId;
@@ -21,8 +41,15 @@ const tabs = [
 
 export default function BottomNav({ active, onNavigate, allowed }: Props) {
   const visible = allowed ? tabs.filter((t) => allowed.includes(t.id)) : tabs;
+
   return (
-    <nav aria-label="मुख्य नेविगेशन" className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)] px-1">
+    <nav
+      aria-label="मुख्य नेविगेशन"
+      className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 px-1"
+      style={{
+        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 24px)",
+      }}
+    >
       <div className="flex items-center h-16 max-w-lg mx-auto w-full">
         {visible.map(({ id, label, icon: Icon }) => (
           <Button
@@ -36,8 +63,14 @@ export default function BottomNav({ active, onNavigate, allowed }: Props) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className={`!w-5 !h-5 shrink-0 ${active === id ? "stroke-[2.5]" : ""}`} />
-            <span className="text-[10px] leading-4 whitespace-nowrap font-medium">{label}</span>
+            <Icon
+              className={`!w-5 !h-5 shrink-0 ${
+                active === id ? "stroke-[2.5]" : ""
+              }`}
+            />
+            <span className="text-[10px] leading-4 whitespace-nowrap font-medium">
+              {label}
+            </span>
           </Button>
         ))}
       </div>
