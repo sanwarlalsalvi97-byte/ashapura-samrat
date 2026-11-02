@@ -46,7 +46,7 @@ export default function BottomNav({ active, onNavigate, allowed }: Props) {
       aria-label="मुख्य नेविगेशन"
       className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 px-0.5"
       style={{
-        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)",
+        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 24px)",
       }}
     >
       <div className="flex items-center h-16 max-w-lg mx-auto w-full">
