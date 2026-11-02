@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TABLES = [
   "workers",
+  "office_locations",
   "attendance",
   "worker_expenses",
   "cashbook",
@@ -158,21 +159,11 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
 
-  // Call the secure database restore function we created in Supabase
-  const { error } = await supabase.rpc("restore_user_data", {
-    backup_json: payload,
-  });
-
-  if (error) {
-    throw new Error(`Restore failed: ${error.message}`);
+  if (payload?.app !== "AshapuraSamrat" || payload.version !== 1 || !payload.data) {
+    throw new Error("बैकअप फ़ाइल का स्वरूप गलत है");
   }
-
-  // Restore preferences
-  if (payload.preferences) {
-    for (const [k, v] of Object.entries(payload.preferences)) {
-      if (k === LEGACY_SITES_PREF) continue;
-      if (v != null) localStorage.setItem(k, v);
-    }
+  if (payload.user?.id !== user.id) {
+    throw new Error("यह बैकअप दूसरे अकाउंट का है");
   }
 
   // Merge sites
@@ -193,10 +184,27 @@ export async function restoreBackup(payload: BackupPayload): Promise<void> {
     } catch { /* ignore */ }
   }
 
-  if (backupSites.length) {
-    const { mergeSitesIntoCloud } = await import("./sites");
-    await mergeSitesIntoCloud(backupSites);
+  // Include legacy site names in the same database transaction, not a later write.
+  const data = {
+    ...payload.data,
+    sites: backupSites.map((s) => ({ name: s.name, owner_name: s.location || "" })),
+  };
+  const { error } = await supabase.rpc("restore_user_data", {
+    backup_json: JSON.parse(JSON.stringify({ ...payload, data })),
+  });
+  if (error) throw new Error(`रीस्टोर असफल: ${error.message}`);
+
+  // Device preferences are not transactional database records; restore only known keys.
+  try {
+    for (const k of PREF_KEYS) {
+      const v = payload.preferences?.[k];
+      if (typeof v === "string") localStorage.setItem(k, v);
+    }
+  } catch {
+    throw new Error("Cloud डेटा रीस्टोर हो गया, लेकिन फ़ोन की सेटिंग्स नहीं बदलीं। दोबारा डेटा रीस्टोर करना आवश्यक नहीं है।");
   }
+  const { refreshSites } = await import("./sites");
+  await refreshSites();
 }
 
 export function downloadText(filename: string, text: string) {

@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Create and verify owner-scoped atomic backup restore with rollback regression tests; do not modify real user records.
+- [ ] Fix six-item bottom navigation spacing and verify compact mobile widths.
+
 - [x] Disable Android input capture without altering numeric validation; 8 Hindi/composition regression tests and 99 total tests pass; automatic TypeScript/preview validation succeeds; release APK/AAB tasks attempted after providing JDK 21.
 - [x] Inspect current branch and preserve prior changes; run official Capacitor sync/update and actual Gradle debug build; install and confirm JDK 21, Android platform 36, build-tools 36.0.0 and platform-tools; rerun all 8 Hindi/composition tests successfully.
 - [ ] Complete genuine production assets and Android APK/AAB — blocked by missing local dist and the platform prohibition on manually running website builds; automatic preview build is successful but does not supply local dist. Official update cannot finish Cordova generation without web assets. Debug failed on missing cordova.variables.gradle; release APK/AAB not run because debug failed. Release signing file is absent.
