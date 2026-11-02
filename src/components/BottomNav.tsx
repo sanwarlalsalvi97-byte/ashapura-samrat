@@ -1,4 +1,5 @@
-import { CalendarCheck, Users, BarChart3, Settings, Wallet, Layers, HardHat, Home, BookOpen, Building2 } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export type TabId = "home" | "attendance" | "advance" | "cashbook" | "workers" | "contractors" | "bricks" | "material_entry" | "roof" | "report" | "settings" | "subscription" | "manage_subscription" | "sites" | "pending" | "worker_expense" | "payment_history" | "punch" | "geo_admin";
 
@@ -21,21 +22,23 @@ const tabs = [
 export default function BottomNav({ active, onNavigate, allowed }: Props) {
   const visible = allowed ? tabs.filter((t) => allowed.includes(t.id)) : tabs;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)] px-2">
-      <div className="flex overflow-x-auto items-center h-16 max-w-lg mx-auto px-1 no-scrollbar">
+    <nav aria-label="मुख्य नेविगेशन" className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 pb-[env(safe-area-inset-bottom)] px-1">
+      <div className="flex items-center h-16 max-w-lg mx-auto w-full">
         {visible.map(({ id, label, icon: Icon }) => (
-          <button
+          <Button
             key={id}
+            variant="ghost"
+            aria-current={active === id ? "page" : undefined}
             onClick={() => onNavigate(id)}
-            className={`flex flex-1 flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors shrink-0 min-w-[52px] ${
+            className={`h-14 basis-0 min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2 rounded-md transition-colors ${
               active === id
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className={`w-5 h-5 ${active === id ? "stroke-[2.5]" : ""}`} />
-            <span className="text-[10px] font-medium">{label}</span>
-          </button>
+            <Icon className={`!w-5 !h-5 shrink-0 ${active === id ? "stroke-[2.5]" : ""}`} />
+            <span className="text-[10px] leading-4 whitespace-nowrap font-medium">{label}</span>
+          </Button>
         ))}
       </div>
     </nav>
