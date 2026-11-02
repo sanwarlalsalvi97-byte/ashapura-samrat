@@ -834,6 +834,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      restore_user_data: { Args: { backup_json: Json }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "staff" | "worker"
