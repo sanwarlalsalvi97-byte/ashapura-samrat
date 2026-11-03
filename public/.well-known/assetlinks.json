@@ -1,1 +1,16 @@
-
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ashapura.samrat",
+      "sha256_cert_fingerprints": [
+        "18:5A:50:F2:64:2D:2E:E7:24:BD:5E:96:2B:87:A9:AF:A5:71:EF:61:05:4D:FD:5B:6F:0A:DA:99:6E:07:B2:EA",
+        "E0:AE:93:91:A9:FF:E6:68:41:36:33:50:B1:69:F9:62:F2:E8:F4:75:97:BB:B6:90:B3:D6:CE:F2:78:3F:7C:A0",
+        "0C:BE:9C:02:21:B8:9D:42:80:91:91:6A:25:89:14:D2:48:75:A0:68:F6:2C:D7:3C:1A:19:9B:0E:52:85:DC:A3"
+      ]
+    }
+  }
+]
