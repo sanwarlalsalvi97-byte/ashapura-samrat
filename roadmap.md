@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Create and verify owner-scoped atomic backup restore with rollback regression tests; do not modify real user records.
-- [ ] Fix six-item bottom navigation spacing and verify compact mobile widths.
+- [x] Create owner-scoped atomic backup restore; isolated PostgreSQL rollback/dependency/ownership tests pass. No real user records modified; live destructive restore remains untested.
+- [x] Fix six-item bottom navigation spacing; authenticated browser checks and screenshots confirm distinct labels at 280, 320, 360, 384 and 414 pixels.
 
 - [x] Disable Android input capture without altering numeric validation; 8 Hindi/composition regression tests and 99 total tests pass; automatic TypeScript/preview validation succeeds; release APK/AAB tasks attempted after providing JDK 21.
 - [x] Inspect current branch and preserve prior changes; run official Capacitor sync/update and actual Gradle debug build; install and confirm JDK 21, Android platform 36, build-tools 36.0.0 and platform-tools; rerun all 8 Hindi/composition tests successfully.

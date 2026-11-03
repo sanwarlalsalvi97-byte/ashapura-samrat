@@ -26,7 +26,7 @@ describe('atomic restore in isolated PostgreSQL',()=>{
   await restore(data());
   expect((await db.query<{amount:string}>('SELECT amount FROM payment_history')).rows[0].amount).toBe('250.75');
   expect((await db.query<{latitude:string,photo_url:string}>('SELECT latitude,photo_url FROM attendance_logs')).rows[0]).toEqual({latitude:'26.91',photo_url:`${uid}/${wid}/photo.jpg`});
-  expect((await db.query<{total_amount:string}>('SELECT total_amount FROM material_entries')).rows[0].total_amount).toBe('650.50');
+  expect(Number((await db.query<{total_amount:string}>('SELECT total_amount FROM material_entries')).rows[0].total_amount)).toBe(650.50);
   expect((await db.query('SELECT * FROM cashbook WHERE payment_id=$1',[pid])).rows).toHaveLength(1);
  });
  it('repeating a restore does not duplicate records',async()=>{
@@ -61,7 +61,13 @@ describe('atomic restore in isolated PostgreSQL',()=>{
   expect((await db.query<{linked_user_id:null}>('SELECT linked_user_id FROM workers')).rows[0].linked_user_id).toBeNull();
  });
  it('valid empty arrays safely clear only the owner snapshot tables',async()=>{
+  await db.exec('RESET ROLE');
+  await db.query("INSERT INTO workers (id,user_id,name,role,daily_rate) VALUES ($1,$2,'दूसरा अकाउंट','मजदूर',600)",[cid,other]);
+  await db.exec('SET ROLE authenticated');
   const d=Object.fromEntries(Object.keys(data()).map(k=>[k,[]]));await restore(d);
   for(const t of ['workers','attendance','payment_history','cashbook','attendance_logs','material_entries']) expect((await db.query(`SELECT * FROM ${t}`)).rows).toHaveLength(0);
+  await db.exec('RESET ROLE');
+  expect((await db.query('SELECT * FROM workers WHERE user_id=$1',[other])).rows).toHaveLength(1);
+  await db.exec('SET ROLE authenticated');
  });
 });
