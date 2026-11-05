@@ -21,6 +21,7 @@ import GoogleDriveOAuthReturn from "./pages/GoogleDriveOAuthReturn";
 import LandingPage from "./pages/LandingPage";
 import Terms from "./pages/Terms";
 import NotificationSettings from "./pages/NotificationSettings";
+import { AppLinksDiagnostic } from "./components/AppLinksDiagnostic";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +107,7 @@ const App = () => {
             <Route path="/app" element={<PinLockGate><Index /></PinLockGate>} />
             <Route path="/material-entry" element={<PinLockGate><Index initialTab="material_entry" /></PinLockGate>} />
             <Route path="/notification-settings" element={<PinLockGate><NotificationSettings /></PinLockGate>} />
+            <Route path="/app-links-diagnostic" element={<AppLinksDiagnostic />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/trust" element={<Trust />} />
@@ -122,7 +124,4 @@ const App = () => {
 };
 
 export default App;
-        
-
-
-
+      
