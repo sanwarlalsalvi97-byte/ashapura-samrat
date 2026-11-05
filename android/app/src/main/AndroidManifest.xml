@@ -46,7 +46,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="ashapurapro.com" />
-                <data android:scheme="https" android:host="www.ashapurapro.com" />
             </intent-filter>
 
         </activity>
