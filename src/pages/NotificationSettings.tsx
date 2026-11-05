@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BellRing, Globe2, Info } from "lucide-react";
+import { ArrowLeft, BellRing, Globe2, Info, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -161,11 +161,36 @@ export default function NotificationSettings() {
           </Card>
         </section>
 
-        <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4 text-xs leading-5 text-muted-foreground">
+        <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4 text-xs leading-5 text-muted-foreground mb-6">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <p>सूचनाएं आपके डिवाइस पर स्थानीय रूप से भेजी जाती हैं। सुनिश्चित करें कि ऐप को आपके फ़ोन सेटिंग्स में सूचना की अनुमति है।</p>
         </div>
+
+        {/* 🔗 App Links Diagnostic Tool Button */}
+        <section aria-labelledby="diagnostic-heading">
+          <h2 id="diagnostic-heading" className="mb-3 text-xs font-bold text-muted-foreground">DEVELOPER TOOLS</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold">App Links Diagnostic</h3>
+                  <p className="text-xs text-muted-foreground">ashapurapro.com assetlinks.json की स्थिति जांचें</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => navigate("/app-links-diagnostic")}
+                >
+                  <Link2 className="h-4 w-4 text-primary" />
+                  <span>जाँच करें</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
       </div>
     </main>
   );
-}
+        }
