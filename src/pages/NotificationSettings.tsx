@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BellRing, Globe2, Info, Link2 } from "lucide-react";
+import { ArrowLeft, BellRing, Globe2, Info, Link2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -96,6 +96,22 @@ export default function NotificationSettings() {
             <p className="text-sm text-muted-foreground">Notification Settings</p>
           </div>
         </header>
+
+        {/* 👤 Profile Section - सबसे ऊपर */}
+        <section aria-labelledby="profile-heading" className="mb-6">
+          <h2 id="profile-heading" className="mb-3 text-xs font-bold text-muted-foreground">USER PROFILE</h2>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary">
+                <User className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold truncate">Ashapura Samrat User</h3>
+                <p className="text-xs text-muted-foreground truncate">com.ashapurasamrat.app</p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
         <section aria-labelledby="reminders-heading" className="mb-6">
           <div className="mb-3 flex items-center gap-2">
@@ -193,4 +209,4 @@ export default function NotificationSettings() {
       </div>
     </main>
   );
-        }
+                 }
