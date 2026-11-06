@@ -1,6 +1,7 @@
 package com.ashapura.samrat;
 
 import android.os.Bundle;
+import androidx.core.view.WindowCompat; // Edge-to-edge के लिए ज़रूरी इम्पोर्ट
 import com.getcapacitor.BridgeActivity;
 
 // कैपगो सोशल लॉगिन के लिए आवश्यक इम्पोर्ट्स
@@ -21,6 +22,9 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(PlayBillingPlugin.class);
 
         super.onCreate(savedInstanceState);
+
+        // Android 15 (SDK 35) के लिए Edge-to-edge डिस्प्ले सक्षम करें
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 
     @Override
