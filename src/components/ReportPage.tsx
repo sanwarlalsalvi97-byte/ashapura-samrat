@@ -462,4 +462,4 @@ function Row({ label, value, tone = "", muted = false }: { label: string; value:
       <span className={`text-xs font-extrabold tabular-nums ${tone || (muted ? "text-muted-foreground" : "")}`}>{value}</span>
     </div>
   );
-                                                                    }
+}
