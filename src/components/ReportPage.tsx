@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, Share2, Trash2, FileDown, FileText, Building
 import { toast } from "@/hooks/use-toast";
 import { exportCSV, exportPDF } from "@/lib/export-utils";
 import { computeWorkerLedger, type WorkerLedger, subscribePaymentSources } from "@/lib/payment-engine";
-import WorkerReconciliationTable from "./WorkerReconciliationTable";
+import WorkerReconciliationTable from "@/components/WorkerReconciliationTable";
 import SiteFilterBar from "@/components/SiteFilterBar";
 import SiteWiseReport from "@/components/SiteWiseReport";
 import PaySalaryDialog from "@/components/PaySalaryDialog";
