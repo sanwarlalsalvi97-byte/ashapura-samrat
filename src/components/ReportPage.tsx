@@ -93,7 +93,6 @@ export default function ReportPage() {
     return () => unsub();
   }, [loadLedger, loadSiteData]);
 
-  /** When a site is selected, hide workers with no activity on that site. */
   const visibleLedger = useMemo(() => {
     if (!activeSite) return ledger;
     return ledger.filter((l) =>
@@ -102,7 +101,6 @@ export default function ReportPage() {
       l.currentEarnings || l.currentAdvance || l.currentPaid || l.previousBalance
     );
   }, [ledger, activeSite]);
-
 
   const handleDelete = async (worker: WorkerLedger) => {
     try {
@@ -163,7 +161,6 @@ export default function ReportPage() {
     }
   };
 
-
   const shareOnWhatsApp = (worker?: WorkerLedger) => {
     let text = "";
     if (worker) {
@@ -211,7 +208,7 @@ export default function ReportPage() {
         </Button>
       </div>
 
-      {/* Site filter — applies to the whole report */}
+      {/* Site filter */}
       <SiteFilterBar value={siteFilter} onChange={setSiteFilter} />
 
       {/* === Payroll Summary Cards === */}
@@ -296,7 +293,6 @@ export default function ReportPage() {
             {visibleLedger.map((s) => (
               <LedgerCard
                 key={s.worker.id}
-
                 l={s}
                 month={month}
                 year={year}
@@ -335,9 +331,18 @@ function LedgerCard({
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
-              {l.worker.name.slice(0, 1)}
-            </span>
+            {/* मजदूर की फोटो या पहला अक्षर */}
+            {l.worker.profile_url ? (
+              <img 
+                src={l.worker.profile_url} 
+                alt={l.worker.name} 
+                className="w-10 h-10 rounded-xl object-cover border border-emerald-200 shrink-0"
+              />
+            ) : (
+              <span className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
+                {l.worker.name.slice(0, 1)}
+              </span>
+            )}
             <span className="min-w-0">
               <span className="block font-extrabold truncate">{l.worker.name}</span>
               <span className="block text-[10px] font-bold text-muted-foreground truncate">
@@ -426,401 +431,16 @@ function LedgerCard({
             </div>
           )}
         </div>
-
-        {onPay && (
-        <Button
-          onClick={onPay}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2 rounded-xl h-11 font-bold"
-        >
-          <BadgeIndianRupee className="w-4 h-4" /> Pay Salary / सैलरी चुकाएं
-        </Button>
-        )}
       </CardContent>
     </Card>
   );
 }
 
-function PaySalaryDialog({
-  target, onClose, onSaved,
-}: {
-  target: WorkerLedger | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [mode, setMode] = useState("cash");
-  const [saving, setSaving] = useState(false);
-  const [awaitingUpi, setAwaitingUpi] = useState(false);
-
-  useEffect(() => {
-    if (target) {
-      const suggested = Math.max(0, target.remainingBalance);
-      setAmount(String(suggested));
-      setNote(`सैलरी सेटलमेंट`);
-      setMode("cash");
-      setAwaitingUpi(false);
-    }
-  }, [target]);
-
-  const savePayment = async (amt: number) => {
-    if (!target) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
-    const { error } = await supabase.from("payment_history").insert({
-      user_id: user.id,
-      worker_id: target.worker.id,
-      amount: amt,
-      payment_date: todayISO(),
-      payment_mode: mode,
-      note: note || null,
-      site_name: target.worker.site_name || null,
-    });
-    if (error) throw error;
-  };
-
-  const handlePay = async () => {
-    if (!target) return;
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return toast({ title: "राशि दर्ज करें", variant: "destructive" });
-
-    // UPI mode: launch UPI app first, DO NOT save until user confirms.
-    if (mode === "upi") {
-      const amountPaise = parseRupeesToPaise(amount);
-      if (amountPaise === null || amountPaise <= 0) {
-        return toast({ title: "सही राशि दर्ज करें", description: "पैसे के लिए अधिकतम दो दशमलव अंक रखें।", variant: "destructive" });
-      }
-      const vpa = (target.worker as any).upi_id as string | undefined;
-      if (!vpa) {
-        return toast({ title: "इस मजदूर की UPI ID नहीं है", description: "पहले मजदूर की जानकारी में UPI ID जोड़ें", variant: "destructive" });
-      }
-      try {
-        const { launchUpi } = await import("@/lib/upi");
-        const res = await launchUpi({ payeeVpa: vpa, payeeName: target.worker.name, amountPaise, note: note || `सैलरी` });
-        if (!res.opened) {
-          return toast({ title: "UPI ऐप नहीं खुला", description: res.error || "GPay / PhonePe / Paytm / BHIM इंस्टॉल करें", variant: "destructive" });
-        }
-      } catch (e: any) {
-        return toast({ title: "UPI लॉन्च असफल", description: e.message, variant: "destructive" });
-      }
-      setAwaitingUpi(true);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await savePayment(amt);
-      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए`, description: "कैशबुक में स्वतः जुड़ गया" });
-      onSaved();
-    } catch (err: any) {
-      toast({ title: "गलती", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpiConfirm = async (success: boolean) => {
-    if (!target) return;
-    if (!success) {
-      setAwaitingUpi(false);
-      toast({ title: "पेमेंट रद्द", description: "कोई एंट्री नहीं जोड़ी गई" });
-      return;
-    }
-    const amountPaise = parseRupeesToPaise(amount);
-    if (amountPaise === null || amountPaise <= 0) return;
-    const amt = Number(formatPaise(amountPaise));
-    setSaving(true);
-    try {
-      await savePayment(amt);
-      toast({ title: `✅ ${target.worker.name} को ${inr(amt)} चुकाए गए (UPI)` });
-      onSaved();
-    } catch (err: any) {
-      toast({ title: "गलती", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-      setAwaitingUpi(false);
-    }
-  };
-
+function Row({ label, value, tone = "", muted = false }: { label: string; value: string; tone?: string; muted?: boolean }) {
   return (
-    <Dialog open={!!target} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>सैलरी चुकाएं — {target?.worker.name}</DialogTitle>
-        </DialogHeader>
-        {target && (
-          <div className="space-y-3">
-            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-3 border border-emerald-200 dark:border-emerald-900/50">
-              <div className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400">बाकी राशि</div>
-              <div className="text-2xl font-extrabold tabular-nums text-emerald-700 dark:text-emerald-300">
-                {inr(target.remainingBalance)}
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground">राशि (₹)</label>
-              <Input
-                type="text"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="mt-1 h-11 text-lg font-extrabold"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground">तरीका</label>
-              <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
-                className="w-full mt-1 h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold"
-              >
-                <option value="cash">Cash / नकद</option>
-                <option value="upi">UPI</option>
-                <option value="bank">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-bold text-muted-foreground">नोट</label>
-              <Input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 h-10" />
-            </div>
-          </div>
-        )}
-        {awaitingUpi && target && (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs space-y-2">
-            <div className="font-semibold text-amber-700 dark:text-amber-300">
-              UPI ऐप खोला गया — पेमेंट पूरा हुआ?
-            </div>
-            <p className="text-muted-foreground">
-              पेमेंट सफल होने पर ही "हाँ, पूरा हुआ" दबाएं। रद्द करने पर कोई एंट्री नहीं जुड़ेगी।
-            </p>
-          </div>
-        )}
-        <DialogFooter>
-          {awaitingUpi ? (
-            <>
-              <Button variant="outline" onClick={() => handleUpiConfirm(false)} disabled={saving}>
-                रद्द / असफल
-              </Button>
-              <Button
-                onClick={() => handleUpiConfirm(true)}
-                disabled={saving}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-              >
-                <BadgeIndianRupee className="w-4 h-4" /> {saving ? "सहेज रहा है..." : "हाँ, पूरा हुआ"}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={onClose}>रद्द</Button>
-              <Button
-                onClick={handlePay}
-                disabled={saving}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-              >
-                <BadgeIndianRupee className="w-4 h-4" /> {saving ? "सहेज रहा है..." : (mode === "upi" ? "UPI ऐप खोलें" : "चुकाएं")}
-              </Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-
-function SiteWiseReport({
-  att, cash, exp, pay, workers, monthLabel, siteFilter, onSiteFilterChange,
-}: {
-  att: any[];
-  cash: { amount: number; site_name: string | null; type: string }[];
-  exp: { amount: number; site_name: string | null }[];
-  pay: { amount: number; site_name: string | null }[];
-  workers: Worker[];
-  monthLabel: string;
-  siteFilter: string;
-  onSiteFilterChange: (v: string) => void;
-}) {
-  const sites = useMemo(() => {
-    // Only show sites the user has manually added in the "Sites" page.
-    return listSites().map((s) => s.name).sort();
-  }, []);
-
-  const data = useMemo(() => {
-    const list = siteFilter === "__all__" ? sites : sites.filter((s) => s === siteFilter);
-    return list.map((siteName) => {
-      const aRows = att.filter((r) => (r.site_name || "") === siteName);
-      const cRows = cash.filter((r) => (r.site_name || "") === siteName);
-      const eRows = exp.filter((r) => (r.site_name || "") === siteName);
-      const pRows = pay.filter((r) => (r.site_name || "") === siteName);
-      const workerSet = new Set<string>();
-      aRows.forEach((r) => workerSet.add(r.worker_id));
-      workers.filter((w) => w.site_name === siteName).forEach((w) => workerSet.add(w.id));
-      const present = aRows.filter((r) => r.status === "Present").length;
-      const half = aRows.filter((r) => r.status === "Half-Day").length;
-      const absent = aRows.filter((r) => r.status === "Absent").length;
-      const totalAdvance = aRows.reduce((s, r) => s + (r.advance || 0), 0);
-      const earning = aRows.reduce((s, r) => {
-        const rate = r.workers?.daily_rate || 0;
-        if (r.status === "Present") return s + rate;
-        if (r.status === "Half-Day") return s + rate / 2;
-        return s;
-      }, 0);
-      const cashbookExpense = cRows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
-      const workerExpenses = eRows.reduce((s, r) => s + r.amount, 0);
-      const salaryPaid = pRows.reduce((s, r) => s + r.amount, 0);
-      // Total Payable = Earnings − Advances already paid.
-      // Advances are NEVER added to earnings; they reduce the remaining liability.
-      const totalSiteExpense = earning - totalAdvance;
-      return {
-        siteName,
-        workers: workerSet.size,
-        attendance: present + half + absent,
-        present, half, absent,
-        earning,
-        workerExpenses,
-        advance: totalAdvance,
-        cashbookExpense,
-        salaryPaid,
-        totalSiteExpense,
-      };
-    });
-  }, [att, cash, exp, pay, workers, sites, siteFilter]);
-
-  const totals = useMemo(() => ({
-    workers: data.reduce((s, x) => s + x.workers, 0),
-    attendance: data.reduce((s, x) => s + x.attendance, 0),
-    expense: data.reduce((s, x) => s + x.totalSiteExpense, 0),
-  }), [data]);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-bold flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-primary" /> साइट-वाइज रिपोर्ट
-        </h2>
-        <select
-          value={siteFilter}
-          onChange={(e) => onSiteFilterChange(e.target.value)}
-          className="bg-background border border-input rounded-md px-2 py-1.5 text-xs font-semibold"
-        >
-          <option value="__all__">सभी साइट</option>
-          {sites.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <Card><CardContent className="p-3 text-center">
-          <Users className="w-4 h-4 mx-auto text-primary mb-1" />
-          <div className="text-lg font-bold tabular-nums">{totals.workers}</div>
-          <div className="text-[10px] text-muted-foreground">कुल मजदूर</div>
-        </CardContent></Card>
-        <Card><CardContent className="p-3 text-center">
-          <Wallet className="w-4 h-4 mx-auto text-accent mb-1" />
-          <div className="text-lg font-bold tabular-nums">{totals.attendance}</div>
-          <div className="text-[10px] text-muted-foreground">कुल हाजिरी</div>
-        </CardContent></Card>
-        <Card><CardContent className="p-3 text-center">
-          <TrendingDown className="w-4 h-4 mx-auto text-destructive mb-1" />
-          <div className="text-lg font-bold tabular-nums">₹{totals.expense.toLocaleString("hi-IN")}</div>
-          <div className="text-[10px] text-muted-foreground">कुल देय (Payable)</div>
-        </CardContent></Card>
-      </div>
-
-      {data.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">कोई साइट डेटा नहीं — {monthLabel}</div>
-      ) : (
-        <div className="space-y-3">
-          {data.map((s) => (
-            <Card key={s.siteName} className="border-border/60">
-              <CardHeader className="pb-2 p-4">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-primary" />
-                  साइट: {s.siteName}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-2 text-xs">
-                <Row label="कुल मजदूर" value={s.workers} />
-                <Row label="कुल हाजिरी" value={`${s.attendance} दिन`} />
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-success/10 rounded-lg p-2">
-                    <div className="text-success font-bold">{s.present}</div>
-                    <div className="text-[10px] text-muted-foreground">हाजिर</div>
-                  </div>
-                  <div className="bg-warning/10 rounded-lg p-2">
-                    <div className="text-warning font-bold">{s.half}</div>
-                    <div className="text-[10px] text-muted-foreground">हाफ-डे</div>
-                  </div>
-                  <div className="bg-destructive/10 rounded-lg p-2">
-                    <div className="text-destructive font-bold">{s.absent}</div>
-                    <div className="text-[10px] text-muted-foreground">गैरहाजिर</div>
-                  </div>
-                </div>
-                <div className="border-t border-border/60 pt-2 space-y-1">
-                  <Row label="कुल भुगतान (कमाई)" value={`₹${s.earning.toLocaleString("hi-IN")}`} bold />
-                  <Row label="कुल एडवांस" value={`₹${s.advance.toLocaleString("hi-IN")}`} tone="text-warning" />
-                  <div className="border-t border-border/40 pt-1 mt-1 font-bold">
-                    <Row label="कुल देय (Payable)" value={`₹${s.totalSiteExpense.toLocaleString("hi-IN")}`} bold tone="text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Row({ label, value, bold, tone, muted }: { label: string; value: string | number; bold?: boolean; tone?: string; muted?: boolean }) {
-  return (
-    <div className="flex justify-between">
-      <span className={muted ? "text-muted-foreground/70 text-xs" : "text-muted-foreground"}>{label}</span>
-      <span className={`tabular-nums ${bold ? "font-bold" : "font-medium"} ${tone || ""}`}>{value}</span>
-    </div>
-  );
-}
-
-
-/** Site tabs shown at the top of the report — filters every section below. */
-function SiteFilterBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [sites, setSites] = useState<string[]>(() => listSites().map((s) => s.name).sort());
-
-  useEffect(() => {
-    const refresh = () => setSites(listSites().map((s) => s.name).sort());
-    window.addEventListener("sites-updated", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("sites-updated", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-
-  const options = ["__all__", ...sites];
-
-  return (
-    <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-2 space-y-2">
-      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground px-1">
-        <Building2 className="w-3.5 h-3.5 text-primary" /> साइट चुनें
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {options.map((s) => {
-          const active = value === s;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onChange(s)}
-              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
-                active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-input hover:bg-muted"
-              }`}
-            >
-              {s === "__all__" ? "सभी साइट" : s}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+      <span className={`text-xs font-bold ${muted ? "text-muted-foreground/75" : "text-muted-foreground"}`}>{label}</span>
+      <span className={`text-sm font-extrabold tabular-nums ${tone}`}>{value}</span>
     </div>
   );
 }
