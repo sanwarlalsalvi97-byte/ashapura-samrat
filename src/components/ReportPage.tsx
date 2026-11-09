@@ -334,7 +334,6 @@ function LedgerCard({
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            {/* मजदूर की फोटो या पहला अक्षर */}
             {l.worker.profile_url ? (
               <img 
                 src={l.worker.profile_url} 
@@ -424,26 +423,27 @@ function LedgerCard({
           </div>
           <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-bold text-muted-foreground">बाकी राशि (Remaining)</span>
-            <span className={`text-xl font-extrabold tabular-nums ${negative ? "text-red-600" : positive ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>
+            <span className={`text-xl font-extrabold tabular-nums ${negative ? "text-red-600" : positive ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
               {inr(l.remainingBalance)}
             </span>
           </div>
-          {negative && (
-            <div className="mt-1 text-[10px] font-semibold text-red-600 flex items-center gap-1">
-              <ArrowLeftRight className="w-3 h-3" /> अगले माह में कैरी-फ़ॉरवर्ड होगा
-            </div>
-          )}
         </div>
+
+        {onPay && (
+          <Button onClick={onPay} className="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2">
+            <BadgeIndianRupee className="w-4 h-4" /> भुगतान करें (Pay Salary)
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function Row({ label, value, tone = "", muted = false }: { label: string; value: string; tone?: string; muted?: boolean }) {
+function Row({ label, value, tone, muted }: { label: string; value: string; tone?: string; muted?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
-      <span className={`text-xs font-bold ${muted ? "text-muted-foreground/75" : "text-muted-foreground"}`}>{label}</span>
-      <span className={`text-sm font-extrabold tabular-nums ${tone}`}>{value}</span>
+    <div className={`flex items-center justify-between py-1 border-b border-border/40 text-xs ${muted ? "opacity-75" : ""}`}>
+      <span className="font-semibold text-muted-foreground">{label}</span>
+      <span className={`font-extrabold tabular-nums ${tone || "text-foreground"}`}>{value}</span>
     </div>
   );
 }
