@@ -424,14 +424,15 @@ function LedgerCard({
           <div className="flex items-center justify-between mt-1">
             <span className="text-xs font-bold text-muted-foreground">बाकी राशि (Remaining)</span>
             <span className={`text-xl font-extrabold tabular-nums ${negative ? "text-red-600" : positive ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
-              {inr(l.remainingBalance)}
+               {inr(l.remainingBalance)}
             </span>
           </div>
         </div>
 
+        {/* Pay button */}
         {onPay && (
-          <Button onClick={onPay} className="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2">
-            <BadgeIndianRupee className="w-4 h-4" /> भुगतान करें (Pay Salary)
+          <Button onClick={onPay} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+            💵 भुगतान करें (Pay Salary)
           </Button>
         )}
       </CardContent>
@@ -439,11 +440,11 @@ function LedgerCard({
   );
 }
 
-function Row({ label, value, tone, muted }: { label: string; value: string; tone?: string; muted?: boolean }) {
+function Row({ label, value, tone = "", muted = false }: { label: string; value: string; tone?: string; muted?: boolean }) {
   return (
-    <div className={`flex items-center justify-between py-1 border-b border-border/40 text-xs ${muted ? "opacity-75" : ""}`}>
-      <span className="font-semibold text-muted-foreground">{label}</span>
-      <span className={`font-extrabold tabular-nums ${tone || "text-foreground"}`}>{value}</span>
+    <div className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+      <span className={`text-xs font-semibold ${muted ? "text-muted-foreground/80" : "text-muted-foreground"}`}>{label}</span>
+      <span className={`text-xs font-extrabold tabular-nums ${tone || (muted ? "text-muted-foreground" : "")}`}>{value}</span>
     </div>
   );
 }
