@@ -268,7 +268,7 @@ export async function computePendingOutstandingTotal(opts: {
 }
 
 // ============================================================
-// WORKER LEDGER — carry-forward aware payroll model.
+// WORKER LEDGER — carry-forward aware payroll model (Optimized to last 6 months).
 // ============================================================
 
 export type WorkerLedger = {
@@ -314,15 +314,22 @@ export async function computeWorkerLedger(opts: {
 }): Promise<LedgerResult> {
   const { year, monthIndex0 } = opts;
   const { startISO, endISO } = getMonthBoundsISO(year, monthIndex0);
+  
+  // पिछले 6 महीने की शुरुआत की तारीख कैलकुलेट करें ताकि ऐप पर भारी लोड न पड़े
+  const targetDate = new Date(year, monthIndex0, 1);
+  targetDate.setMonth(targetDate.getMonth() - 6);
+  const sixMonthsAgoISO = targetDate.toISOString().split("T")[0];
+
   const site = (opts.siteFilter || "").trim();
   const matchesSite = (s: string | null | undefined) =>
     !site || (s || "").trim() === site;
 
   const [wRes, aRes, eRes, pRes] = await Promise.all([
     supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name").eq("is_active", true),
-    supabase.from("attendance").select("worker_id,status,advance,overtime_hours,site_name,date").lte("date", endISO),
-    supabase.from("worker_expenses").select("worker_id,amount,site_name,date").lte("date", endISO),
-    supabase.from("payment_history").select("worker_id,amount,site_name,payment_date").lte("payment_date", endISO),
+    // अब पूरा इतिहास खींचने के बजाय सिर्फ पिछले 6 महीने से लेकर endISO तक का डेटा ही फेच होगा
+    supabase.from("attendance").select("worker_id,status,advance,overtime_hours,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
+    supabase.from("worker_expenses").select("worker_id,amount,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
+    supabase.from("payment_history").select("worker_id,amount,site_name,payment_date").gte("payment_date", sixMonthsAgoISO).lte("payment_date", endISO),
   ]);
 
   const workers = (wRes.data || []) as WorkerLite[];
