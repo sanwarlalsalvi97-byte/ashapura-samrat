@@ -334,15 +334,15 @@ function LedgerCard({
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            {l.worker.profile_url ? (
+            {(l.worker as any).profile_url ? (
               <img 
-                src={l.worker.profile_url} 
-                alt={l.worker.name} 
+                src={(l.worker as any).profile_url} 
+                alt={l.worker.name || "Worker"} 
                 className="w-10 h-10 rounded-xl object-cover border border-emerald-200 shrink-0"
               />
             ) : (
               <span className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
-                {l.worker.name.slice(0, 1)}
+                {l.worker.name ? l.worker.name.slice(0, 1) : "W"}
               </span>
             )}
             <span className="min-w-0">
