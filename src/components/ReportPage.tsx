@@ -63,19 +63,23 @@ export default function ReportPage() {
   const [payTarget, setPayTarget] = useState<WorkerLedger | null>(null);
 
   const loadSiteData = useCallback(async () => {
-    const { startISO: startDate, endISO: endDate } = monthBoundsISO(year, month - 1);
-    const [a, c, e, p, w] = await Promise.all([
-      supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
-      supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
-      supabase.from("worker_expenses").select("amount, site_name").gte("date", startDate).lte("date", endDate),
-      supabase.from("payment_history").select("amount, site_name").gte("payment_date", startDate).lte("payment_date", endDate),
-      getWorkers().catch(() => [] as Worker[]),
-    ]);
-    setSiteAtt((a.data as any[]) || []);
-    setSiteCash((c.data as any[]) || []);
-    setSiteExp((e.data as any[]) || []);
-    setSitePay((p.data as any[]) || []);
-    setAllWorkers(w);
+    try {
+      const { startISO: startDate, endISO: endDate } = monthBoundsISO(year, month - 1);
+      const [a, c, e, p, w] = await Promise.all([
+        supabase.from("attendance").select("status, advance, site_name, worker_id, workers(name, daily_rate)").gte("date", startDate).lte("date", endDate),
+        supabase.from("cashbook").select("amount, site_name, type").gte("date", startDate).lte("date", endDate),
+        supabase.from("worker_expenses").select("amount, site_name").gte("date", startDate).lte("date", endDate),
+        supabase.from("payment_history").select("amount, site_name").gte("payment_date", startDate).lte("payment_date", endDate),
+        getWorkers().catch(() => [] as Worker[]),
+      ]);
+      setSiteAtt((a.data as any[]) || []);
+      setSiteCash((c.data as any[]) || []);
+      setSiteExp((e.data as any[]) || []);
+      setSitePay((p.data as any[]) || []);
+      setAllWorkers(w);
+    } catch (err) {
+      console.error("Site Data Load Error:", err);
+    }
   }, [year, month]);
 
   useEffect(() => { loadSiteData(); }, [loadSiteData]);
@@ -87,7 +91,14 @@ export default function ReportPage() {
       const res = await computeWorkerLedger({ year, monthIndex0: month - 1, siteFilter: activeSite });
       setLedger(res.rows);
       setLedgerTotals(res.totals);
-    } catch {}
+    } catch (err: any) {
+      console.error("Ledger Load Error:", err);
+      toast({ 
+        title: "रिपोर्ट लोड करने में त्रुटि", 
+        description: err?.message || String(err), 
+        variant: "destructive" 
+      });
+    }
   }, [year, month, activeSite]);
 
   useEffect(() => {
@@ -99,7 +110,7 @@ export default function ReportPage() {
   const visibleLedger = useMemo(() => {
     if (!activeSite) return ledger;
     return ledger.filter((l) =>
-      (l.worker.site_name || "").trim() === activeSite ||
+      (l.worker?.site_name || "").trim() === activeSite ||
       l.presentDays || l.halfDays || l.absentDays ||
       l.currentEarnings || l.currentAdvance || l.currentPaid || l.previousBalance
     );
@@ -139,9 +150,9 @@ export default function ReportPage() {
     const rows: (string | number)[][] = visibleLedger.map((s) => {
       const w = workerById.get(s.worker.id);
       const group = w ? resolveGroupLabel(w, contractors, mode) : "—";
-      const site = activeSite || (w?.site_name || s.worker.site_name || "—");
+      const site = activeSite || (w?.site_name || s.worker?.site_name || "—");
       return [
-        site, group, s.worker.name,
+        site, group, s.worker?.name || "अज्ञात",
         Math.round(s.previousBalance),
         s.presentDays, s.halfDays, s.absentDays,
         Math.round(s.currentEarnings), Math.round(s.currentAdvance),
@@ -167,7 +178,7 @@ export default function ReportPage() {
   const shareOnWhatsApp = (worker?: WorkerLedger) => {
     let text = "";
     if (worker) {
-      text = `📋 *${worker.worker.name}* — ${monthNames[month - 1]} ${year}\n\n` +
+      text = `📋 *${worker.worker?.name || "मज़दूर"}* — ${monthNames[month - 1]} ${year}\n\n` +
         `🔁 पिछला बाकी: ${inr(worker.previousBalance)}\n` +
         `✅ हाजिर: ${worker.presentDays} | आधा: ${worker.halfDays} | गैर: ${worker.absentDays}\n\n` +
         `💰 इस माह कमाई: ${inr(worker.currentEarnings)}\n` +
@@ -180,7 +191,7 @@ export default function ReportPage() {
     } else {
       text = `📋 *पेरोल रिपोर्ट — ${monthNames[month - 1]} ${year}*\n🏗️ साइट: ${activeSite || "सभी साइट"}\n\n`;
       visibleLedger.forEach((s) => {
-        text += `👷 *${s.worker.name}*\n` +
+        text += `👷 *${s.worker?.name || "मज़दूर"}*\n` +
           `   पिछला: ${inr(s.previousBalance)} | कमाई: ${inr(s.currentEarnings)} | एडवांस: ${inr(s.currentAdvance)}\n` +
           `   बाकी: *${inr(s.remainingBalance)}*\n\n`;
       });
@@ -295,7 +306,7 @@ export default function ReportPage() {
           <div className="space-y-3">
             {visibleLedger.map((s) => (
               <LedgerCard
-                key={s.worker.id}
+                key={s.worker?.id || Math.random()}
                 l={s}
                 month={month}
                 year={year}
@@ -329,26 +340,30 @@ function LedgerCard({
 }) {
   const negative = l.remainingBalance < -0.5;
   const positive = l.remainingBalance > 0.5;
+  const workerName = l.worker?.name || "मज़दूर";
+  const workerSite = l.worker?.site_name || "साइट नहीं";
+  const profileUrl = (l.worker as any)?.profile_url;
+
   return (
     <Card className="rounded-3xl border-border/60 shadow-sm overflow-hidden">
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            {(l.worker as any).profile_url ? (
+            {profileUrl ? (
               <img 
-                src={(l.worker as any).profile_url} 
-                alt={l.worker.name || "Worker"} 
+                src={profileUrl} 
+                alt={workerName} 
                 className="w-10 h-10 rounded-xl object-cover border border-emerald-200 shrink-0"
               />
             ) : (
               <span className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 grid place-items-center font-extrabold text-sm shrink-0">
-                {l.worker.name ? l.worker.name.slice(0, 1) : "W"}
+                {workerName.slice(0, 1)}
               </span>
             )}
             <span className="min-w-0">
-              <span className="block font-extrabold truncate">{l.worker.name}</span>
+              <span className="block font-extrabold truncate">{workerName}</span>
               <span className="block text-[10px] font-bold text-muted-foreground truncate">
-                🏗️ {l.worker.site_name || "साइट नहीं"}
+                🏗️ {workerSite}
               </span>
             </span>
           </div>
@@ -368,7 +383,7 @@ function LedgerCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>रिपोर्ट हटाएं?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {l.worker.name} की {monthNames[month - 1]} {year} की पूरी हाजिरी और एडवांस हट जाएंगी।
+                    {workerName} की {monthNames[month - 1]} {year} की पूरी हाजिरी और एडवांस हट जाएंगी।
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -417,7 +432,7 @@ function LedgerCard({
         <div className="rounded-2xl border-2 border-dashed border-border/60 p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-muted-foreground">देय (Net Payable)</span>
-            <span className={`text-lg font-extrabold tabular-nums ${l.netPayable < 0 ? "text-red-600" : "text-emerald-700 dark:text-emerald-300"}`}>
+            <span className={`text-lg font-extrabold tabular-nums ${l.netPayable < 0  ? "text-red-600" : "text-emerald-700 dark:text-emerald-300"}`}>
               {inr(l.netPayable)}
             </span>
           </div>
@@ -447,4 +462,4 @@ function Row({ label, value, tone = "", muted = false }: { label: string; value:
       <span className={`text-xs font-extrabold tabular-nums ${tone || (muted ? "text-muted-foreground" : "")}`}>{value}</span>
     </div>
   );
-}
+                                                                    }
