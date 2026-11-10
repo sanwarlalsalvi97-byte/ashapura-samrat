@@ -33,9 +33,10 @@ import { RoleProvider, useRole } from "@/lib/roles";
 import WorkerLinkPage from "@/components/WorkerLinkPage";
 import { getLinkedWorker } from "@/lib/worker-link";
 import { usePlayBillingRecovery } from "@/hooks/use-play-billing-recovery";
+import { AasaAiHomeCard } from "@/components/AasaAiHomeCard"; // ✅ AI मुंशी कार्ड कॉम्पोनेंट
 
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
-const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings"];
+const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings", "aasa_ai"];
 
 interface IndexProps {
   initialTab?: TabId;
@@ -94,8 +95,6 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
     loadTrial();
   }, [session]);
 
-
-
   // GPS status check
   useEffect(() => {
     if (!navigator.geolocation) { setGpsOn(false); return; }
@@ -108,9 +107,7 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
     return () => { cancelled = true; };
   }, [session]);
 
-
-  // Worker accounts must be linked to a worker record created by their contractor,
-  // otherwise every screen is scoped to an empty tenant.
+  // Worker accounts must be linked to a worker record created by their contractor
   useEffect(() => {
     if (!session || !isWorker) { setLinkChecked(true); setLinkedWorkerId(null); return; }
     let cancelled = false;
@@ -144,7 +141,6 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
   if (isWorker && !linkedWorkerId) {
     return <WorkerLinkPage onLinked={() => { setLinkChecked(false); setLinkedWorkerId(null); getLinkedWorker().then((w) => { setLinkedWorkerId(w?.id ?? null); setLinkChecked(true); }); }} />;
   }
-
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -206,6 +202,7 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
         ) : (
         <>
         {tab === "home" && <HomePage onNavigate={setTab} />}
+        {tab === "aasa_ai" && <AasaAiHomeCard />} {/* ✅ AI मुंशी टैब का कंटेंट */}
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
         {tab === "cashbook" && <CashbookPage />}
@@ -227,9 +224,6 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
         </>
         )}
       </main>
-
-      {/* FAB removed — use Quick Actions / Workers page header instead */}
-
 
       <BottomNav active={tab} onNavigate={setTab} allowed={isWorker ? WORKER_TABS : undefined} />
     </div>
