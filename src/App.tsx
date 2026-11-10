@@ -105,6 +105,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/app" element={<PinLockGate><Index /></PinLockGate>} />
+            {/* ✅ AI मुंशी / Aasa AI के लिए नया रूट जोड़ा गया */}
+            <Route path="/aasa-ai" element={<PinLockGate><Index initialTab="aasa_ai" /></PinLockGate>} />
             <Route path="/material-entry" element={<PinLockGate><Index initialTab="material_entry" /></PinLockGate>} />
             <Route path="/notification-settings" element={<PinLockGate><NotificationSettings /></PinLockGate>} />
             <Route path="/app-links-diagnostic" element={<AppLinksDiagnostic />} />
@@ -124,4 +126,3 @@ const App = () => {
 };
 
 export default App;
-      
