@@ -65,12 +65,13 @@ export default function SiteWiseReport({
           );
           const workerIds = new Set(siteWorkers.map((w) => w.id));
 
-          // हाजिरी गणना (यदि साइट नाम मैच हो या मजदूर इस साइट का हो)
+          // हाजिरी गणना (मजदूर की साइट या आईडी के आधार पर सही मिलान)
           const siteAttendance = att.filter((a) => {
-            const sName = (a.site_name || "").trim().toLowerCase();
-            return sName === site.toLowerCase() || (!a.site_name && workerIds.has(a.worker_id)) || true; // सभी अटेंडेंस शामिल करें यदि एक ही साइट है
+            const aSite = (a.site_name || "").trim().toLowerCase();
+            const wSite = site.toLowerCase();
+            return aSite === wSite || (!a.site_name && workerIds.has(a.worker_id));
           });
-
+          
           const presentCount = siteAttendance.filter((a) => a.status === "present").length;
           const halfCount = siteAttendance.filter((a) => a.status === "half").length;
           const totalAttDays = presentCount + halfCount * 0.5;
