@@ -23,6 +23,7 @@ export type WorkerLite = {
   upi_id?: string | null;
   phone?: string | null;
   site_name?: string | null;
+  profile_url?: string | null; // 👈 यह नई लाइन यहाँ जोड़ दें
 };
 
 export type WorkerPayment = {
