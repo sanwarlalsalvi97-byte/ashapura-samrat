@@ -87,14 +87,14 @@ export async function computeWorkerPayments(opts: {
   const { startISO, endISO } = opts;
   const site = (opts.siteFilter || "").trim();
 
-  const [wRes, aRes, eRes, pRes] = await Promise.all([
+    const [wRes, aRes, eRes, pRes] = await Promise.all([
     supabase
       .from("workers")
-      .select("id,name,daily_rate,upi_id,phone,site_name")
+      .select("id,name,daily_rate,upi_id,phone,site_name,profile_url") // ✅ यहाँ सही जगह पर profile_url जोड़ दिया गया है
       .eq("is_active", true),
     supabase
       .from("attendance")
-      .select("worker_id,status,advance,overtime_hours,site_name,profile_url")
+      .select("worker_id,status,advance,overtime_hours,site_name,date") // ✅ attendance से इसे हटा दिया गया है
       .gte("date", startISO)
       .lte("date", endISO),
     supabase
