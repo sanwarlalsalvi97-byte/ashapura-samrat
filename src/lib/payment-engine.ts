@@ -23,7 +23,7 @@ export type WorkerLite = {
   upi_id?: string | null;
   phone?: string | null;
   site_name?: string | null;
-  profile_url?: string | null; // 👈 यह नई लाइन यहाँ जोड़ दें
+  photo_url?: string | null; // 👈 सही कॉलम नाम photo_url किया गया
 };
 
 export type WorkerPayment = {
@@ -87,14 +87,14 @@ export async function computeWorkerPayments(opts: {
   const { startISO, endISO } = opts;
   const site = (opts.siteFilter || "").trim();
 
-    const [wRes, aRes, eRes, pRes] = await Promise.all([
+  const [wRes, aRes, eRes, pRes] = await Promise.all([
     supabase
       .from("workers")
-      .select("id,name,daily_rate,upi_id,phone,site_name,profile_url") // ✅ यहाँ सही जगह पर profile_url जोड़ दिया गया है
+      .select("id,name,daily_rate,upi_id,phone,site_name,photo_url") // ✅ photo_url यहाँ सही से जोड़ा गया
       .eq("is_active", true),
     supabase
       .from("attendance")
-      .select("worker_id,status,advance,overtime_hours,site_name,date") // ✅ attendance से इसे हटा दिया गया है
+      .select("worker_id,status,advance,overtime_hours,site_name,date")
       .gte("date", startISO)
       .lte("date", endISO),
     supabase
@@ -148,7 +148,7 @@ export function reduceWorkerPayments(
     outstanding: 0,
   });
 
-  // Attendance → earnings + advance
+  // Attendance → earnings + advance (Case-insensitive status matching)
   att.forEach((r) => {
     if (!matchesSite(r.site_name)) return;
     const w = byId.get(r.worker_id);
@@ -157,15 +157,17 @@ export function reduceWorkerPayments(
     const rate = w.daily_rate || 0;
     const otRate = rate / 8;
 
-    if (r.status === "Present") {
+    const status = (r.status || "").trim().toLowerCase();
+
+    if (status === "present" || status === "p") {
       row.presentDays += 1;
       row.days += 1;
       row.baseEarning += rate;
-    } else if (r.status === "Half-Day") {
+    } else if (status === "half-day" || status === "halfday" || status === "h") {
       row.halfDays += 1;
       row.days += 0.5;
       row.baseEarning += rate * 0.5;
-    } else if (r.status === "Absent") {
+    } else if (status === "absent" || status === "a") {
       row.absentDays += 1;
     }
     row.overtimePay += (r.overtime_hours || 0) * otRate;
@@ -193,8 +195,6 @@ export function reduceWorkerPayments(
     acc.set(w.id, row);
   });
 
-  // If site filter is set, drop workers with no activity in that site.
-  // If not, include all active workers (even zero rows).
   if (!site) {
     workers.forEach((w) => {
       if (!acc.has(w.id)) acc.set(w.id, init(w));
@@ -224,10 +224,6 @@ export function reduceWorkerPayments(
   return { rows, totals };
 }
 
-/**
- * Subscribe to all tables that affect payment calculations.
- * Returns an unsubscribe function. Call inside a useEffect.
- */
 export function subscribePaymentSources(onChange: () => void) {
   const ch = supabase
     .channel("payment-engine-" + Math.random().toString(36).slice(2, 8))
@@ -246,12 +242,6 @@ export function monthBoundsISO(year: number, monthIndex0: number) {
   return getMonthBoundsISO(year, monthIndex0);
 }
 
-/**
- * SHARED total pending outstanding.
- * Sums only workers whose outstanding is > 0, so overpaid workers
- * (negative outstanding) never reduce the visible "बकाया" figure.
- * Dashboard "Payment Due" card and Pending Payments page BOTH use this.
- */
 export function sumPendingOutstanding(rows: WorkerPayment[]): number {
   return rows.reduce((s, r) => {
     const n = r.outstanding;
@@ -303,8 +293,9 @@ export type LedgerResult = {
 function earningsFromAtt(status: string | null, rate: number, ot: number | null) {
   const otRate = rate / 8;
   let base = 0;
-  if (status === "Present") base = rate;
-  else if (status === "Half-Day") base = rate * 0.5;
+  const s = (status || "").trim().toLowerCase();
+  if (s === "present" || s === "p") base = rate;
+  else if (s === "half-day" || s === "halfday" || s === "h") base = rate * 0.5;
   return base + (ot || 0) * otRate;
 }
 
@@ -316,7 +307,6 @@ export async function computeWorkerLedger(opts: {
   const { year, monthIndex0 } = opts;
   const { startISO, endISO } = getMonthBoundsISO(year, monthIndex0);
   
-  // पिछले 6 महीने की शुरुआत की तारीख कैलकुलेट करें ताकि ऐप पर भारी लोड न पड़े
   const targetDate = new Date(year, monthIndex0, 1);
   targetDate.setMonth(targetDate.getMonth() - 6);
   const sixMonthsAgoISO = targetDate.toISOString().split("T")[0];
@@ -325,9 +315,8 @@ export async function computeWorkerLedger(opts: {
   const matchesSite = (s: string | null | undefined) =>
     !site || (s || "").trim() === site;
 
-    const [wRes, aRes, eRes, pRes] = await Promise.all([
-    supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name,profile_url").eq("is_active", true), // 👈 यहाँ profile_url जोड़ दिया गया है
-    // अब पूरा इतिहास खींचने के बजाय सिर्फ पिछले 6 महीने से लेकर endISO तक का डेटा ही फेच होगा
+  const [wRes, aRes, eRes, pRes] = await Promise.all([
+    supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name,photo_url").eq("is_active", true), // ✅ photo_url यहाँ सही से जोड़ा गया
     supabase.from("attendance").select("worker_id,status,advance,overtime_hours,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
     supabase.from("worker_expenses").select("worker_id,amount,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
     supabase.from("payment_history").select("worker_id,amount,site_name,payment_date").gte("payment_date", sixMonthsAgoISO).lte("payment_date", endISO),
@@ -358,9 +347,10 @@ export async function computeWorkerLedger(opts: {
     const inMonth = r.date >= startISO && r.date <= endISO;
     row.totalAdvanceLifetime += adv;
     if (inMonth) {
-      if (r.status === "Present") row.presentDays += 1;
-      else if (r.status === "Half-Day") row.halfDays += 1;
-      else if (r.status === "Absent") row.absentDays += 1;
+      const s = (r.status || "").trim().toLowerCase();
+      if (s === "present" || s === "p") row.presentDays += 1;
+      else if (s === "half-day" || s === "halfday" || s === "h") row.halfDays += 1;
+      else if (s === "absent" || s === "a") row.absentDays += 1;
       row.currentEarnings += earned;
       row.currentAdvance += adv;
     } else {
