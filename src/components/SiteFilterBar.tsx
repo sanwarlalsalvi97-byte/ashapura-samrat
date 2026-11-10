@@ -12,9 +12,15 @@ export default function SiteFilterBar({ value, onChange }: SiteFilterBarProps) {
   const [sites, setSites] = useState<string[]>([]);
 
   useEffect(() => {
-    listSites().then((res) => {
-      setSites(res.map((s) => s.name));
-    }).catch(() => {});
+    // ✅ चूँकि listSites() एक synchronous फंक्शन है, इसे सीधे कॉल करें (.then की कोई जरूरत नहीं)
+    try {
+      const res = listSites();
+      if (res && Array.isArray(res)) {
+        setSites(res.map((s) => s.name));
+      }
+    } catch (err) {
+      console.error("Failed to load sites:", err);
+    }
   }, []);
 
   return (
