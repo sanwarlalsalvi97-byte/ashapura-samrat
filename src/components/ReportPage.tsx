@@ -344,15 +344,19 @@ function LedgerCard({
   const workerSite = l.worker?.site_name || "साइट नहीं";
   const photoUrl = (l.worker as any)?.photo_url;
 
+  // फोटो एरर हैंडल करने के लिए स्टेट
+  const [imgError, setImgError] = useState(false);
+
   return (
     <Card className="rounded-3xl border-border/60 shadow-sm overflow-hidden">
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            {photoUrl ? (
+            {photoUrl && !imgError ? (
               <img 
                 src={photoUrl} 
                 alt={workerName} 
+                onError={() => setImgError(true)}
                 className="w-10 h-10 rounded-xl object-cover border border-emerald-200 shrink-0"
               />
             ) : (
