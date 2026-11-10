@@ -349,7 +349,7 @@ function LedgerCard({
       <CardHeader className="pb-2 p-4 bg-gradient-to-r from-emerald-50/70 to-transparent dark:from-emerald-950/20">
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
-            {profileUrl ? (
+            {photoUrl ? (
               <img 
                 src={photoUrl} 
                 alt={workerName} 
