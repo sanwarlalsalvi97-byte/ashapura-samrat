@@ -33,7 +33,7 @@ import { RoleProvider, useRole } from "@/lib/roles";
 import WorkerLinkPage from "@/components/WorkerLinkPage";
 import { getLinkedWorker } from "@/lib/worker-link";
 import { usePlayBillingRecovery } from "@/hooks/use-play-billing-recovery";
-import { AasaAiHomeCard } from "@/components/AasaAiHomeCard"; // ✅ AI मुंशी कार्ड कॉम्पोनेंट
+import { AasaAiChat } from "@/components/AasaAiChat"; // ✅ AasaAiHomeCard की जगह AasaAiChat इंपोर्ट किया गया
 
 /** Tabs a मजदूर (worker) account may open — all read-only screens. */
 const WORKER_TABS: TabId[] = ["home", "attendance", "report", "punch", "payment_history", "settings", "aasa_ai"];
@@ -202,7 +202,7 @@ function IndexInner({ initialTab }: { initialTab: TabId }) {
         ) : (
         <>
         {tab === "home" && <HomePage onNavigate={setTab} />}
-        {tab === "aasa_ai" && <AasaAiHomeCard />} {/* ✅ AI मुंशी टैब का कंटेंट */}
+        {tab === "aasa_ai" && <AasaAiChat />} {/* ✅ अब यहाँ पूरा चैट स्क्रीन रेंडर होगा */}
         {tab === "attendance" && <AttendancePage />}
         {tab === "advance" && <AdvancePage />}
         {tab === "cashbook" && <CashbookPage />}
