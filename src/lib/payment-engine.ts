@@ -94,7 +94,7 @@ export async function computeWorkerPayments(opts: {
       .eq("is_active", true),
     supabase
       .from("attendance")
-      .select("worker_id,status,advance,overtime_hours,site_name,date")
+      .select("worker_id,status,advance,overtime_hours,site_name,profile_url")
       .gte("date", startISO)
       .lte("date", endISO),
     supabase
@@ -325,8 +325,8 @@ export async function computeWorkerLedger(opts: {
   const matchesSite = (s: string | null | undefined) =>
     !site || (s || "").trim() === site;
 
-  const [wRes, aRes, eRes, pRes] = await Promise.all([
-    supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name").eq("is_active", true),
+    const [wRes, aRes, eRes, pRes] = await Promise.all([
+    supabase.from("workers").select("id,name,daily_rate,upi_id,phone,site_name,profile_url").eq("is_active", true), // 👈 यहाँ profile_url जोड़ दिया गया है
     // अब पूरा इतिहास खींचने के बजाय सिर्फ पिछले 6 महीने से लेकर endISO तक का डेटा ही फेच होगा
     supabase.from("attendance").select("worker_id,status,advance,overtime_hours,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
     supabase.from("worker_expenses").select("worker_id,amount,site_name,date").gte("date", sixMonthsAgoISO).lte("date", endISO),
