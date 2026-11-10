@@ -1,4 +1,4 @@
-import { CalendarCheck, Users, BarChart3, Settings, Wallet, Home } from "lucide-react";
+import { CalendarCheck, Users, BarChart3, Settings, Wallet, Home, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type TabId =
@@ -20,7 +20,8 @@ export type TabId =
   | "worker_expense"
   | "payment_history"
   | "punch"
-  | "geo_admin";
+  | "geo_admin"
+  | "aasa_ai"; // ✅ AI टैब जोड़ा गया
 
 interface Props {
   active: TabId;
@@ -33,6 +34,7 @@ const tabs = [
   { id: "home" as const, label: "होम", icon: Home },
   { id: "attendance" as const, label: "हाजिरी", icon: CalendarCheck },
   { id: "advance" as const, label: "एडवांस", icon: Wallet },
+  { id: "aasa_ai" as const, label: "AI मुंशी", icon: Sparkles }, // ✅ बॉटम बार में AI मुंशी जोड़ा गया
   { id: "workers" as const, label: "मजदूर", icon: Users },
   { id: "report" as const, label: "रिपोर्ट", icon: BarChart3 },
   { id: "settings" as const, label: "सेटिंग्स", icon: Settings },
