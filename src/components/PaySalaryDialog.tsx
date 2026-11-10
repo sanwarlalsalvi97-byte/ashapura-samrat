@@ -35,7 +35,7 @@ export default function PaySalaryDialog({ target, onClose, onSaved }: PaySalaryD
         amount: num,
         payment_date: new Date().toISOString().split("T")[0],
         payment_mode: paymentMode,
-        notes: notes || "वेतन भुगतान",
+        note: notes || "वेतन भुगतान",
         site_name: target.worker.site_name,
       });
 
