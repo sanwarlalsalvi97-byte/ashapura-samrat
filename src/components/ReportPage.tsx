@@ -342,7 +342,7 @@ function LedgerCard({
   const positive = l.remainingBalance > 0.5;
   const workerName = l.worker?.name || "मज़दूर";
   const workerSite = l.worker?.site_name || "साइट नहीं";
-  const profileUrl = (l.worker as any)?.profile_url;
+  const photoUrl = (l.worker as any)?.photo_url;
 
   return (
     <Card className="rounded-3xl border-border/60 shadow-sm overflow-hidden">
@@ -351,7 +351,7 @@ function LedgerCard({
           <div className="flex items-center gap-2 min-w-0">
             {profileUrl ? (
               <img 
-                src={profileUrl} 
+                src={photoUrl} 
                 alt={workerName} 
                 className="w-10 h-10 rounded-xl object-cover border border-emerald-200 shrink-0"
               />
