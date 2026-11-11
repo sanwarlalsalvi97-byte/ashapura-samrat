@@ -6,36 +6,43 @@ export interface AasaAiResponse {
 }
 
 /**
- * आसा AI एज फंक्शन को सुरक्षित रूप से कॉल करने का क्लाइंट फंक्शन
+ * आसा AI मुंशी - सीधे Supabase डेटाबेस से मजदूरों और हाजिरी का हिसाब खोज कर जवाब देता है
  */
 export async function askAasaAi(prompt: string): Promise<string> {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      throw new Error("कृपया पहले लॉगिन करें। सत्र समाप्त हो गया है।");
+    const text = prompt.trim().toLowerCase();
+
+    // 1. सभी मजदूरों की लिस्ट लाएं
+    const { data: workers, error: workerErr } = await supabase.from("workers").select("*");
+    if (workerErr) throw workerErr;
+
+    // 2. सभी हाजिरी की लिस्ट लाएं
+    const { data: attendance, error: attErr } = await supabase.from("attendance").select("*");
+    if (attErr) throw attErr;
+
+    // यदि कोई मजदूर का नाम पूछा जा रहा है
+    if (text.includes("हाजिरी") || text.includes("कितनी है") || text.includes("हिसाब")) {
+      const foundWorker = workers?.find((w) => text.includes(w.name.toLowerCase()));
+
+      if (foundWorker) {
+        const workerAtt = attendance?.filter((a) => a.worker_id === foundWorker.id) || [];
+        const presentCount = workerAtt.filter((a) => a.status === "present").length;
+        const halfCount = workerAtt.filter((a) => a.status === "half").length;
+        const totalDays = presentCount + (halfCount * 0.5);
+        const totalAdvance = workerAtt.reduce((sum, a) => sum + (Number(a.advance) || 0), 0);
+
+        return `${foundWorker.name} (${foundWorker.site_name || "साइट तय नहीं"}) का कुल हिसाब:\n- कुल हाजिरी: ${totalDays} दिन\n- कुल एडवांस: ₹${totalAdvance}`;
+      } else {
+        return `कुल ${workers?.length || 0} मजदूर दर्ज हैं। कृपया किसी विशिष्ट मजदूर का नाम लेकर पूछें, जैसे: "सांवर लाल की हाजिरी कितनी है?"`;
+      }
     }
 
-    const token = session.access_token;
+    // सामान्य स्वागत या अन्य सवाल
+    return `नमस्ते! आपके पास कुल ${workers?.length || 0} मजदूर रजिस्टर्ड हैं। आप किसी भी मजदूर की हाजिरी या एडवांस के बारे में पूछ सकते हैं।`;
 
-    const { data, error } = await supabase.functions.invoke("aasa-ai", {
-      body: { prompt },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (error) {
-      throw new Error(error.message || "आसा AI से संपर्क करने में विफल।");
-    }
-
-    if (data?.error) {
-      throw new Error(data.error);
-    }
-
-    return data?.reply || "क्षमा करें, आसा AI से कोई उत्तर प्राप्त नहीं हुआ।";
   } catch (err: any) {
-    console.error("Aasa AI Client Error:", err);
-    throw err;
+    console.error("Aasa AI Local Error:", err);
+    return "क्षमा करें, डेटा पढ़ने में कुछ त्रुटि, कृपया पुनः प्रयास करें।";
   }
 }
 
