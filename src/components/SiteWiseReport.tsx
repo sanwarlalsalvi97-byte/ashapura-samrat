@@ -59,17 +59,17 @@ export default function SiteWiseReport({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {sites.map((site) => {
-          // इस साइट के मजदूर (केस-इंसेंसिटिव मिलान ताकि नाम की गड़बड़ी न हो)
+          // इस साइट के मजदूर (केस-इंसेंसिटिव मिलान)
           const siteWorkers = workers.filter(
-            (w) => (w.site_name || "").trim().toLowerCase() === site.toLowerCase() || !w.site_name
+            (w) => (w.site_name || "").trim().toLowerCase() === site.toLowerCase()
           );
           const workerIds = new Set(siteWorkers.map((w) => w.id));
 
-          // हाजिरी गणना (मजदूर की साइट या आईडी के आधार पर सही मिलान)
+          // हाजिरी गणना (साइट का नाम मैच हो या मजदूर इस साइट का हो)
           const siteAttendance = att.filter((a) => {
             const aSite = (a.site_name || "").trim().toLowerCase();
-            const wSite = site.toLowerCase();
-            return aSite === wSite || (!a.site_name && workerIds.has(a.worker_id));
+            const currentSite = site.toLowerCase();
+            return aSite === currentSite || (!a.site_name && workerIds.has(a.worker_id));
           });
           
           const presentCount = siteAttendance.filter((a) => a.status === "present").length;
@@ -79,11 +79,21 @@ export default function SiteWiseReport({
           // एडवांस गणना
           const siteAdvances = siteAttendance.reduce((sum, a) => sum + (Number(a.advance) || 0), 0);
 
-          // खर्चे गणना
-          const siteExpenses = exp.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+          // खर्चे गणना (केवल इस साइट के खर्चे)
+          const siteExpenses = exp
+            .filter((e) => {
+              const eSite = (e.site_name || "").trim().toLowerCase();
+              return eSite === site.toLowerCase() || (!e.site_name && sites.length === 1);
+            })
+            .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-          // भुगतान गणना
-          const sitePayments = pay.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+          // भुगतान गणना (केवल इस साइट के भुगतान)
+          const sitePayments = pay
+            .filter((p) => {
+              const pSite = (p.site_name || "").trim().toLowerCase();
+              return pSite === site.toLowerCase() || (!p.site_name && sites.length === 1);
+            })
+            .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
           const isSelected = siteFilter === site;
 
