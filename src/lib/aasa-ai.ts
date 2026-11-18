@@ -26,8 +26,8 @@ export async function askAasaAi(prompt: string): Promise<string> {
 
       if (foundWorker) {
         const workerAtt = attendance?.filter((a) => a.worker_id === foundWorker.id) || [];
-        const presentCount = workerAtt.filter((a) => a.status === "present").length;
-        const halfCount = workerAtt.filter((a) => a.status === "half").length;
+        const presentCount = workerAtt.filter((a) => a.status === "Present").length;
+        const halfCount = workerAtt.filter((a) => a.status === "Half-Day").length;
         const totalDays = presentCount + (halfCount * 0.5);
         const totalAdvance = workerAtt.reduce((sum, a) => sum + (Number(a.advance) || 0), 0);
 
