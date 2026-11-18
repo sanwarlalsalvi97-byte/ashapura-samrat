@@ -11,3 +11,4 @@
 - Derive the Play obfuscated account identifier with the shared SHA-256 helper from the authenticated user, and scope billing work to that account so purchase/restore retries cannot reuse another account's verification result.
 - Store sites in the cloud `sites` table with a per-user cache in sites.ts; import device-only legacy sites only after explicit user confirmation and never delete the legacy copy, so accounts sharing a phone cannot inherit each other's sites.
 - Restore operational backups through one same-owner SECURITY INVOKER database transaction, with dependency ordering and active RLS/worker limits; keep storage files and device preferences outside database atomicity to avoid unsafe cross-account restoration claims.
+- Offer sign-in only through Google and email/password; never derive passwords or synthetic emails from phone numbers, so knowing a phone number can never open an account.
