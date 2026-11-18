@@ -34,3 +34,14 @@
 - [x] Add Material Entry access from Dashboard navigation.
 - [x] Verify Material Entry save, readback, filters, and responsive layout.
 - [x] Standardize editable fields on the full multilingual text keyboard while preserving secure and picker controls.
+
+## Fix all identified issues (18 Nov 2026) — Pro Yearly untouched
+- [ ] Attendance save keeps same-day advance; advance never auto-marks Present
+- [ ] GPS punch reject/approve updates attendance correctly
+- [ ] Offline attendance queue per-user, safe retry, no merge loss
+- [ ] Payment engine: full previous balance, pagination, clear read errors, overnight shift hours
+- [ ] Reports: SiteWiseReport counts, read errors not shown as ₹0, Pay Salary prefill
+- [ ] Google web redirect_uri_mismatch
+- [ ] Account security: deep-link session check, logout cache clear, no default admin/staff escalation, worker link verification
+- [ ] Backup: last-backup time only after success, photo status, restore migration file status
+- [ ] Basic 50-worker limit (if confirmed), decimal advance/cashbook, face-verify wording, Error Boundary
